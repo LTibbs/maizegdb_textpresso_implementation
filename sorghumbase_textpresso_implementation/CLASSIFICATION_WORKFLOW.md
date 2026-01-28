@@ -138,6 +138,24 @@ This file provides a template for manual labeling of new documents:
 ### Extracted Text Files
 Text files for each document are available in `tmp_txt/` and `txt/` subfolders. These contain the full text extracted from each PDF, ready for feature extraction and classification.
 
+
+### Model File: sorghum_classifier.pkl
+The `sorghum_classifier.pkl` file is a serialized (pickled) machine learning model generated during **Step 4: Training the Classifier**. This file is created by the `train_and_eval_classifier.py` script using scikit-learn's joblib or pickle. It contains the trained classifier, including its learned parameters and feature mappings, allowing you to load and use the model for prediction on new data without retraining. This enables reproducible and efficient classification workflows.
+
+**Generation Step:**
+  - Step 4: Training the Classifier
+  - Script: `train_and_eval_classifier.py`
+  - Command Example:
+    ```bash
+    python train_and_eval_classifier.py --input-csv training_data.csv --model-out sorghum_classifier.pkl
+    ```
+  - Output: `sorghum_classifier.pkl` (saved model)
+
+**Usage:**
+  - Step 5: Predicting on New PDFs
+  - Script: `predict_new_pdfs.py`
+  - The model is loaded for making predictions on new documents.
+
 ---
 
 ## Usage Guide
