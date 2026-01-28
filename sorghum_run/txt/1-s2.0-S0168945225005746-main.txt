@@ -1,0 +1,827 @@
+SbHMA5 is a P1B-type Cu ATPase involved in Cu homeostasis by 
+interacting with metallochaperones SbATX1 and SbFRN3
+Dimiru Tadessea,b,c
+, Matthew A. Tancosc,*, Million Tadegea,b
+aInstitute for Agricultural Biosciences, Oklahoma State University, Ardmore, OK 73401, USA
+bDepartment of Plant and Soil Sciences, Oklahoma State University, Stillwater, OK, USA
+cUS Department of Agriculture-Agricultural Research Service, Foreign Disease-Weed Science Research Unit, Frederick, MD, USA
+ARTICLE INFO
+Keywords:
+SbHMA5
+Genome wide analysis
+Metallochaperones
+P1B type ATPase
+Cu homeostasis
+HMA
+Heavy metal transport
+Sorghum bicolorABSTRACT
+Copper (Cu) is required by prokaryotes and eukaryotes for fundamental life processes including photosynthesis, 
+respiration and neurotransmission but excess Cu is toxic, causing severe problems ranging from weak plant 
+growth to Wilson ’s disease in humans. Copper homeostasis was shown to be tightly regulated by P1B-type 
+ATPase in yeast and other model organisms but the molecular mechanism by which sorghum plants maintain 
+this delicate balance of Cu homeostasis remains poorly understood. We identified 31 orthologs of P1B-type metal 
+transporters in Sorghum bicolor . From the identified sorghum orthologs of P1B-type ATPases, we complemented 
+the yeast Δccc2 mutant with SbHMA5. We showed that SbHMA5 encodes a P1B- type Cu ATPase homologous to 
+OsHMA5 and AtHMA5. The SbHMA5 transcript is detected in most sorghum tissues and induced by CuSO4 
+treatment. The protein is predominantly localized in the plasma membrane and physically interacts with Cu 
+chaperones SbATX1 and SbFRN3. Our results suggest that SbHMA5 is an efflux carrier involved in Cu homeo -
+stasis required for sorghum growth and development.
+1.Introduction
+Sorghum [Sorghum bicolor (L.) Moench] is a multipurpose cereal 
+grown primarily for food, feed, and fuel worldwide. Due to its efficient 
+C4 photosynthesis and relatively small diploid genome (~730 Mb), 
+sorghum is a model for functional genomics studies of sugarcane, Mis-
+canthus, maize and other C4 grasses (Paterson et al. 2009; Tadesse et al. 
+2024 ). It is a drought tolerant crop that is well suited to arid and 
+semi-arid regions. Its relative resilience to abiotic stresses also makes it 
+an attractive target for crop improvement in suboptimal environments 
+and could serve as a source of important agronomic traits for genetic 
+manipulation. Despite its adaptation in edaphic conditions, sorghum ’s 
+growth and development is severely impeded by the absence of critical 
+nutrients and trace elements (White and Brown, 2010 ). Unfortunately, 
+the molecular mechanism of regulation of macro and micronutrients in 
+sorghum are not well characterized. Some heavy metals and metalloids 
+such as Aluminum (Al), Cadmium (Cd), Lead (Pb), Mercury (Hg), and 
+Arsenic (As) are considered non-essential to plants but can adversely 
+affect crop performance and many of them pose serious risks to human 
+health (Clemens and Ma, 2016; Gall et al. 2015; Rai et al. 2019 ). 
+Conversely, other heavy metals such as Copper (Cu), Iron (Fe), Manganese (Mn), Cobalt (Co), and Zinc (Zn) are required by plants in 
+trace amounts as they make up important components of cytochromes 
+and enzymes that catalyze critical metabolic reactions including 
+photosynthesis, respiration and scavenging reactive oxygen species 
+(Jomova et al. 2022 ). The lack of such elements not only compromise 
+plant growth and productivity but can also impact human health if diets 
+are deficient in Cu or Fe leading to Menkes syndrome (Vairo et al. 2019 ) 
+or anemia (Miller et al. 2013 ), respectively. Nevertheless, at higher 
+concentrations, these elements become toxic and inhibit plant growth 
+and development or cause health risks in humans.
+The essential micronutrient Cu is required for many plant physio -
+logical processes including photosynthetic electron transport, mito-
+chondrial respiration, oxidative stress responses, protein and 
+carbohydrate metabolism, hormone signaling, and acts as a structural 
+element in regulatory proteins (Marschner and Rietbrock, 1995; Raven 
+et al. 1999; Rehman and Rather, 2019 ). Furthermore, Cu ions act as 
+cofactors in many enzymes such as Cu/Zn superoxide dismutase (SOD), 
+cytochrome c oxidase, amino oxidase, laccase, plastocyanin , polyphenol 
+oxidase , and nitrite reductases, affecting several fundamental physio -
+logical processes including signaling of transcription and protein traf-
+ficking, oxidative phosphorylation, and iron mobilization (Ravet and 
+*Corresponding author.
+E-mail address: matthew.tancos@usda.gov (M.A. Tancos). 
+Contents lists available at ScienceDirect
+Plant Science
+u{�~zkw! s{yo|kro>! ÐÐÐ1ow�o �to~1m{y2w{m k�o2|wkz��m t
+https://doi.org/10.1016/j.plantsci.2025.112956
+Received 29 September 2025; Received in revised form 18 December 2025; Accepted 20 December 2025  Plant  Science  364 (2026)  112956  
+Available  online  21 December  2025  
+0168-9452/Published  by Elsevier  B.V. 
+Pilon, 2013; Rehman and Rather, 2019 ). However, at high concentra -
+tions, Cu is extremely toxic causing symptoms such as chlorosis and 
+necrosis, stunting, leaf discoloration and inhibition of root growth 
+(Chandrasekhar and Ray, 2017; Marschner and Rietbrock, 1995; Van 
+Assche and Clijsters, 1990 ) due to the inhibition of enzymatic activity or 
+protein function, impaired cell transport processes, and oxidative 
+damage (Meharg, 1994 ). Thus, proper regulation and fine-tuning of Cu 
+homeostasis is essential for plant growth and development. Similarly, Cu 
+regulation is critical for prokaryotes and lower eukaryotes, and is an 
+active area of molecular research due to its potential applications in 
+heavy metal bioremediation (Ghasemi et al. 2025; Llorca and 
+Martinez-Espinosa, 2022; Saez-Zamacona et al. 2023 ).
+In Arabidopsis , two types of Cu transporters have been described, CTR 
+and HMA type. The COPT1 gene and its homologues belong to the Cu 
+transporter (CTR) family and encode high affinity Cu transporters that 
+allow the entry of Cu into plant cells (Kampfenkel et al. 1995; Puig et al. 
+2002; Sancenon et al. 2004 ). The second type of Cu transporters are 
+P-type ATPases that regulate intracellular Cu homeostasis across mem-
+branes. P-type ATPases transport a variety of ions including K, H, 
+Na/K, H/K, Ca2, heavy metals, and phospholipids, and have been 
+divided into five major groups based on sequence motifs and substrate 
+specificity, namely P1B, P2A, P2B, P3A, P4-type ATPases and a sixth 
+group (P5) with yet unidentified substrate (Argüello, 2003; Axelsen and 
+Palmgren, 2001; Palmgren and Nissen, 2011; Rosenzweig and Argüello, 
+2012 ). The P1B-type heavy-metal ATPases (HMAs) are found in all or-
+ganisms from microbes to humans and transport a variety of heavy metal 
+ions across membranes including those that are required for life pro-
+cesses such as Cu and Zn, and those that are not required such as Cd and 
+Pb (Rosenzweig, 2002; Rosenzweig and Argüello, 2012 ).
+A few plant Cu transporter HMAs and their metallochaperones have 
+been identified by genetic analysis (Abdel-Ghany et al. 2005; 
+Andres-Colas et al. 2006; Baxter et al. 2003; Deng et al. 2013; Huang 
+et al. 2016; Klaumann et al. 2011; Zheng et al. 2012 ). P1B -type ATPases 
+(HMAs), are represented by eight members in Arabidopsis , denoted 
+HMA1 to HMA8 (Mills et al. 2003 ). While HMA1 to HMA4 may be 
+involved in Zn, Cd, and Pb homeostasis (Hirayama et al. 1999; Hussain 
+et al. 2004 ), HMA5 to HMA8 are believed to play a role Cu and Ag 
+homeostasis (Axelsen and Palmgren, 2001 ). Out of these, RAN1 corre -
+sponds to HMA7 and delivers Cu to ethylene receptors (Chege et al. 
+2020; Woeste and Kieber, 2000 ). PAA1 (HMA6) and PAA2 (HMA8) are 
+required for Cu delivery into the chloroplast (Abdel-Ghany et al. 2005 ). 
+HMA5 is reported to detoxify Cu in Arabidopsis roots presumably by 
+extruding Cu out of the cells (Andres-Colas et al. 2006 ). In rice, OsHMA5 
+is reported to be involved in Cu loading to the xylem for root-to-shoot 
+translocation (Deng et al. 2013 ), while OsHMA4 is shown to prevent 
+Cu accumulation in rice grain by sequestering it to the vacuole (Huang 
+et al. 2016 ). Here, we describe the identification and characterization of 
+SbHMA5, a transmembrane protein which appears to play a critical role 
+in Cu homeostasis in Sorghum. SbHMA5 encodes a P1B-type Cu ATPase 
+closely related in sequence to rice OsHMA5.
+2.Materials and methods
+2.1. Plant material and growth conditions
+Plant material used in this study, sorghum [Sorghum bicolor (L.) 
+Moench], were grown in growth chambers and greenhouses under long- 
+day conditions of 16/8 h light/dark cycle at 25–28℃, 70–80 % relative 
+humidity, and 150 μmol/m2 light intensity. For media growth, seeds 
+were first sterilized with 70 % ethanol for 5 min, 20 % sodium hypo -
+chlorite for 15 min, and gently agitated in a rocker platform and rinsed 
+with sterile water. Then seeds were incubated for 3–4 days at room 
+temperature on a sterile filter paper with sterile water. The germinating 
+seeds were transferred to 1/2MS media (Chege et al. 2020 ) supple -
+mented with 30 µM CuSO4, 3 mM MnSO4, 3 mM FeSO4, and 0.9 mM 
+ZnSO4 in magenta boxes and grown in a growth chamber. Leaves from three-week old plants were collected for gene expression studies. In the 
+case of seeds, regular soil grown plants were used since they cannot 
+complete their life cycle in tissue culture. For metal treatments, con-
+centrations were optimized for all evaluated metals beginning with 
+standard concentration and slowly increasing concentrations until 
+plants demonstrated a phenotype or growth inhibition.
+2.2. Genome-wide analysis of plant P1B-type ATPases
+The search term “metal transporter ATPase ” was used in the sorghum 
+genome Sorghum bicolor v3.1.1 (https://phytozome-next.jgi.doe.gov/i 
+nfo/Sbicolor_v3_1_1 ) to identify loci (Table S1). Sequence analysis 
+using Blossom 90 amino acid similarity matrix with threshold 1 was also 
+performed using Geneious Prime software (Geneious, 2024 ) against the 
+eight previously identified Arabidopsis thaliana P1B-Type transporter 
+genes (Table S2). Sequences that have at least 10 % similarity index 
+(Table S2) with the Arabidopsis P1B-type ATPase genes were used for 
+multiple sequence alignment and phylogenetic study. Multiple sequence 
+alignment was performed using MUSCLE in MEGA 11 (Tamura et al. 
+2021 ), and phylogenetic analysis was performed in Geneious Prime 
+using the neighbor joining Geneious tree builder method with 
+Jukes-Cantor genetic distance model and 1000 bootstrap replicates to 
+construct the neighbor joining phylogenetic tree. The tree was then 
+edited with iTOL: interactive tree of life v4 (Letunic and Bork, 2019 ). 
+Thirty-one closest genes from the tree were used for further analysis and 
+motif prediction. Motif prediction (Table S3) was performed using 
+Geneious Prime to annotate and predict function from the 31 aligned full 
+length sequences.
+2.3. RNA extraction, gene cloning and plasmid construction
+Total RNA was isolated using TRIzol Reagent (Invitrogen) and after 
+purification with ethanol, cDNA synthesis was performed by SSIV 
+reverse transcriptase using an oligo (dT) primer. RT-PCR and RT-qPCR 
+were performed as previously described (Zhang et al. 2014 ) using 
+SbActin (Sobic.005G047100) as a control. The full-length SbHMA5 gene 
+was amplified by PCR from cDNA synthesized from sorghum (BTx623 ) 
+leaves. For sequencing, the SbHMA5 gene was amplified by attaching 
+attB sites and the purified product was cloned to pDONOR207 . All 
+primers used in this study are provided in Table S4.
+2.4. Yeast complementation
+The yeast (Saccharomyces cerevisiae ) wild type (WT) strain BY4741 
+(MATa his3Δ1 leu2 Δ0 met15 Δ0 ura3 Δ0), and BY4741-derived mutant 
+Δccc2( Cross-Complements Ca(2 ) phenotype of csg1, MATa his3Δ1 
+leu2 Δ0 met15 Δ0 ura3 Δ0 YΔR270w: kanMX4) were obtained from Open 
+Biosystems. Yeast complementation was performed as reported (Deng 
+et al. 2013 ). Briefly, the full length SbHMA5 gene was cloned in the 
+pYES2/CT yeast expression vector by adding HindIII and BamHI re-
+striction sites to SbHMA5 and ligating this into the pYES2/CT vector, 
+creating pYES2/CT- SbHMA5 . This plasmid was propagated in E. coli and 
+purified with standard miniprep for yeast transformation. The new 
+pYES2/CT- SbHMA5 and empty vector pYES2/CT were transformed into 
+BY4741 WT and Δccc2 mutant strains using the LiAc method (Gietz and 
+Schiestl, 2007 ). Transformants were cultured at 30•C overnight in 3 ml 
+of SD-Ura media (6.7 g/l yeast nitrogen base, 1.92 g/l dropout mix 
+without uracil) containing 2 % (w/v) glucose. Cells were washed three 
+times with 10 ml sterile deionized water and the optical density at 
+600 nm adjusted to 0.2 with sterile distilled water. After sequential 
+10-fold dilutions, 10 µl of cell suspension of each genotype was spotted 
+on Fe-limited, Fe-sufficient or Cu-sufficient media, and the plates were 
+incubated at 30•C for 3 days. The Fe-limited media contained 0.17 % 
+(w/v) yeast nitrogen base without CuSO4 and FeCl3 (BIO 101 Systems), 
+0.2 % (w/v) dropout mix without uracil, 2 % (w/v) galactose, 1 % (w/v) 
+raffinose, 50 mM MES (pH 6.1), 1 mM3-(2-pyridyl)-5, 6-bis D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+2 
+(4-sulfophenyl)-1, 2, 4-triazine disodium salt (Ferrozine disodium salt; 
+Sigma), 50 mM Fe(NH4)2(SO4)2, 1 mM CuSO4, and 2 % (w/v) agar. The 
+Fe-sufficient and Cu-sufficient media were modified from Fe-limited 
+media by increasing the concentration of added Fe (NH4)2(SO4)2 and 
+CuSO4–350 and 500 µM, respectively, and omitting Ferrozine disodium 
+salt.
+2.5. In silico protein-protein interaction analysis
+In-silico protein-protein interaction was performed using the bio-
+informatic prediction program STRING v11 database (Szklarczyk et al. 
+2019 ) using the amino acid sequences of Sobic.006G173800. The pro-
+gram was preset with settings of full string network, experiments and 
+databases as active sources of interaction, and high confidence (0.7) as 
+minimum interaction score.
+2.6. Yeast two-hybrid analysis
+For yeast two-hybrid analysis, the full-length sequence of SbHMA5 
+was cloned into pGBKT7-GW as bait, while the full-length partner pro-
+teins were cloned in pGADT7-GW as prey, and each pair of constructs 
+were co-transformed into Y2H Gold yeast strain (Clontech). Yeast 
+transformants were grown on synthetic minimal double dropout me-
+dium deficient in SD/-Leu/-Trp, and interactions were assessed on triple 
+dropout medium (TDO) deficient in SD/-His/-Trp/-Leu.
+2.7. Bimolecular florescence complementation analysis (BiFC)
+BiFC assays were conducted according to (Lu et al. 2010 ). Briefly, 
+SbHMA5 cDNA was cloned into the pDONOR207 vector and subse -
+quently introduced into the pSITE-nEYFP-n1 vector containing the 
+N-terminal fragment of yellow fluorescent protein (YFP). The coding 
+sequences of (SbATX1 and SbFRN3) were initially cloned into the pDO-
+NOR207 vector and subcloned into pSITE-cEYFP-n1 vector. Each 
+construct was transformed into Agrobacterium tumefaciens stain GV2260 
+by the freeze-heat shock method. Pairs of combinations were 
+co-infiltrated into four weeks old Nicotiana benthamiana leaves. P19 was 
+used to inhibit transgenic silencing. YFP signal was assessed after 
+48–60 hrs of infiltration using a TCS SP2 AOBS confocal laser scanning 
+microscope (Leica Microsystems).
+2.8. Sub-cellular localization
+The full length SbHMA5 sequence was cloned from BTx623 genotype 
+using a gateway cloning system by removing the stop codon and 
+sequenced in pDONOR207. Then, SbHMA5 was transferred to the 
+destination vector pGWB505 with GFP, creating a SbHMA5-GFP fusion 
+protein driven by a 35S promoter, and a 35S-GFP was used as a control. 
+The final construct was transformed into A. tumefaciens GV2260. A new 
+culture from a fresh colony was made and infiltrated into N. benthamiana 
+leaves. P19 was used to inhibit transgenic silencing. Screening for GFP 
+florescence, and imaging using a TCS SP2 AOBS confocal laser scanning 
+microscope was done after 48 hrs.
+3.Results
+3.1. Genome wide identification of P1B-Type ATPase transporters in 
+Sorghum bicolor
+Based on a genome-wide search for heavy metal transporters from 
+the sorghum genome, 577 sorghum genes were retrieved from Sorghum 
+bicolor v3.1.1 (https://phytozome-next.jgi.doe.gov/info/Sbicol 
+or_v3_1_1 ) (Table S1). Protein sequence analysis showed 294 se-
+quences shared at least 10 % amino acid identity with one or more of the 
+eight Arabidopsis P1B-Type ATPase transporters (Table S2). Neighbor 
+joining phylogenetic analysis of the 294 sorghum and eight Arabidopsis genes showed all the Arabidopsis and 31 sorghum P1B-type ATPase 
+transporters grouped into one clade (highlighted green) (Fig. 1a). 
+Further detailed analysis of the green highlighted clade showed that the 
+11 sorghum P1B-type ATPases were grouped into the five subgroups 
+described in Arabidopsis and another 20 that branched from Group IV 
+but equidistant to Groups I, II, and III (Fig. 1b). Group 1 includes 
+AtHMA2, AtHMA3, AtHMA4 and the three sorghum orthologs 
+(Sobic.002G083000, Sobic.002G083100, and Sobic.010G250900). Group 
+II includes AtHMA6, AtHMA8 and two sorghum orthologs 
+(Sobic.001G484400 and Sobic.007G225000). AtHMA1 and sorghum 
+ortholog Sobic.010G240500 are grouped in Group III. Group IV includes 
+AtHMA5 and two sorghum orthologs (Sobic.006G173800, and 
+Sobic.006G173700) (Fig. 1b). Sobic.004G07900 which was reported as 
+SbHMA9 in sorghum is the next closest ortholog to AtHMA5 and 
+AtHMA7 and is an outgroup in this clade (Fig. 1b). SbHMA5 is highly 
+conserved across different species. All the sequence features including 
+metal binding and other domains are highly conserved across Arabi -
+dopsis, rice and sorghum genomes (Fig. S1). Our analysis showed that 
+SbHMA5 was duplicated in the Pancoideae family following its split 
+from rice. While Arabidopsis and rice contain a single copy of HMA5, 
+sorghum and other Pancoideae grasses contain two copies (Fig.S2). 
+Multiple sequence alignment indicated that SbHMA5 is most closely 
+related to characterized Cu transporter ATPases OsHMA5 (85.7 % 
+identity) and AtHMA5 (69.72 % identity) (Fig. S1).
+3.2. Sobic.006G173800 (SbHMA5) encodes a P1B-type putative Cu 
+transporter ATPase
+The SbHMA5 gene has five exons and encodes a transmembrane 
+peptide of 1082 amino acids, predicted to be a Cu transporter ATPase 
+(Fig. 2a). The topology prediction of SbHMA5 with HMMTOP (Tusnady 
+and Simon, 2001 ) showed eight transmembrane domains (Fig. 2b). 
+Motif analysis using the Geneious Prime annotate and predict function 
+showed several motifs including a long hydrophilic loop with a phos-
+phorylation (DKTG), ATP-binding (SEHPL), and phosphatase (GDGIND) 
+domains (Petris et al. 2002; Vonk et al. 2012 ) between transmembrane 
+domains 6 and 7, two heavy metal binding motifs (GMTCAAC and 
+GMACKYC) near the N-terminus, and ion transduction (CPC) motif 
+within the sixth transmembrane domain (Fig. 2b, c, and Table S3.), 
+which is typical of a P1B-type heavy metal ATPase (HMA). Arabidopsis 
+P1B-Type genes (HMA5-HMA8) are predicted to be Cu transporters, 
+while others that clustered with AtHMA1-AtHMA3 are reported to be Cd 
+and Zn transporters (Cai et al. 2019; Eren and Arguello, 2004; Kim et al. 
+2009; Mills et al. 2005; Mills et al. 2003 ). Together, this suggests that 
+SbHMA5 is a Cu transporting ATPase.
+3.3. SbHMA5 gene expression is induced by Cu and Mn treatment
+Reverse transcription quantitative PCR (RT-qPCR) analysis indicated 
+that the SbHMA5 gene is expressed in most tissues including leaves, 
+roots and seeds with highest expression in the leaf sheath (Fig. 3a). To 
+evaluate the effect of heavy metal treatment on SbHMA5 expression, we 
+grew plants in culture media supplemented with 30µM CuSO4, 3mM 
+MnSO4, 0.9mM ZnSO4, and 3mM FeSO4, and analyzed SbHMA5 
+expression in the leaf by RT-qPCR. We found that SbHMA5 expression 
+was strongly induced by CuSO4 and to a lower extent by MnSO4, but not 
+by ZnSO4 and FeSO4 (Fig. 3b). This suggests that SbHMA5 or its regu-
+lator senses the elevated Cu concentration and is activated to regulate 
+the excess Cu.
+3.4. SbHMA5 complements the yeast Δccc2 knockout mutant defective in 
+Cu transport
+To test if SbHMA5 (Sobic.006G173800) is a functional protein and 
+indeed can transport Cu across membranes, we complemented the yeast 
+Δccc2 Cu transport defective mutant with the wild type SbHMA5 gene. D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+3 
+Yeast complementation was performed according to Deng et al. (2013) , 
+using the pYES2/CT yeast expression vector. The Ccc2 gene encodes a 
+Cu-transporting P-type ATPase that delivers Cu to the multicopper oxi-
+dase Fet-3P, required for high affinity Fe uptake at the plasma mem-
+brane, and disruption of the Ccc2 gene results with defects in respiration and iron uptake (Yuan et al. 1995 ), making the Δccc2 yeast mutant 
+incapable of growing on iron-limited media. The pYES2/CT- SbHMA5 
+plasmid and empty pYES2/CT vector were transformed into the Δccc2 
+mutant and BY4741 wild type control, and plated on Fe-limited, Fe-s-
+ufficient, and Cu-sufficient media (Fig. 4). Growth was evaluated after 
+Fig. 1.Genome wide identification of P1B-Type ATPase transporters. (a) Maximum Likelihood phylogenetic tree of P1B-Type related ATPase genes of Sorghum 
+bicolor and Arabidopsis thaliana . The predicted P1B genes are colored in light green. (b) Detailed analysis of the green highlighted clade which includes all P1B-genes 
+from A. thaliana and 31 closest orthologs of AtHMA1-AtHMA5 from S. bicolor .
+Fig. 2.SbHMA5 is a transmembrane protein. (a) SbHMA5 gene structure visualized based on the gene scan prediction. (b) Topology prediction of SbHMA5 protein 
+and its predicted structures including the eight transmembrane regions, GMTCXXC motif, GMACXXC motif, CPC and other important domains. (c) Sequence 
+alignment of 10 Sorghum bicolor predicted P1B-type genes selected from the phylogenetic tree. Multiple sequence alignment performed with MEGA 11 showed 
+GMTCxxC, CPC and other predicted motifs (Table S3) were highly conserved in the Multiple sequence alignment.D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+4 
+three days of incubation at 30•C. In Cu- or Fe-sufficient media, both 
+BY4741 and Δccc2 mutant strains grew well with or without SbHMA5 
+(Fig. 4a, b). However, in Fe-limited media, while the Δccc2 mutant 
+transformed with pYES2/CT alone failed to grow, the Δccc2 mutant 
+transformed with pYES2/CT-SbHMA5 grew well to the level of BY4741 
+(Fig. 4c), indicating that SbHMA5 fully complemented the yeast Δccc2 
+mutant. This suggests that sorghum SbHMA5 is capable of transporting 
+Cu across the yeast plasma membrane, like rice and Arabidopsis HMA5 
+proteins.
+3.5. SbHMA5 is localized primarily in the plasma membrane
+To determine the subcellular localization of SbHMA5, we fused the 
+full length SbHMA5 CDS to the C-terminus of GFP in gateway vector 
+pGWB505 and transformed the resulting plasmid into A. tumefaciens 
+strain GV2260 using pGWB505 alone as a negative control. GV2260 was 
+then infiltrated into 4-week-old N. benthamiana leaves and examined by 
+confocal microscopy 48–60hrs after infiltration. Images were taken 
+together with the red channel at a wavelength of 680nm for chloroplast 
+auto florescence and DIC for cell outline controls. While GFP fluores -
+cence was observed in the cytosol and nucleus control (Fig. 5a-d), strong 
+green florescence of the plasma membrane was observed with the 
+pGWB505-SbHMA5 construct (Fig. 5e-h), indicating that SbHMA5 is 
+primarily localized to the plasma membrane. Some diffused GFP signals 
+were also detected in the endoplasmic reticulum (Fig. 5e).
+3.6. SbHMA5 physically interacts with SbATX1 and SbFRN3
+P1B-type heavy metal ATPases often function in a complex with 
+other proteins called metallochaperones that are reported to serve as 
+metal receptors and facilitate safe transport of metal ions (Arnesano 
+et al. 2002; de Abreu-Neto et al. 2013 ). Therefore, we wondered what 
+the SbHMA5 partners might be. Based on bioinformatic prediction using 
+STRING v.11 (Szklarczyk et al. 2019 ), we identified ten proteins in the 
+sorghum genome which could potentially interact with SbHMA5. This 
+includes homologues of the yeast antioxidant protein ATX1 (SbATX1; 
+Sb08g017782.1 ), farnesylated related protein (SbFRN3; 
+Sb07g020020.1 ), heavy metal related protein (SbHMT1; 
+Sb08g022260.1 ), SbCuB-like (SbCuBL; Sb10g021320.1 ) and six others 
+(Fig. S3). Using AlphaFold3 (Abramson et al. 2024 ), we tested the can-
+didates for a predicted interaction with SbHMA5 (Fig. 6a-e, Fig.S4). We 
+tested four of the screened proteins by yeast two hybrid (Y2H) analysis 
+to see which of these proteins indeed physically interact with SbHMA5. The SbHMA5 protein was cloned into pGBKT7-GW as bait and each of 
+the candidate proteins were cloned into pGADT7-GW as prey, and 
+pairwise interactions were evaluated in the yeast gold strain (Takara 
+Bio). We found that SbHMA5 interacted with SbATX1 and SbFRN3, but 
+not with SbHMT1and SbCuBL (Fig. 7a-d).
+These Y2H interactions were validated in living plant cells with 
+bimolecular fluorescence complementation (BiFC) using split YFP in 
+which SbHMA5 was fused to the N-terminal half of YFP and the partner 
+proteins were fused to the C-terminal half of YFP. Consistent with the 
+Y2H result, yellow fluorescence due to the proximity of N-YFP and C- 
+YFP brought about by protein-protein interactions were observed in 
+SbHMA5-SbATX1 and SbHMA5-SbFRN3 pairs, but not with SbHMA5- 
+SbHMT1 and SbHMA5-SbCuBL pairs (Fig. 7e-l, Fig. 8), confirming that 
+SbHMA5 physically interacts with SbATX1 and SbFRN3 in yeast and 
+plant cells. Taken together, our data indicates that SbHMA5 is required 
+in Cu homeostasis by possibly extruding excess Cu out of the cell via the 
+plasma membrane, perhaps with the help of metallochaperones SbATX1 
+and SbFRN3. Six cations were evaluated for a possible binding to 
+SbHMA5 using AlphaFold3 prediction and all cations including Cu, 
+manganese, iron, zinc and cobalt were predicted to bind SbHMA5 but 
+not at the same position (Fig. 6f). This suggests that different metals 
+have specific metal binding domains.
+4.Discussion
+4.1. The SbHMA5 gene encodes a P1B-type Cu ATPase involved in Cu 
+transport across the plasma membrane
+Although Cu is required for cellular functions in all living organisms 
+spanning from bacteria to humans, its cellular concentration needs to be 
+tightly regulated as excess Cu is toxic to cells causing oxidative damage 
+to DNA, membrane lipids, and proteins leading to disruption of cellular 
+functions (Burkhead et al. 2009; Mitra et al. 2004; Pe~na et al. 1999; 
+Rosenzweig and Argüello, 2012 ). In humans, while Cu deficiency due to 
+mutation of ATP7A causes Menkes disease affecting vital functions 
+including hematologic, neurologic, cardiovascular and immune systems 
+(Guthrie et al. 2020; Kaler, 2011 ), Cu accumulation due to ATP7B mu-
+tation causes Wilson disease, affecting brain, liver, kidney and other 
+organs (Aggarwal and Bhatt, 2020; Patil et al. 2013 ). In Arabidopsis , 
+PAA1/AtHMA6 and PAA2/AtHMA8 deliver Cu to the chloroplast and 
+the paa1 paa2 double mutant is seedling (Abdel-Ghany et al. 2005 ). 
+AtHMA5, on the other hand, is reported to be involved in Cu detoxifi -
+cation in the roots by extruding Cu out of the cytosol (Andres-Colas et al. 
+Fig. 3.SbHMA5 is highly expressed in leaf sheath. (a) SbHMA5 expression analysis in the tissue of a 33-day-old plant and in the seeds. (b) Induction of SbHMA5 
+expression levels by metal treatment in the leaf of wildtype (WT) plants grown on MS media. Asterisks indicate significant difference from the control (**pD0.01, 
+***pD0.001, student t-test).D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+5 
+2006 ). The Arabidopsis hma5 mutants are sensitive to excess Cu and 
+display arrested root growth with Cu treatment (Andres-Colas et al. 
+2006 ). The topology of the predicted SbHMA5 protein is very similar to 
+AtHMA5 and OsHMA5 with multiple, highly conserved motifs 
+(Fig. 2a-c) typical of P1B-type Cu ATPase, suggesting that the function 
+might be conserved in sorghum and other species. Previous reports 
+demonstrated Cu was initially delivered to the Goli apparatus by Cu 
+chaperons like Ccc2, which in turn supplies Cu to the plasma membrane 
+multicopper oxidase Fet3p that is required for high affinity Fe assimi -
+lation. The Δccc2 mutant cannot grow in Fe-limited media (Burkhead 
+et al. 2009 ). In line with the previous results our heterologous yeast 
+complementation experiment showed SbHMA5 complemented the yeast 
+Δccc2 mutant.
+Among the nine P1B-type ATPases (OsHMAs) found in the rice genome, OsHMA2 and OsHMA3 are reported to transport Zn and Cd 
+(Sasaki et al. 2014; Satoh-Nagasawa et al. 2012; Takahashi et al. 2012; 
+Yamaji et al. 2012 ). OsHMA5 is the closest rice protein to sorghum 
+SbHMA5 sharing 85.7 % amino acid identity over the full-length protein 
+(Fig. S1). OsHMA5 is located at the plasma membrane like SbHMA5 and 
+is involved in Cu loading to the xylem of rice roots for root-to-shoot 
+translocation (Huang et al. 2016 ). OsHMA4 is also involved in Cu 
+sequestration in the root vacuoles, preventing Cu accumulation in the 
+rice grain (Huang et al. 2016 ). OsHMA6 localizes to the plasma mem-
+brane and likely extrudes Cu (Wenli et al. 2020 ). OsHMA9, on the other 
+hand, is reported to be an efflux carrier for Cu, Zn and Pb (Lee et al. 
+2007 ). Though OsHMA9 is involved in multiple heavy metal detoxifi -
+cation, it is related to SbHMA5 in being plasma membrane localized, 
+induced by Cu treatment, and pumping excess Cu out of the cell (Lee 
+Fig. 4.Sorghum SbHMA5 complements the yeast Cu transport defective Δccc2 mutant. Yeast strains BY4741 and Δccc2 transformed with pYES2/CT (vector) and 
+SbHMA5 were cultivated on Fe-limited, Fe-sufficient and Cu-sufficient plates. Ten microliters of suspension with OD6000.2 and 1:10 serial dilutions for four times 
+were added and then yeast was incubated at 30•C for three days. (a) The yeast wildtype (WT) strain (BY4741) and its knockout (Δccc2) mutant grown in copper 
+sufficient media with and without the SbHMA5 gene. (b) BY4741 and Δccc2 grown in iron sufficient media with and without the SbHMA5 gene. (c) BL4741 and Δccc2 
+grown in iron limited media with and without the SbHMA5. Note growth of Δccc2 mutant in iron limited media with, but not without, SbHMA5 . Numbers at the top 
+indicate serial dilutions.D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+6 
+et al. 2007 ). Functional validation is not yet available for the remaining 
+OsHMAs but conserved domains and phylogenetic analysis predict that six of the nine rice HMAs (OsHMA4 – OsHMA9) may be involved in Cu 
+transport (Wenli et al. 2020 ) analogous to the four (AtHMA5 – AtHMA8) 
+Fig. 5.SbHMA5-GFP fusion protein is predominantly localized in the plasma membrane. SbHMA5 protein was fused to GFP in pGWB505 and infiltrated into tobacco 
+leaf in the presence of an inducer plasmid P19 and visualized 48–60 hrs. (a-d) 35S-GFP was used as a control. (e-h) Sample infiltrated with SbHMA5-GFP fusion 
+protein. (a,e) GFP channel (excitation 514nm and emission 524–599nm). (b,f) Red channel autofluorescence (excitation 631nm and emission 680–755nm). (c,g) 
+DIC image (bright field). (d,h) Merged image. Bars 20µM.
+Fig. 6.SbHMA5 is predicted to interact with SbATX1 and SbFRN3. AlphaFold prediction was used to predict the structure of SbHMA5 and to test the Insilco 
+predicted protein in STRING (a) AlphaFold predicted protein structure of SbHMA5, (b) Predicted interaction between SbHMA5, SbATX1 and a Cu ion, (c) AlphaFold 
+predicted protein structure of SbATX1, (d) AlphaFold predicted protein structure of SbFRN3, (e) Interaction between SbHMA5, SbFRN3 and a Cu ion (f) Metals 
+including Fe, Zn, Cu, Co, Mn, and Ca binding to SbHMA5.D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+7 
+P1B-type Cu ATPases described in Arabidopsis (Burkhead et al. 2009 ). In 
+Silene vulgaris adapted to Cu-polluted soils, two HMA5 paralogs, 
+SvHMA5I and SvHMA5II, function in Cu detoxification via sequestering 
+in the vacuole and extruding through the plasma membrane, respec -
+tively (Li et al. 2017 ).
+Compared to the nine OsHMAs in rice and eight AtHMAs in Arabi -
+dopsis , there are 31 SbHMAs in the sorghum genome. Out of these, 
+HMA5 appeared to be duplicated resulting in SbHMA5 and SbHMA5L 
+(Fig. S2). The HMA5 duplication on chromosome six was tandem 
+(Fig. S2) and appeared to have occurred after the sorghum and rice split 
+some 50–60My ago (Paterson et al. 2004; Wolfe et al. 1989 ). Aligning of 
+a 20kb region around the HMA5 locus in sorghum, Setaria , Panicum , 
+rice, Brachypodium, and Arabidopsis revealed that the duplication existed 
+in Setaria and Panicum as well, but not in Brachypodium or Arabidopsis , 
+suggesting a time frame after the sorghum and rice split, but before the 
+sorghum and Panicum divergence. Whether SbHMA5L performs iden-
+tical functions to SbHMA5 is unknown at this stage. It would be 
+worthwhile to investigate the significance of this duplication and the 
+higher number of HMAs in sorghum with respect to Cu toxicity tolerance, and plant development and biomass productivity in general.
+4.2. SbHMA5 physically interacts with metallochaperones SbATX1 and 
+SbFRN3
+Metallochaperones are a class of metal ion receptor soluble proteins 
+that bind and deliver metal ions to intracellular destinations (Capdevila 
+et al. 2017; Robinson and Winge, 2010; Rosenzweig, 2002; Singh 
+Sekhon, 2010 ). They are required to prevent the deleterious reactions of 
+heavy metals and facilitate safe transport to different cellular compart -
+ments (de Abreu-Neto et al. 2013; Rosenzweig, 2002 ). Cu(I) and Cu(II), 
+for example, are highly reactive ions and form tight complexes with 
+organic molecules causing damage through the generation of reactive 
+oxygen species (Robinson and Winge, 2010 ) and thus, these ions are not 
+freely available in the cytosol. Instead, they are bound by Cu chaperones 
+and delivered to P1B-type Cu ATPases for transport to Cu enzymes and 
+endomembrane sites (Gonzalez-Guerrero and Arguello, 2008; Robinson 
+and Winge, 2010; Rosenzweig, 2002 ). Out of ten metallochaperone-like 
+proteins predicted to interact with SbHMA5, two (ATX1 and FRN3 
+Fig. 7.SbHMA5 physically interacts with metallochaperones SbATX1 and SbFRN3. The full-length sequence of SbHMA5 was cloned into pGBKT7-GW , and the full- 
+length partner proteins were cloned in pGADT7-GW . Both constructs were co-transformed into Y2H Gold yeast strain. Yeast growth analyses are shown on synthetic 
+minimal double dropout media (DDO) deficient in SD/-Leu/-Trp for control and synthetic minimal triple dropout media (TDO) deficient in SD/-His/-Trp/-Leu for 
+testing the interactions. Interaction evaluations were preformed after the transformants were incubated for three days at 30℃. (a-d) Yeast two hybrid (Y2H) 
+interaction of SbHMA5 with SbATX1, SbFRN3, SbHMT1, and SbCuB-like. (a) SbHMA5 with SbATX1. (b) SbHMA5 with SbFRN3. (c) SbHMA5 with SbHMT1. (d) 
+SbHMA5 with SbCuB-like. For all columns, the first row - MtSTF-AD and MtWOX9-BD, well known interacting proteins as positive control, second row –negative 
+controls (empty AD and BD), third row-negative controls; empty AD with SbATX1-BD/ SbHMA5-BD/ SbCuBL-BD/ SbFRN3-BD, fourth row –actual testing SbHMA5- 
+AD and ATX1-BD /SbHMA5-AD/ SbFRN3-BD/ SbCuBL-BD and fifth row – SbHMA5-AD and empty BD for all. (e-l) BiFC interaction was detected using the split YFP 
+system, where SbHMA5 was fused to N-terminal fragment of pSITE-nEYFP-n1 (NYFP) and SbATX1 was fused to the C-terminal fragment pSITE-cEYFP-n1 (cYFP) (e,i) 
+YFP channel (excitation 514nm and emission 524–599nm).(f,j) Red channel autofluorescence(excitation 631nm and emission 680–755nm). (g,k) DIC image 
+(bright field). (h,l) Merged image. Bars 20µM.D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+8 
+homologues) were confirmed positive through Y2H and BiFC analysis 
+(Fig. 7, Fig. S5). FRN3/HIPP22 is not well-characterized in Arabidopsis , 
+except that it is reported to complement the Cd-sensitive yeast ycf1 
+mutant (Tehseen et al. 2010 ). The yeast antioxidant protein (ATX1) was 
+reported to deliver Cu to and physically interact with the yeast P-type 
+ATPase Ccc2 (Huffman, O'Halloran, 2000; Lin and Culotta, 1995; Pufahl 
+et al. 1997 ). Similarly, the human ATX1 homologue, ATOX1 is shown to 
+interact with ATP7A and ATP7B to transport Cu to intracellular desti-
+nations (Hamza et al. 1999; Hung et al. 1998; Walker et al. 2002 ). In 
+plants, while Arabidopsis AtATX1 is demonstrated to interact with HMA5 
+and RAN1/HMA6 to detoxify Cu and deliver Cu to the ethylene receptor, 
+respectively (Andres-Colas et al. 2006; Li et al. 2017; Puig et al. 2002 ), 
+rice OsATX1 is shown to interact with OsHMA4, OsHMA5, OsHMA6 and 
+OsHMA9 (Zhang et al. 2018 ), suggesting that OsATX1 may also deliver 
+Cu to these different P1B-type Cu ATPases for both intracellular delivery 
+and removal from the cytosol. Thus, the interaction of SbHMA5 with 
+SbATX1 could be functionally significant to Cu homeostasis, but the 
+contribution of SbATX1 has not yet been evaluated in sorghum. Taken 
+together, our data suggests that Cu homeostasis is critically required for 
+plant growth and development in sorghum from seed germination to 
+grain filling and this is primarily accomplished by a P1B-type Cu ATPase 
+SbHMA5 that efflux Cu from the cytosol.
+CRediT authorship contribution statement
+Matthew A. Tancos: Writing – review & editing, Writing – original 
+draft, Methodology, Funding acquisition. Million Tadege: Writing – 
+review & editing, Writing – original draft, Supervision, Methodology, 
+Funding acquisition, Formal analysis, Conceptualization. Dimiru 
+Tadesse: Writing – review & editing, Writing – original draft, Method -
+ology, Investigation, Formal analysis, Conceptualization.
+Ethics approval and consent to participate
+All the methods involved in this study were carried out in compliance 
+with local and national regulations. No materials from animals or humans were used in this research.
+Consent for publication
+N/A
+Funding
+Oklahoma Center for the Advancement of Science and Technology 
+grant PS17 –005 and PS20 –011; Agriculture and Food Research Initia -
+tive Grant No. 2013 –69005 –21284 from the USDA National Institute of 
+Food and Agriculture; and the USDA Agricultural Research Service 
+appropriated project 8044 –22000 –047–00D.
+Declaration of Competing Interest
+The authors declare that they have no known competing financial 
+interests or personal relationships that could have appeared to influence 
+the work reported in this paper.
+Acknowledgements
+This work was supported by the Oklahoma Center for the Advance -
+ment of Science and Technology grant PS17 –005 and PS20 –011, the 
+Agriculture and Food Research Initiative Grant No. 2013 –69005 –21284 
+from the USDA National Institute of Food and Agriculture, the Agri-
+cultural Experiment Station, the Mel and Mary Jones endowed profes -
+sorship award, and the United States Department of Agriculture, 
+Agricultural Research Service appropriated project 
+8044 –22000 –047–00D. The mention of trade names or commercial 
+products in this publication is solely for the purpose of providing specific 
+information and does not imply recommendation or endorsement by the 
+U.S. Department of Agriculture. USDA is an equal opportunity provider 
+and employer.
+Fig. 8.BiFC analysis of protein-protein interaction between SbHMA5 and SbFRN3 in tobacco leaves. BiFC interaction was detected using the split YFP system, where 
+SbHMA5 was fused to N-terminal fragment of YFP(NYFP) and SbFRN3 was fused to the C-terminal fragment (CYFP). (a-d) Negative control (SbHMA5-NYFP and 
+CYFP). (e-h) Test (SbHMA5-NYFP and SbFRN3-CYFP). (a,e) YFP channel (excitation 514nm and emission 524–599nm). (b,f) Red channel autofluorescence 
+(excitation 631nm and emission 680–755nm). (c,g) DIC image (bright field). (d,h) Merged image. Bars 20µM.D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+9 
+Appendix A.Supporting information
+Supplementary data associated with this article can be found in the 
+online version at doi:10.1016/j.plantsci.2025.112956 .
+Data availability
+All data is provided in text or as supplemental files
+References
+Abdel-Ghany, S.E., Muller-Moule, P., Niyogi, K.K., Pilon, M., Shikanai, T., 2005. Two P- 
+type ATPases are required for copper delivery in Arabidopsis thaliana chloroplasts. 
+Plant Cell 17, 1233 –1251 .
+Abramson, J., Adler, J., Dunger, J., Evans, R., Green, T., Pritzel, A., Ronneberger, O., 
+Willmore, L., Ballard, A.J., Bambrick, J., Bodenstein, S.W., Evans, D.A., Hung, C.C., 
+O'Neill, M., Reiman, D., Tunyasuvunakool, K., Wu, Z., Zemgulyte, A., Arvaniti, E., 
+Beattie, C., Bertolli, O., Bridgland, A., Cherepanov, A., Congreve, M., Cowen- 
+Rivers, A.I., Cowie, A., Figurnov, M., Fuchs, F.B., Gladman, H., Jain, R., Khan, Y.A., 
+Low, C.M.R., Perlin, K., Potapenko, A., Savy, P., Singh, S., Stecula, A., 
+Thillaisundaram, A., Tong, C., Yakneen, S., Zhong, E.D., Zielinski, M., Zidek, A., 
+Bapst, V., Kohli, P., Jaderberg, M., Hassabis, D., Jumper, J.M., 2024. Accurate 
+structure prediction of biomolecular interactions with AlphaFold 3. Nature 630, 
+493–500.
+Aggarwal, A., Bhatt, M., 2020. Wilson disease. Curr. Opin. Neurol.
+Andres-Colas, N., Sancenon, V., Rodriguez-Navarro, S., Mayo, S., Thiele, D.J., Ecker, J.R., 
+Puig, S., Penarrubia, L., 2006. The Arabidopsis heavy metal P-type ATPase HMA5 
+interacts with metallochaperones and functions in copper detoxification of roots. 
+Plant J. 45, 225–236.
+Argüello, J.M., 2003. Identification of ion-selectivity determinants in heavy-metal 
+transport P1B-type ATPases. J. Membr. Biol. 195, 93–108.
+Arnesano, F., Banci, L., Bertini, I., Ciofi-Baffoni, S., Molteni, E., Huffman, D.L., 
+O'Halloran, T.V., 2002. Metallochaperones and metal-transporting ATPases: a 
+comparative analysis of sequences and structures. Genome Res 12, 255–271.
+Axelsen, K.B., Palmgren, M.G., 2001. Inventory of the superfamily of P-type ion pumps in 
+Arabidopsis . Plant Physiol. 126, 696–706.
+Baxter, I., Tchieu, J., Sussman, M.R., Boutry, M., Palmgren, M.G., Gribskov, M., 
+Harper, J.F., Axelsen, K.B., 2003. Genomic comparison of P-type ATPase ion pumps 
+in Arabidopsis and rice. Plant Physiol. 132, 618–628.
+Burkhead, J.L., Gogolin Reynolds, K.A., Abdel-Ghany, S.E., Cohu, C.M., Pilon, M., 2009. 
+Copper homeostasis. New Phytologist .
+Cai, H., Huang, S., Che, J., Yamaji, N., Ma, J.F., 2019. The tonoplast-localized transporter 
+OsHMA3 plays an important role in maintaining Zn homeostasis in rice. J. Exp. Bot. 
+70, 2717 –2725 .
+Capdevila, D.A., Edmonds, K.A., Giedroc, D.P., 2017. Metallochaperones and 
+metalloregulation in bacteria. Essays in Biochemistry .
+Chandrasekhar, C., Ray, J.G., 2017. Copper accumulation, localization and antioxidant 
+response in Eclipta alba L. in relation to quantitative variation of the metal in soil. 
+Acta Physiol. Plant. 39.
+Chege, P., Pal˘agyi, A., Lantos, C., Kiss, E., Pauk, J., 2020. Improved culture media for 
+embryogenic callus generation in Sorghum [(L.) Moench]. PhytonInt. J. Exp. Bot. 89, 
+111–119.
+Clemens, S., Ma, J.F., 2016. Toxic heavy metal and metalloid accumulation in crop plants 
+and foods. Annu. Rev. Plant Biol.
+de Abreu-Neto, J.B., Turchetto-Zolet, A.C., de Oliveira, L.F., Zanettini, M.H., Margis- 
+Pinheiro, M., 2013. Heavy metal-associated isoprenylated plant protein (HIPP): 
+characterization of a family of proteins exclusive to plants. FEBS J. 280, 1604 –1616 .
+Deng, F., Yamaji, N., Xia, J., Ma, J.F., 2013. A member of the heavy metal P-type ATPase 
+OsHMA5 is involved in xylem loading of copper in rice. Plant Physiol. 163, 
+1353 –1362 .
+Eren, E., Arguello, J.M., 2004. Arabidopsis HMA2, a divalent heavy metal-transporting P 
+(IB)-type ATPase, is involved in cytoplasmic Zn2homeostasis. Plant Physiol. 136, 
+3712 –3723 .
+Gall, J.E., Boyd, R.S., Rajakaruna, N., 2015. Transfer of heavy metals through terrestrial 
+food webs: a review. Environ. Monit. Assess. 187, 201.
+Geneious, 2024. Geneious - Bioinformatics Software for Sequence Data Analysis. In: 
+Geneious - Bioinformatics Software for Sequence Data Analysis. Geneious .
+Ghasemi, F., Safarpour, A., Shahzadeh Fazeli, S.A., Karan, R., Amoozegar, M.A., 2025. 
+Optimization of copper bioremoval from hypersaline environments by the halophilic 
+archaeon Halalkalicoccus sp. Dap5 via response surface methodology. Sci. Rep. 15, 
+31656 .
+Gietz, R.D., Schiestl, R.H., 2007. Quick and easy yeast transformation using the LiAc/SS 
+carrier DNA/PEG method. Nat. Protoc. 2, 35–37.
+Gonzalez-Guerrero, M., Arguello, J.M., 2008. Mechanism of Cu-transporting ATPases: 
+soluble Cuchaperones directly transfer Cuto transmembrane transport sites. 
+Proc. Natl. Acad. Sci. USA 105, 5992 –5997 .
+Guthrie, L.M., Soma, S., Yuan, S., Silva, A., Zulkifli, M., Snavely, T.C., Greene, H.F., 
+Nunez, E., Lynch, B., De Ville, C., Shanbhag, V., Lopez, F.R., Acharya, A., Petris, M. 
+J., Kim, B.E., Gohil, V.M., Sacchettini, J.C., 2020. Elesclomol alleviates Menkes 
+pathology and mortality by escorting Cu to cuproenzymes in mice. Science 368, 
+620–625.Hamza, I., Schaefer, M., Klomp, L.W., Gitlin, J.D., 1999. Interaction of the copper 
+chaperone HAH1 with the Wilson disease protein is essential for copper homeostasis. 
+Proc. Natl. Acad. Sci. USA 96, 13363 –13368 .
+Hirayama, T., Kieber, J.J., Hirayama, N., Kogan, M., Guzman, P., Nourizadeh, S., 
+Alonso, J.M., Dailey, W.P., Dancis, A., Ecker, J.R., 1999. RESPONSIVE-TO- 
+ANTAGONIST1, a Menkes/Wilson disease-related copper transporter, is required for 
+ethylene signaling in Arabidopsis . Cell 97, 383–393.
+Huang, X.Y., Deng, F., Yamaji, N., Pinson, S.R., Fujii-Kashino, M., Danku, J., Douglas, A., 
+Guerinot, M.L., Salt, D.E., Ma, J.F., 2016. A heavy metal P-type ATPase OsHMA4 
+prevents copper accumulation in rice grain. Nat. Commun. 7, 12138 .
+Huffman, D.L., O'Halloran, T.V., 2000. Energetics of copper trafficking between the Atx1 
+metallochaperone and the intracellular copper transporter, Ccc2. J. Biol. Chem. 275, 
+18611 –18614 .
+Hung, I.H., Casareno, R.L., Labesse, G., Mathews, F.S., Gitlin, J.D., 1998. HAH1 is a 
+copper-binding protein with distinct amino acid residues mediating copper 
+homeostasis and antioxidant defense. J. Biol. Chem. 273, 1749 –1754 .
+Hussain, D., Haydon, M.J., Wang, Y., Wong, E., Sherson, S.M., Young, J., Camakaris, J., 
+Harper, J.F., Cobbett, C.S., 2004. P-type ATPase heavy metal transporters with roles 
+in essential zinc homeostasis in Arabidopsis . Plant Cell 16, 1327 –1339 .
+Jomova, K., Makova, M., Alomar, S.Y., Alwasel, S.H., Nepovimova, E., Kuca, K., 
+Rhodes, C.J., Valko, M., 2022. Essential metals in health and disease. Chem. Biol. 
+Interact.
+Kaler, S.G., 2011. ATP7A-related copper transport diseasesg-emerging concepts and 
+future trends. Nat. Rev. Neurol.
+Kampfenkel, K., Kushnir, S., Babiychuk, E., Inze, D., Van Montagu, M., 1995. Molecular 
+characterization of a putative Arabidopsis thaliana copper transporter and its yeast 
+homologue. J. Biol. Chem. 270, 28479 –28486 .
+Kim, Y.Y., Choi, H., Segami, S., Cho, H.T., Martinoia, E., Maeshima, M., Lee, Y., 2009. 
+AtHMA1 contributes to the detoxification of excess Zn(II) in Arabidopsis . Plant J. 58, 
+737–753.
+Klaumann, S., Nickolaus, S.D., Furst, S.H., Starck, S., Schneider, S., Ekkehard 
+Neuhaus, H., Trentmann, O., 2011. The tonoplast copper transporter COPT5 acts as 
+an exporter and is required for interorgan allocation of copper in Arabidopsis 
+thaliana . N. Phytol. 192, 393–404.
+Lee, S., Kim, Y.Y., Lee, Y., An, G., 2007. Rice P1B-type heavy-metal ATPase, OsHMA9, is 
+a metal efflux protein. Plant Physiol. 145, 831–842.
+Letunic, I., Bork, P., 2019. Interactive Tree Of Life (iTOL) v4: recent updates and new 
+developments. Nucleic Acids Res 47, W256 –W259 .
+Li, Y., Iqbal, M., Zhang, Q., Spelt, C., Bliek, M., Hakvoort, H.W.J., Quattrocchio, F.M., 
+Koes, R., Schat, H., 2017. Two Silene vulgaris copper transporters residing in different 
+cellular compartments confer copper hypertolerance by distinct mechanisms when 
+expressed in Arabidopsis thaliana . N. Phytol. 215, 1102 –1114 .
+Lin, S.J., Culotta, V.C., 1995. The ATX1 gene of Saccharomyces cerevisiae encodes a small 
+metal homeostasis factor that protects cells against reactive oxygen toxicity. Proc. 
+Natl. Acad. Sci. USA 92, 3784 –3788 .
+Llorca, M.G., Martinez-Espinosa, R.M., 2022. Assessment of Haloferax mediterranei 
+genome in search of copper-molecular machinery with potential applications for 
+bioremediation. Front. Microbiol. 13, 895296 .
+Lu, Q., Tang, X., Tian, G., Wang, F., Liu, K., Nguyen, V., Kohalmi, S.E., Keller, W.A., 
+Tsang, E.W., Harada, J.J., Rothstein, S.J., Cui, Y., 2010. Arabidopsis homolog of the 
+yeast TREX-2 mRNA export complex: components and anchoring nucleoporin. Plant 
+J. 61, 259–270.
+Marschner, J.P., Rietbrock, N., 1995. Oxygen release kinetics in healthy subjects and 
+diabetic patients. II: Effects of HbCO. Int J. Clin. Pharm. Ther. 33, 263–265.
+Meharg, A.A., 1994. Integrated tolerance mechanisms - constitutive and adaptive plant- 
+responses to elevated metal concentrations in the environment. Plant Cell Environ. 
+17, 989–993.
+Miller, T.A., Wittenberg, J.S., Wen, H., Connor, S., Cui, Y., Lindenberg, A.M., 2013. The 
+mechanism of ultrafast structural switching in superionic copper (I) sulphide 
+nanocrystals. Nat. Commun. 4, 1369 .
+Mills, R.F., Krijger, G.C., Baccarini, P.J., Hall, J.L., Williams, L.E., 2003. Functional 
+expression of AtHMA4, a P1B-type ATPase of the Zn/Co/Cd/Pb subclass. Plant J. 35, 
+164–176.
+Mills, R.F., Francini, A., Ferreira da Rocha, P.S., Baccarini, P.J., Aylett, M., Krijger, G.C., 
+Williams, L.E., 2005. The plant P1B-type ATPase AtHMA4 transports Zn and Cd and 
+plays a role in detoxification of transition metals supplied at elevated levels. FEBS 
+Lett. 579, 783–791.
+Mitra, R.M., Gleason, C.A., Edwards, A., Hadfield, J., Downie, J.A., Oldroyd, G.E., 
+Long, S.R., 2004. A Ca2/calmodulin-dependent protein kinase required for 
+symbiotic nodule development: gene identification by transcript-based cloning. Proc. 
+Natl. Acad. Sci. USA 101, 4701 –4705 .
+Palmgren, M.G., Nissen, P., 2011. P-type ATPases. Annu Rev. Biophys. 40, 243–266.
+Paterson, A.H., Bowers, J.E., Chapman, B.A., 2004. Ancient polyploidization predating 
+divergence of the cereals, and its consequences for comparative genomics. Proc. 
+Natl. Acad. Sci. USA 101, 9903 –9908 .
+Paterson, A.H., Bowers, J.E., Bruggmann, R., Dubchak, I., Grimwood, J., Gundlach, H., 
+Haberer, G., Hellsten, U., Mitros, T., Poliakov, A., Schmutz, J., Spannagl, M., 
+Tang, H., Wang, X., Wicker, T., Bharti, A.K., Chapman, J., Feltus, F.A., Gowik, U., 
+Grigoriev, I.V., Lyons, E., Maher, C.A., Martis, M., Narechania, A., Otillar, R.P., 
+Penning, B.W., Salamov, A.A., Wang, Y., Zhang, L., Carpita, N.C., Freeling, M., 
+Gingle, A.R., Hash, C.T., Keller, B., Klein, P., Kresovich, S., McCann, M.C., Ming, R., 
+Peterson, D.G., Mehboob ur, R., Ware, D., Westhoff, P., Mayer, K.F., Messing, J., 
+Rokhsar, D.S., 2009. The Sorghum bicolor genome and the diversification of grasses. 
+Nature 457, 551–556.
+Patil, M., Sheth, K.A., Krishnamurthy, A.C., Devarbhavi, H., 2013. A review and current 
+perspective on wilson disease. J. Clin. Exp. Hepatol.D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+10 
+Pe~na, M.M.O., Lee, J., Thiele, D.J., 1999. A delicate balance: homeostatic control of 
+copper uptake and distribution. J. Nutr.
+Petris, M.J., Voskoboinik, I., Cater, M., Smith, K., Kim, B.E., Llanos, R.M., Strausak, D., 
+Camakaris, J., Mercer, J.F., 2002. Copper-regulated trafficking of the Menkes disease 
+copper ATPase is associated with formation of a phosphorylated catalytic 
+intermediate. J. Biol. Chem. 277, 46736 –46742 .
+Pufahl, R.A., Singer, C.P., Peariso, K.L., Lin, S.J., Schmidt, P.J., Fahrni, C.J., Culotta, V.C., 
+Penner-Hahn, J.E., O'Halloran, T.V., 1997. Metal ion chaperone function of the 
+soluble Cu(I) receptor Atx1. Science 278, 853–856.
+Puig, S., Lee, J., Lau, M., Thiele, D.J., 2002. Biochemical and genetic analyses of yeast 
+and human high affinity copper transporters suggest a conserved mechanism for 
+copper uptake. J. Biol. Chem. 277, 26021 –26030 .
+Rai, P.K., Lee, S.S., Zhang, M., Tsang, Y.F., Kim, K.H., 2019. Heavy metals in food crops: 
+health risks, fate, mechanisms, and management. Environ. Int.
+Raven, J.A., Evans, M.C.W., Korb, R.E., 1999. The role of trace metals in photosynthetic 
+electron transport in O2-evolving organisms. Photosynth. Res.
+Ravet, K., Pilon, M., 2013. Copper and iron homeostasis in plants: the challenges of 
+oxidative stress. Antioxid. Redox Signal.
+Rehman, M.U., Rather, I.A., 2019. Myricetin abrogates Cisplatin-induced oxidative 
+stress, inflammatory response, and goblet cell disintegration in colon of Wistar rats. 
+Plants 9.
+Robinson, N.J., Winge, D.R., 2010. Copper metallochaperones. Annu Rev. Biochem 79, 
+537–562.
+Rosenzweig, A.C., 2002. Metallochaperones: bind and deliver. Chem. Biol.
+Rosenzweig, A.C., Argüello, J.M., 2012. Toward a molecular understanding of metal 
+transport by P 1B -type ATPases. Curr. Top. Membr. 69.
+Saez-Zamacona, I., Grindlay, G., Martinez-Espinosa, R.M., 2023. Evaluation of Haloferax 
+mediterranei strain R4 capabilities for cadmium removal from brines. Mar. Drugs 21.
+Sancenon, V., Puig, S., Mateu-Andres, I., Dorcey, E., Thiele, D.J., Penarrubia, L., 2004. 
+The Arabidopsis copper transporter COPT1 functions in root elongation and pollen 
+development. J. Biol. Chem. 279, 15348 –15355 .
+Sasaki, T., Iizuka, A., Watanabe, M., Hongo, T., Yamasaki, A., 2014. Preparation and 
+performance of arsenate (V) adsorbents derived from concrete wastes. Waste Manag 
+34, 1829 –1835 .
+Satoh-Nagasawa, N., Mori, M., Nakazawa, N., Kawamoto, T., Nagato, Y., Sakurai, K., 
+Takahashi, H., Watanabe, A., Akagi, H., 2012. Mutations in rice (Oryza sativa ) heavy 
+metal ATPase 2 (OsHMA2) restrict the translocation of zinc and cadmium. Plant Cell 
+Physiol. 53, 213–224.
+Singh Sekhon, B., 2010. Metallochaperones - an overview. Curr. Chem. Biol. 4, 173–186.
+Szklarczyk, D., Gable, A.L., Lyon, D., Junge, A., Wyder, S., Huerta-Cepas, J., 
+Simonovic, M., Doncheva, N.T., Morris, J.H., Bork, P., Jensen, L.J., Mering, C.V., 
+2019. STRING v11: protein-protein association networks with increased coverage, 
+supporting functional discovery in genome-wide experimental datasets. Nucleic 
+Acids Res 47, D607 –D613 .
+Tadesse, D., Yee, E.F., Wolabu, T.W., Wang, H., Yun, J., Grosjean, N., Kumaran, D., 
+Santiago, K., Kong, W., Sharma, A., Chen, J., Paterson, A.H., Xie, M., Tadege, M., 
+2024. Sorghum SbGhd7 is a major regulator of floral transition and directly represses 
+genes crucial for flowering activation. N. Phytol. 242, 786–796.Takahashi, R., Ishimaru, Y., Shimo, H., Ogo, Y., Senoura, T., Nishizawa, N.K., 
+Nakanishi, H., 2012. The OsHMA2 transporter is involved in root-to-shoot 
+translocation of Zn and Cd in rice. Plant Cell Environ. 35, 1948 –1957 .
+Tamura, K., Stecher, G., Kumar, S., 2021. MEGA11: molecular evolutionary genetics 
+analysis version 11. Mol. Biol. Evol. 38, 3022 –3027 .
+Tehseen, M., Cairns, N., Sherson, S., Cobbett, C.S., 2010. Metallochaperone-like genes in 
+Arabidopsis thaliana . Metallomics 2, 556–564.
+Tusnady, G.E., Simon, I., 2001. The HMMTOP transmembrane topology prediction 
+server. Bioinformatics 17, 849–850.
+Vairo, F.P. e, Chwal, B.C., Perini, S., Ferreira, M.A.P., de Freitas Lopes, A.C., Saute, J.A. 
+M., 2019. A systematic review and evidence-based guideline for diagnosis and 
+treatment of Menkes disease. Mol. Genet. Metab.
+Van Assche, F., Clijsters, H., 1990. A biological test system for the evaluation of the 
+phytotoxicity of metal-contaminated soils. Environ. Pollut. 66, 157–172.
+Vonk, W.I., de Bie, P., Wichers, C.G., van den Berghe, P.V., van der Plaats, R., Berger, R., 
+Wijmenga, C., Klomp, L.W., van de Sluis, B., 2012. The copper-transporting capacity 
+of ATP7A mutants associated with Menkes disease is ameliorated by COMMD1 as a 
+result of improved protein expression. Cell Mol. Life Sci. 69, 149–163.
+Walker, J.M., Tsivkovskii, R., Lutsenko, S., 2002. Metallochaperone Atox1 transfers 
+copper to the NH2-terminal domain of the Wilson's disease protein and regulates its 
+catalytic activity. J. Biol. Chem. 277, 27953 –27959 .
+Wenli, Z., Chang, L., Yajun, Z., Jingguang, C., Haohua, H., Guoyou, Y., 2020. Rice heavy 
+metal P-type ATPase OsHMA6 is likely a copper efflux protein. Rice Sci. 27, 
+143–151.
+White, P.J., Brown, P.H., 2010. Plant nutrition for sustainable development and global 
+health. Ann. Bot. 105, 1073 –1080 .
+Woeste, K.E., Kieber, J.J., 2000. A strong loss-of-function mutation in RAN1 results in 
+constitutive activation of the ethylene response pathway as well as a rosette-lethal 
+phenotype. Plant Cell 12, 443–455.
+Wolfe, K.H., Sharp, P.M., Li, W.H., 1989. Rates of synonymous substitution in plant 
+nuclear genes. J. Mol. Evol. 29, 208–211.
+Yamaji, N., Chiba, Y., Mitani-Ueno, N., Feng Ma, J., 2012. Functional characterization of 
+a silicon transporter gene implicated in silicon distribution in barley. Plant Physiol. 
+160, 1491 –1497 .
+Yuan, D.S., Stearman, R., Dancis, A., Dunn, T., Beeler, T., Klausner, R.D., 1995. The 
+Menkes/Wilson disease gene homologue in yeast provides copper to a 
+ceruloplasmin-like oxidase required for iron uptake. Proc. Natl. Acad. Sci. USA 92, 
+2632 –2636 .
+Zhang, F., Wang, Y., Li, G., Tang, Y., Kramer, E.M., Tadege, M., 2014. STENOFOLIA 
+recruits TOPLESS to repress ASYMMETRIC LEAVES2 at the leaf margin and promote 
+leaf blade outgrowth in Medicago truncatula . Plant Cell 26, 650–664.
+Zhang, Y., Chen, K., Zhao, F.J., Sun, C., Jin, C., Shi, Y., Sun, Y., Li, Y., Yang, M., Jing, X., 
+Luo, J., Lian, X., 2018. OsATX1 interacts with heavy metal P1B-Type ATPases and 
+affects copper transport and distribution. Plant Physiol. 178, 329–344.
+Zheng, Z.J., Ye, F., Zheng, L.S., Yang, K.F., Lai, G.Q., Xu, L.W., 2012. Copper-catalyzed 
+Huisgen and oxidative Huisgen coupling reactions controlled by polysiloxane- 
+supported amines (AFPs) for the divergent synthesis of triazoles and bistriazoles. 
+Chemistry 18, 14094 –14099 .D. Tadesse et al.                                                                                                                                                                                                                                 Plant Science  364 (2026)  112956  
+11 

@@ -1,0 +1,1175 @@
+Plant, Cell & Environment
+ORIGINAL ARTICLE
+Large Variations in the Transpiration of Sorghum
+Canopies Under High Evaporative Demand Are PositivelyRelated to Water Use Efficiency
+Raphaël Pilloni1,2,3| Kakkera Aparna4| Zineb El Ghazzal1| Soumyashree Kar5| Amir Hajjarpoor1| Wenli Xue1|
+Pablo Affortit1| William Ribière1| Romiel Badji6| Bassirou Sine6| Jana Kholova4,7| François Tardieu8| Vincent Vadez1,4,6
+1Université de Montpellier, IRD, DIADE, Montpellier, France |2CIRAD, UPR AIDA, F ‐97743 Saint ‐Denis, La Réunion, France |3AIDA, CIRAD, Université
+de Montpellier, Montpellier, France |4International Crop Research Institute in Semi ‐Arid Tropics, Hyderabad, India |5IIT Bombay, Mumbai,
+India |6CERAAS (Centre d'Etude Régional pour l'Amélioration de l'Adaptation à la Sécheresse), Thiès, Sénégal |7Department of Information Technologies,
+Faculty of Economics and Management, Czech University of Life Sciences Prague, Prague, Czech Republic |8Université de Montpellier, INRAE, Laboratoire
+d'Ecophysiologie des Plantes sous Stress Environnementaux, Montpellier, France
+Correspondence: Vincent Vadez ( vincent.vadez@ird.fr )
+Received: 17 April 2025 | Revised: 18 September 2025 | Accepted: 13 November 2025
+Funding: The senior and corresponding authors are in part supported by a grant the Make Our Planet Great Again (MOPGA) ICARUS project (Improve Crops
+in Arid Regions and Future Climates) funded by the French Agence Nationale de la Recherche and by the Region Occitanie (ANR, grant ANR ‐17‐MPGA ‐0011).
+Keywords: climate change | drought | light interception | lysimeter | sowing density | transpiration restriction | vapour pressure deficit
+ABSTRACT
+Transpiration restriction under high vapour pressure deficit (VPD), measured indoors with individual plants, increases water
+use efficiency (WUE). However, VPD is not the only factor driving transpiration, individual plants in a field rapidly become a
+canopy, and reports on the transpiration restriction versus WUE are scant. We analyzed the transpiration response to theevaporative demand (Penman ‐Monteith reference evapotranspiration, ET
+ref) and WUE in sorghum canopies outdoors. These
+responses showed no plateau at high ET refin 47 genotypes. The slope of the resulting linear relationship over the whole range of
+ETrefshowed a large genetic variability. Unexpectedly, this slope was positively correlated with WUE in experiments with high
+ETref. Conversely, a (classical) negative correlation was observed under low ET ref. Genotypes with high WUE and response to
+ETrefallowed maximum light penetration into the canopy, via more erect leaf orientation. VPD in the canopy was also lower
+than in open air when the leaf area index reached 2.5 ‐3. We interpret that higher WUE related to a larger proportion of plant
+photosynthesis being contributed by lower level leaves that received light and faced lower VPD than leaves exposed to air VPD.This study opens new opportunities, agronomic and genetic, to improve WUE.
+1 | Introduction
+Agriculture needs to ensure food security and to become more
+water efficient. This is especially true in drought ‐prone areas in
+which climate change and limited water resource for irrigation
+seriously threaten the future of millions of persons (Rosegrant
+et al. 2009; Kang et al. 2017; Vadez et al. 2023). Among other
+avenues, this requires to improve the water use efficiency(WUE) of crops (Tardieu 2022; Vadez et al. 2024). However,
+WUE has different definitions in the literature, thereby causingconfusion in the analysis of potential traits underlyinghigh WUE.
+Intrinsic WUE (WUE
+int) is defined as the ratio of photo-
+synthesis to stomatal conductance or transpiration at leaf level(Condon et al. 2002; Medlyn et al. 2011). WUE
+intis measured
+This is an open access article under the terms of the Creative Commons Attribution ‐NonCommercial ‐NoDerivs License, which permits use and distribution in any medium, provided the original work
+is properly cited, the use is non ‐commercial and no modifications or adaptations are made.
+© 2025 The Author(s). Plant, Cell & Environment published by John Wiley & Sons Ltd.
+1 Plant, Cell & Environment , 2025; 1 –17
+https://doi.org/10.1111/pce.70309
+
+over short time scale and can be assessed with gas exchange
+measurements of stomatal conductance and photosynthesis,targeting leaves or leaf spots. The
+13C discrimination ( Δ13C) in
+plant tissues, especially in C3 species but also recently in maize,a C4 species (Blankenagel et al. 2022), has been used as a proxy
+for WUE
+int. WUE inthas a large genetic variability and herita-
+bility in several species (Condon 2004; Coupel ‐Ledru et al. 2016;
+Avramova et al. 2019; Kenney et al. 2014; Li et al. 2017;A l‐
+Salman et al. 2024).
+Another definition of WUE is at plant level, namely as the
+biomass accumulated per unit transpired water (WUE bm), with
+time definitions ranging from weeks to months (Vadez et al.
+2011; Chenu et al. 2018). WUE bmalso has a large genetic var-
+iability and heritability in several species (Vadez et al. 2011;
+Coupel ‐Ledru et al. 2016; Ryan et al. 2016; Vadez and
+Ratnakumar 2016), and can be measured in lysimeters (Vadez
+et al. 2014; Zhi et al. 2022), or in pot ‐based experiments
+(Halperin et al. 2017; Fletcher et al. 2018). WUE bmintegrates
+many physiological processes beyond those involved in WUE int,
+for example night transpiration (Coupel ‐Ledru et al. 2016),
+plant nitrogen status and aging (Prieto et al. 2012), spatial
+variability of transpiration and photosynthesis in the canopy(Perez et al. 2019), maintenance of expansive growth under low
+water availability (Tardieu et al. 2014) or row spacing and plant
+density (Barbieri et al. 2012; Echarte et al. 2020; Pilloni et al.
+2022; Pilloni et al. 2024). It is WUE
+bmthat we consider in this
+paper.
+A mechanism used by plants to avoid excessive water loss
+per unit of carbon gain under high VPD is to close stomata athigh VPD, resulting in a plateau of transpiration rate (Turner
+et al. 1984). Genotypes possessing this trait could achieve higher
+WUE
+intunder high VPD than genotypes that would keep on
+transpiring. Indeed, WUE intdecreases with vapour pressure
+deficit (VPD) because transpiration, but not photosynthesis,increases with VPD (Medlyn et al. 2011). A modelling study
+then predicted that restricting transpiration under high VPD
+achieved higher WUE
+bmthan not restricting transpiration
+(Sinclair et al. 2005). This seminal study triggered extensive
+investigation to evaluate the range of genetic variation in thetranspiration response to increasing VPD. The latter was indeedobserved in several species such as soybean (Fletcher et al.2008), wheat (Schoppach and Sadok 2012), pearl millet
+(Kholová et al. 2010a ; Choudhary et al. 2020), maize (Gholipoor
+et al. 2013; Choudhary et al. 2020), sorghum (Gholipoor et al.
+2012; Choudhary et al. 2020), chickpea (Zaman ‐Allah et al.
+2011) and rice (Affortit et al. 2022). Genotypes that most close
+stomata during the highest VPD hours have highest WUE
+int
+(Gilbert et al. 2011) and WUE bm(Sinclair et al. 2005). Genetic
+variability for WUE bmin sorghum (Donatelli et al. 1992, Vadez
+et al. 2011; Xin et al. 2009), or in maize (Ryan et al. 2016), was
+therefore interpreted as a consequence of the plant ability torestrict transpiration in response to VPD, resulting in a plateauof transpiration rate at high VPD (Sinclair et al. 2005; Hatfield
+and Dold 2019). While this mechanistic interpretation is excit-
+ing because it opens an opportunity to develop improved cul-tivars with the capacity to restrict transpiration under high VPD
+and higher WUE
+bm, there are several critical issues that need to
+be addressed, in addition to others raised in a recent viewpoint(Gleason et al. 2025):i. In the modelling studies showing the benefit of transpi-
+ration restriction (Sinclair et al. 2005; Kholová et al. 2014;
+Messina et al. 2015; Sinclair et al. 2010), all leaves were
+assumed to be exposed to high light and VPD conditions.Most experiments relating transpiration to VPD indeedreproduce the same condition, most often in growth
+chambers with plants well separated from one another
+(Kholová et al. 2010b ; Schoppach and Sadok 2012; Ryan
+et al. 2016). This raises the question whether there is also
+genotypic variation in the transpiration response to VPDif plants were to be assessed as part of a crop canopy.
+ii. Only VPD was used as a driver of transpiration in ex-
+periments exploring the genetic diversity for the tran-
+spiration response to the evaporative demand, carried out
+in growth chamber under constant light intensity oftypically 500 μmol m
+−2s−1(Fletcher et al. 2008; Kholová
+et al. 2010a ). Outdoor, light intensity fluctuates
+between hours and days, typically up to and above1500 μmol m
+−2s−1in semi ‐arid tropical conditions
+(Adeniji et al. 2020). This raises the question whether
+there is also genotypic variation in the response of tran-spiration to the evaporative demand taking light intoaccount, calculated via the Penman ‐Monteith equation
+(Allen et al. 1998), rather than to the VPD only (Kholová
+et al. 2010b ; Vadez et al. 2013; Geetika et al. 2019; Blum
+2009; Condon 2004).
+iii. Experimental results relating transpiration response to
+the evaporative demand and WUE
+bmare scant.
+The above paragraphs suggest that a direct analysis of the
+response of the evapotranspiration to the evaporative demandand of its relationship to WUE
+bmin outdoors experiments is
+essential, because of differences in environmental conditions
+sensed by plants indoor or in the field. Our first hypothesis isthat the transpiration response would fit better to a metrics ofevaporative demand that also includes radiation and not onlyVPD. Our second hypothesis, supported by recent evidence(Jaikumar et al. 2025), is that genotypes allowing more light to
+reach leaves from the lower canopy, for example via steeper leaf
+angles, would have higher plant WUE
+bm. In this case, leaves
+from the inner canopy would open their stomata, and contrib-ute to plant photosynthesis while experiencing a milder VPD,thereby resulting in a higher WUE
+intat plant level. The pro-
+portion of incident light that reaches the lowest parts of thecanopy, an essential feature under this hypothesis, has a clear
+genetic variability (Yin and Struik 2015) and is related to plant
+architecture (Niinemets 2010), plant density (Song et al. 2013;
+Song et al. 2013) and the vertical distribution of leaf area (Perez
+et al. 2019).
+Our objective was therefore to estimate the genotypic variation
+in the transpiration response to high evaporative demand
+(Penman ‐Monteith) of plants grown in canopy, and to assess if
+it correlates to WUE
+bm, in two panels of genotypes grown
+outdoor in Senegal and India, and in a glasshouse platform inFrance, with two canopy structures (12 or 24 per m²). For that,we assessed the transpiration response of studied genotypes to arange of evaporative demand (ET
+ref). This was carried out in
+well ‐watered plants to avoid confusions of effects between
+evaporative demand and the depletion of soil water reserve. We
+2 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+used for that a lysimeter system (Vadez et al. 2014; Fletcher
+et al. 2018) where both WUE bmand transpiration in response to
+the evaporative demand could be simultaneously assessed(Geetika et al. 2019). Because results were largely counter
+intuitive, we also explored the potential cause of these results,in particular those related to canopy architecture and micro-
+climate, in field and glasshouse experiments.
+2 | Materials and Methods
+2.1 | Genetic Material and Experiments
+A panel of 20 elite sorghum hybrids, some provided by seed
+companies, was used in lysimeter experiments in India (panel A).This panel has been used earlier to test the genotype response toincreased sowing density (Pilloni et al. 2024). A panel of 27 lines
+from the germplasm collection of ICRISAT (International CropResearch Institute for Semi ‐Arid Tropics) was used in field and
+lysimeter experiments in Senegal (panel B). This panel derives
+from a sorghum germplasm panel tested for its response toplanting density in the field at ICRISAT ‐HQ (India), and lines
+selected in panel B where those most contrasting in this response(unpublished). A lysimeter experiment and a pot experimentin glasshouse and in France used 9 and 2 genotypes of panel B
+respectively.
+2.2 | Transpiration Response to the Evaporative
+Demand in a Lysimeter Setup Outdoors
+Two experiments were carried out in the lysimeter platform
+(LysiField, Vadez et al. 2014) of ICRISAT (Hyderabad, India,
+17°30 N; 78°16 E; elevation 549 m) during the dry (February toMay) and rainy (August to October) seasons of 2018, whichlargely differed for VPD (4.7 vs 2.8 kPa on average) and light
+intensity (2217 vs 1545 μmol m
+−²s−1) (Figure 1). The lysimeter
+setup consisted of PVC tubes (20 cm diameter, 1.20 m length)arranged side by side in a trench and filled with alfisol, weighedat regular time intervals. Plants growing individually in eachlysimeter formed a crop canopy. To maximise the range of
+transpiration values, we also varied the leaf area index (LAI) by
+setting up two plant density treatments. Four replications wereused in both experiments, organised as a complete randomisedblock design with density as the main factor and genotypesrandomised in the main blocks. Each replication consisted of aset of 4 tubes arranged in a square, all tubes carrying the same
+genotype. In the high density treatment, each tube carried one
+plant, whereas in the low density treatment there were only 2plants in four tubes, leading to plant densities of 20 and 10plants m
+−², respectively
+Another lysimeter experiment took place in the outdoors lysi-
+metric facility of the ISRA/CNRA station (Bambey, Senegal, 14°
+41 N; 16° 27 W, elevation 20 m) during the 2021 dry season
+(March to June 2021) characterised by high VPD and light(4.9 kPa and 2068 μmol m
+−²s−1respectively) (Figure 1). The
+platform had the same characteristic as the LysiField platformwith small differences: tubes were 25 cm in diameter and 1.50 mlong, they were filled with a sandy soil. The experimental design
+was the same as above, except that high and low plant densities
+were 16 and 8 plants m
+−², respectively.
+Transpiration was calculated from regular weighings of the ly-
+simeters, taking into account the water given after eachweighing. Lysimeters were lifted with a block ‐chain pulley and
+weighed with a S ‐type load cell every 7th –10th day. Direct soil
+evaporation was prevented by a 2 ‐cm layer of plastic beads
+(India) or a 5 ‐cm layer of gravel (Senegal) located on the
+soil surface. Plants were fully irrigated during the entire
+FIGURE 1 | Daily vapour pressure deficit (VPD, black), minimum (orange) and maximum (red) temperature in experiments in India (ICRISAT
+meteorological station in 2018) (a), and Senegal in 2021 (CNRA Bambey station) (c). Photosynthetically active Photon Flux Density (PPFD) in
+experiments in India (ICRISAT meteorological station in 2018) (b), and Senegal in 2021 (from nearby Niakhar meteorological station in 2021) (d).Empty frames correspond to the periods of lysimetric measurements. [Color figure can be viewed at wileyonlinelibrary.com ]
+3 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+experiment. To ensure this, the lysimeters were watered to field
+capacity before initiating the weighings. Then, after eachweighing on day ‘n’, each tube was individually re ‐watered on
+the basis of its initial field capacity weight, so that:
+Water added (L) = Field capacity weight (kg)
+−Weight day ‘n’ – 2
+The ‘minus 2 ’component was there to avoid the risk of water
+drainage down the tubes. With this “buffer ”, lysimeters were re ‐
+watered to about 80% –90% field capacity after each weighing,
+and lysimeters were large enough that plants faced no waterstress until the next watering.
+In India, lysimeters were weighed 9 and 8 times during the
+rainy and dry seasons, respectively, resulting in 30 transpiration
+values for each genotype across the two seasons and the two
+plant densities. In Senegal, lysimeters were weighed 11 times,giving 20 transpiration values for each genotype across the twoplant densities. In both cases, measurements covered a periodthat could vary from 7 to 10 days intervals between consecutiveweighings. In both locations, all the tubes were weighted in1 day and re ‐watering done the day after for all lysimeters.
+Evaporative demand (ET
+ref) was calculated during the same
+periods of time (between two weighings of lysimeters).B e c a u s ei tw a so n eo ft h ef i r s tt i m eE T
+refwas used as a proxy
+for the evaporative demand, we compared two ways to computeit. The first method was based on the simulation of the tran-
+spiration of a reference genotypes by using the APSIM crop
+simulation model parametrised with a sorghum genotype hav-ing a phenology and leaf area similar to those of genotypes ofpanel A, based on Priestley ‐Taylor equation (PRIESTLEY and
+TAYLOR 1972). The transpiration of this reference genotype,
+simulated with unlimited water supply, is akin to an environ-mental variable, and was considered as a reference transpira-
+tion. The second method involved the Penman ‐Monteith
+equation corrected by a crop coefficient (Kc) (Zotarelli et al.2014) which takes into account the change of LAI with time,
+ranging from 0.4 to 0.85 according to plant stages (Piccinni et al.2009). The ET
+refcalculation, updated by FAO (Allen et al.
+1998), is such that:
+ETrefRn G γμ es ea
+γμ=0.408Δ(– ) + ( ‐)
+Δ+ (1 + 0.34 )T900
++273
+where Δis the slope of the saturation vapour pressure versus
+temperature relationship, Rn is the net radiation, G is the soilheat flux, γis the psychrometric constant, T is temperature, μis
+wind speed, and (es ‐ea) represents the vapour pressure deficit
+of the air.
+For both methods, we used as inputs the daily temperature,
+hygrometry, wind and solar radiation data collected on site atthe ICRISAT and Bambey meteorological stations. Onlythe second method was used for the Senegal experimentbecause there was no genotype with existing parameters inAPSIM that had phenology and leaf area similar to genotypes ofpanel B. Daily ET
+refvalues obtained with either method werethen averaged between two weighings of lysimeters. Since ET ref
+was computed in mm m−2day−1, transpiration data, initially
+measured in kg of water loss per replication (4 tubes), were alsoconverted into mm m
+−2day−1, by dividing raw transpiration
+values by the surface area of each replicate (4 tubes) and by thenumber of days between two weighing dates. Daily ET
+refvalues
+were then plotted against the average daily transpiration values
+for the same periods. The transpiration response of each studiedgenotype to ET
+refwas examined for India and Senegal, using
+transpiration and ET refover periods of 7 to 10 days, combining
+data from the dry or rainy seasons in India, and combining datafrom the two plant density treatments in both locations.
+2.3 | Transpiration Response to the Evaporative
+Demand in the Glasshouse
+An experiment was performed in Montpellier, France in
+April ‐May 2021, at the IRD automated lysimetric platform
+located in a glasshouse. Light conditions and VPD were
+recorded and fluctuated in the glasshouse, with VPD valuesranging from 1 kPa at sunrise to 3.5 kPa at 2 pm. 16 L potswere filled with a mix of loamy clay agricultural soil andsand, each containing four plants. Three replicates of eachgenotypes were grown. Plastic beads covered the soil surface
+(4–5 cm layer) to avoid water loss due to direct soil eva-
+poration. 15 days after sowing, transpiration was measuredevery week during 5 weeks. After each weighing, pots werewatered back to 500 g below field capacity, as described abovefor the lysimeters. Five days before the end of this period, thepots were transferred on top of automatic load cells and or-ganised in mini canopies of 20 plants m
+‐². Tables that sup-
+ported these load cells (10 per table) were 1.6 m². The load
+cells recorded the weight of each pot every 30 min for a 4 ‐day
+period. In this experiment, th er e s p o n s eo ft r a n s p i r a t i o nt o
+the evaporative demand was measured during 4 days beforefinal harvest, when plants were the largest and formed acanopy. A data analysis pipeline (adapted from (Kar et al.
+2020 ) generated a smoothed transpiration profile for each of
+these 4 days. Then the response of transpiration to the eva-porative demand was estimated during the 3 h preceding themaximum transpiration, cor responding to the maximum
+evaporative demand on any particular day.
+2.4 | Measurement of WUE bmin Canopy ‐Grown
+Plants
+WUE bmwas calculated as the ratio of above ground biomass to
+the cumulated transpiration between the beginning and the endof weighing of the lysimeters in the trials described above
+(India, Senegal, and IRD ‐France). Plants were harvested at 13
+and 14 weeks after sowing in the dry and rainy seasonsrespectively in India, at 14 weeks in Senegal, and 7 weeks inFrance. The biomass was dried in an oven during 72 h at 60°Cand weighted. At the beginning of the transpiration measure-ments it was assumed that this initial plant biomass differedlittle among genotypes and was then unlikely to alter WUE
+bm
+differences among genotypes, as discussed earlier (Vadezet al. 2011).
+4 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+2.5 | VPD and Light Penetration Assessment
+Within Canopies
+These experiments were meant to measure VPD inside plant
+canopies and compare it between density treatments and to airVPD. This was done both in a field experiment in Senegal and
+in a glasshouse experiment at CIRAD, France.
+The field experiment was carried out at the CNRA Bambey
+station, near and simultaneously with the lysimeter experi-ment. It consisted of 2 × 4 m micro plots sown with onegenotype each, with three repe titions per genotype. The low
+density plots harboured 11 plant m
+−² consisting in 4 plant
+rows, 15 cm between plants within a row, and an inter rowspacing of 60 cm. High density (HD) plots harboured 22plants m
+−² with an inter row spacing of 30 cm and the same
+plant distribution otherwise . Before sowing, the field was
+fertilised with di ‐ammonium phosphate at a rate of 100 kg/ha
+and top dressing with 100 kg/ha urea 4 weeks after sowing.
+Daily temperature, hygrometr y were collected on site at the
+CNRA Bambey meteorological station, whereas the radiationdata was recorded in another meteorological station located25 km south from the field. Temperature and relativehumidity sensors were positioned in the low and high densityplots of the field experiment in Bambey (TinyTag ultra 2,
+TGU ‐4500, Gemini Datalogger Ltd, Chichester, UK). The
+sensors were placed inside the canopy, positioned betweentwo plant rows within the plot and attached to a stem at mid ‐
+canopy height. The sensors w ere covered with open poly-
+styrene boxes to avoid direct s olar radiation. Temperature
+and relative humidity were recorded every 30 min during6 weeks in the field trial. Air and canopy VPD were calcu-
+lated based on relative humidity (RH) and air temperature
+values measured every 30 min, either 2 metres above thecanopy for air VPD (i.e. from the meteorological stationlocated 50 m from the field) or at mid height of the canopy.Every week, the position of sensors was adjusted accordingthe height of the canopy. Recor ding of data started at 4 weeks
+after emergence.
+The glasshouse experiment was carried out at CIRAD
+Montpellier in April 2020 with a daytime VPD of 3 kPamaintained over the studied period, with the sole purpose ofcomparing intra ‐canopy VPD between two planting densi-
+ties. Plants were grown in square pots of 4 ‐L capacity filled
+with horticultural potting soil, which is composed of coarse
+and fine peat, clay, sand and perlite with a pH of 5.5 and anEC of 0.2. Pots were placed on 1 m² tables. The high and lowdensity treatments consisted in 1 m
+2tables with 24 or 12
+pots. Each treatment was replicated three times for eachgenotype in the glasshouse. Sim ilar temperature and relative
+humidity measurements as those done in the field in Senegal
+were performed in this glasshouse experiment with twogenotypes from panel B in April 2020. The sensors wereplaced at 15 cm above the soil su rface (i.e., few centimeters
+above the pot brim). Recording of data started at fifteen daysin the glasshouse and lasted for 15 days. At 16 and 22 daysafter sowing, leaf area index (LAI) was measured in both low
+and high ‐density canopies using a l ight sensor (Spectrol LI ‐
+80, Li ‐Cor).The field experiment was also used to measure putative geno-
+typic differences in light intensities at different heights withinthe canopy, and in leaf area index (LAI), obtained from Pho-tosynthetic Photon Flux Density (PPFD) measurements in bothlow and high ‐density canopies. A light sensor (LI ‐190R ‐BNC ‐2
+Quantum Sensor) was placed above the canopy, and a sensor
+bar (LI ‐191R ‐BNC ‐2 Line Quantum Sensor) placed at the
+ground level. LAI was calculated indirectly as
+LAI k =l n ( ) /I
+Io
+where Iois the incident light above the canopy, I is the light at
+ground level, and kis the crop extinction coefficient that was set
+at 0.6 for sorghum (Flénet et al. 1996). The Photosynthetic
+Photon Flux Density (PPFD) was measured 45 and 60 days aftersowing with a light sensor (LI ‐190R ‐BNC ‐2 Quantum Sensor)
+placed above the canopy, and two sensor bars (LI ‐191R ‐BNC ‐2
+Line Quantum Sensor) fixed perpendicularly on a pole placed
+vertically in the plots and adjusted respectively at mid ‐canopy
+level and at ground level. Mid canopy height was assessed foreach genotypes thanks to graduations marks on a vertical pole.All sensors were connected to a data logger (LI ‐1500 Light
+Sensor Logger), and data were recorded between 12:30 to1:30 pm. Each data point was the mean of four replicates ineach plot. At 44 days after sowing, a light measurement was also
+done at ground level in a plot of high and low density at four
+time ‐point during this particular day, at 7am, 10am, 2 pm
+and 5 pm.
+2.6 | Statistical Analysis
+Statistical analysis involved analysis of variance, t‐test, linear
+and second order regressions which were performed usingGraphPad Prism version 9.2.0 for Windows, (GraphPad Soft-ware, San Diego, California USA, www.graphpad.com ). Slopes
+and time courses of transpiration in the IRD glasshouse ex-
+periment were smoothed and analyzed using an analysis pipe-line under R software version 4.1.2, adapted from (Kar et al.2020).
+The transpiration response to ET
+refwas first compared to that to
+VPD (Figure 2), trying different possible functions. Several
+models were also compared to analyze the transpiration
+response to ET ref. To test for a putative break in linear regres-
+sions, a segmental linear regression model was used as inSchoppach and Sadok ( 2012). The model involves the fitting of
+two linear segments joined at a common breakpoint. Theequations are defined as follows:
+≤ Y= b1 + m1 * X, for X Xbreak (first segment), and
+Y= b2 + m2 * X, for X > Xbreak (second segment).
+The software optimises the location of the breakpoint (Xbreak)to minimise the sum of squares residuals across both segments.Optimisation was performed using nonlinear least ‐squares
+regression. The software iteratively determined the optimalparameters, including the slopes (m1, m2), intercepts (b1, b2),and the breakpoint (Xbreak). A continuity constraint was en-forced to ensure that the Y ‐values at the breakpoint were equal
+for both segments. The goodness ‐of‐fit was assessed using the
+coefficient of determination (R²) and residual analysis.
+5 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+A polynomial model was also tested and compared to these
+linear and segmental linear models. We conducted a compari-
+son of model fit using the Fisher test to evaluate whetherquadratic or segmented regression models provided a signifi-cantly better fit than a linear model. For each genotype, wetested the models under two conditions: evaporative demand(ET ref) and vapour pressure deficit (VPD). The p ‐values indi-
+cate whether the more complex models significantly improve
+the fit compared to the linear regression. Based on the results,
+we determined the preferred model for each case.
+Broad sense heritability was calculated as in Falconer et al,
+2005,
+H=σg²
+σp2
+2, where H2is the ratio of total genetic variance to
+total phenotypic variance plus residuals, with σg²the squared
+genotypic variance and σg²the squared phenotypic variance
+obtained through analysis of variance, as recommended by(Schmidt et al. 2019). In the model, the phenotypic variance, or
+environmental effect, was the variance between values of each
+of the four replicates within each genotype and treatment and
+genotypic effect was the part of the variance explained by thegenotype within the four replications across genotypes. Thesame approach was used in the calculation of heritability for thedifferent traits presented in this study.3 | Results
+3.1 | Which Model for Comparing Genotypes?
+Linear Relationships With ETref AllowedComparison Across Environments, RelationshipsWith Air VPD Did Not
+The first step was to choose the most appropriate driving vari-
+able for the transpiration response, either evaporative demand(ET
+ref) or VPD, across environments (either India or Senegal)
+and all genotypes of panels A and B. For that, we fitted mea-sured transpirations with either ET
+refor VPD via quadratic
+equations. For example ETr fitted with ET ref(Figure 2a,b) with
+a common model for two genotypes with high evapotranspira-tion rates (ETr) (Figure 2a). The same result was observed for
+two genotypes with low ETr (Figure 2b). By contrast, the fitting
+of ETr with VPD could not use the same model for data comingfrom either India or Senegal (Figure 2c,d), indicating that VPD
+could not be used as a reliable variable to compare genotypes.
+The whole panels are described in Figures S1andS2). For panel
+A tested in India, the fitting with ET
+refwas always better than
+with VPD, although fitting with VPD was also very good(Figure S1). For the whole panel B measured in Senegal
+(Figure S2) the fitting with VPD was clearly not proper and only
+the fitting with ET
+refwas relevant.
+We then compared different models for each genotype. To
+highlight putative changes in slopes at high evaporativedemand, we fitted the data with linear, segmental linear, andpolynomial models. In panel A measured in India, we did notobserve any flattening of curves nor significant break point forpolynomial and segmental models respectively (Figure S1).
+Similar results were observed in panel B, measured in Senegal
+(Figure S2, Table 1). We therefore considered ET
+refas the
+driving variable for transpiration rate in the following analyses,and used linear regressions to compare genotypes for the sen-sitivity of their transpiration responses to ET
+ref.
+3.2 | The Sensitivity of Transpiration Rate to
+Evaporative Demand and WUE bmHad Large
+Genetic Variabilities in Both Datasets
+The slopes of linear regressions, called ‘sensitivity of transpi-
+ration to ET ref’hereafter, significantly differed between geno-
+types in the data set with panel A in India (Figure 3a,p= 0.03),
+with a high heritability ( H² = 0.56, Tables S1and S2). Hence,
+the studied genotypes differed in their ability to transpire at agiven evaporative demand with up to three ‐fold differences, for
+example, from 2.3. to 6.28 mm d
+−1for a common ET refof
+5.80 mm d−1. Importantly, the slopes for each genotype were
+independent of leaf area index (LAI), at both the first ( r= 0.2,
+p= 0.42) and the second ( r= 0.03, p= 0.86) dates of LAI mea-
+surement (Figure S3a,b ). Similar results were observed whether
+ETrefwas calculated either via the Penman ‐Monteith equation
+corrected for leaf area, or with the APSIM model, with a veryhigh correlation between calculated slopes (Figure S4a). The
+genetic variability of sensitivities of transpiration to ET
+refwas
+even larger in panel B tested in Senegal ( p= 0.02), with slopes
+ranging four ‐fold with a heritability of H² = 0.41. For example,
+FIGURE 2 | Measured evapotranspiration as a function of Penman
+Monteith's reference evapotranspiration (Et ref) or air vapour pressure
+deficit (VPD). (a, c) Two typical genotypes of panel A tested in India(red) and panel B tested in Senegal (blue) with high measured evapo-
+transpiration (ICSV93046 and G12, respectively). (b, d) Two typical
+genotypes of panel A tested in India (red) and panel B tested in Senegal(blue) with low measured evapotranspiration (ICSB404 and G13respectively). All experimental situations are represented in each panel.Red circles: India dry season, high plant density (HD). Red triangles:India, dry season, low density (LD). Red squares, India, rainy season
+HD. Red diamonds India, rainy season LD. Blue circles: Senegal dry
+season HD. Blue triangles: Senegal dry season, LD. Blue squares:greenhouse in Montpellier. In (a) and (b), data could be fitted to a singleexponential function. In (c) and (d), data had to be fitted to differentfunctions for data acquired either in India or in Senegal + Greenhouse.The other genotypes are presented in SI 1 and 2. [Color figure can be
+viewed at wileyonlinelibrary.com ]
+6 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+TABLE 1 | Results of the Fisher test comparing the fit of quadratic and segmented regression models against a linear model for different
+genotypes under two conditions: Evaporative demand (ET ref) and vapour pressure deficit (VPD). The pvalues indicate whether the more complex
+models provide a significantly better fit than the linear model. Linear regression was the best choice for all cases, as neither the quadratic nor the
+segmented regression models significantly improved the fit.
+Fisher test for comparison of fit with linear model ( pvalues)
+Evaporative demand (ET ref) VPD
+Quadratic Segmental regression Quadratic Segmental regression
+India global data set
+CSH 16 0.09 0.06 0.09 0.06
+ICSB 404 0.26 0.41 0.03 0.08
+ICSH 14002 0.63 0.84 0.56 0.59
+ICSH 28001 0.69 0.87 0.73 0.76
+ICSR 101 0.43 0.43 0.37 0.27ICSR 14001 0.29 0.36 0.46 0.47
+ICSR 196 0.34 0.47 0.40 0.45
+ICSR 89058 0.26 0.43 0.11 0.28
+ICSV 112 (CSV 13) 0.29 0.39 0.30 0.40
+ICSV 15013 0.50 0.79 0.67 0.79ICSV 25302 0.87 0.97 0.73 0.81
+ICSV 25308 0.94 0.97 0.85 0.90
+ICSV 25316 0.98 0.94 0.87 0.85
+ICSV 745 0.35 0.43 0.35 0.38
+ICSV 93046 0.35 0.64 0.29 0.47
+Isiap Dorado 0.27 0.17 0.27 0.23
+MR 750 0.25 0.21 0.24 0.28NTJ ‐2 0.60 0.79 0.65 0.76
+PVK 801 0.39 0.48 0.39 0.44
+S 35 0.52 0.68 0.65 0.71
+Preffered model Linear regression Linear regression
+Senegal global data set
+G1 0.70 0.88 0.52 0.32
+G10 0.92 0.98 0.41 0.36
+G11 0.84 0.95 0.50 0.40
+G12 0.74 0.80 0.37 0.30
+G13 0.95 0.97 0.68 0.42
+G14 0.81 0.91 0.49 0.61
+G15 0.91 0.97 0.78 0.59G16 0.89 0.97 0.89 0.60
+G17 0.60 0.77 0.38 0.25
+G18 0.94 0.99 0.97 0.83
+G19 0.75 0.92 0.55 0.46
+G2 0.44 0.72 0.46 0.36G20 0.91 0.98 0.77 0.96
+G21 0.98 0.99 0.98 0.85
+G22 0.99 0.99 0.94 Unstable
+G23 0.53 0.81 0.82 0.76
+(Continues)
+7 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+transpiration rate ranged from 1.03 to 9.14 mm d−1for a com-
+mon ET refof 5.83 mm d−1(Figure 3b).Similar results were also
+observed in the glasshouse experiment with 9 genotypes from
+panel B, where the sensitivities of transpiration to ET refdiffered
+between genotypes ( p< 0.01, H² = 0.39).
+WUE bmshowed a high genetic variability in panel A during
+both the rainy and dry seasons in India (8.4 –11.9 and 2.2 –3.2 g.
+kg−1, respectively, p< 0.0001 and < 0.01), with a high herita-
+bility calculated across seasons (H² = 0.64) (Figure 4a,b). A
+significant genotype ‐by‐season interaction for WUE bmwas
+observed ( p= 0.0004) (Table 2). Similar results were observed in
+Senegal with panel B, with a high genetic variability for WUE bm(1.4–3.9 g. kg−1,p< 0.01) and a high heritability ( H² = 0.65,
+Figure 4c).
+3.3 | Genotypes That Transpired Most at a Given
+Reference Evapotranspiration Had the HighestWUE
+bmin the Dry Season, and the Lowest in the
+Wet Season
+Counter intuitively, the genotypes that most transpired at a
+given ET ref(highest slopes presented above) had the highest
+WUE bm, with a high correlation between WUE bmand the
+sensitivity of transpiration to ET refin the dry season in IndiaTABLE 1 | (Continued)
+Fisher test for comparison of fit with linear model ( pvalues)
+Evaporative demand (ET ref) VPD
+Quadratic Segmental regression Quadratic Segmental regression
+G24 0.72 0.89 0.61 0.49
+G25 0.92 0.99 0.82 0.68
+G26 0.85 0.96 0.86 0.77
+G27 0.46 0.76 0.33 0.33
+G3 0.73 0.89 0.56 0.40G4 0.80 0.95 0.79 0.72
+G5 0.67 0.85 0.62 0.51
+G6 0.80 0.94 0.31 0.32
+G7 0.82 0.92 0.60 0.42
+G8 0.57 0.81 0.71 0.49G9 0.45 0.70 0.59 0.43
+Preffered model Linear regression Linear regression
+FIGURE 3 | Measured evapotranspiration (ETr) plotted against the reference evapotranspiration (ETref), for the 20 genotypes of the panel A
+tested in India (a) and the 27 genotypes of the panel B tested in Senegal (b). Regression lines for all studied genotypes (one line per genotype), fitted
+with 4 replications per genotype and treatment ( p< 0.0001). The slope of each regression was used to characterise the genotypes for the sensitivity of
+the transpiration in response to evaporative demand.
+8 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+(r= 0.64, p< 0.0001,) (Figure 5a) and lower correlation but also
+significant in Senegal ( r= 0.54, p< 0.01) (Figure 5b). The same
+pattern was observed in the glasshouse experiment with 9genotypes of panel B and carried out under high VPD, wherethe sensitivity of transpiration to ET
+ref, measured during the 3 h
+of highest evaporative demand, was positively correlated with
+WUE bm(r= 0.78, p< 0.05) (Figure S5).
+Conversely, the relationship between WUE bmand the sensi-
+tivity of transpiration to ET refwas strong and significantly
+negative in the rainy season of India ( r=−0.65, p< 0.01,
+Figure 5c). That is, the genotypes that most transpired in
+response to ET refhad the lowest WUE bmin this case. All these
+results held whether ET refwas calculated via either the APSIM
+model or the Penman Monteith equation corrected for leaf area(Figure S4b,c ).3.4 | The Positive Genetic Link Between WUE bm
+and the Sensitivity of Transpiration to ET refin Dry
+Seasons May Stem From Lower VPD and Increased
+Light Penetration in the Canopy of Most Sensitive
+Genotypes
+A first possible explanation of above results is that transpiration
+appreciably decreased VPD inside the canopy during the day,thereby affecting WUE
+bmdifferentially between genotypes. Intra ‐
+canopy VPD was measured in a field trial in Senegal and in a
+glasshouse experiment in France. In the field trial, the measuredVPD was lower within the canopy than in the air, to a greaterextent in high than in low plant density. In high ‐density canopies,
+this difference became significant from Day 42 onwards(Figure 6a), when LAI was approximately 2.9 (measured on Day
+45). In low ‐density canopies, it became significant 14 days later
+(Day 56) when LAI was also clos e to 3 (3.2 on Day 53) (Figure 6a).
+Differences in VPD were maximum in the morning and earlyafternoon (average difference of 0.97 kPa, p=0 . 0 5o v e rt h i sp e r i o d ,
+Figure 6b). Differences in VPD between canopy and air were also
+observed in the glasshouse experiment during a 15 ‐days period,
+with a mean difference of 0.63 kPa (0.55 –0.93 kPa, p=0 . 0 0 1 ,
+Figure S6). Overall, VPD within the canopy was lower than that
+sensed by upper leaves in direct relation to open air, and more soin dense canopies. This was likely due to the intra canopy tran-spiration because differences nullified during the night. Genotypesthat most transpired under high evaporative demand were,therefore, less penalised than expected in terms of WUE
+bm.
+Light penetration in the canopy i s also a possible driver for the
+positive genetic relationship bet ween sensitivity to evaporative
+demand and WUE bm. In the field experiment in Senegal, light
+FIGURE 4 | Water use efficiency (WUE, grams of biomass per kilogram of water used) for the 20 genotypes of the panel A grown on the
+lysimeter platform during (a) the low and (b) the high VPD season 2018 at the ICRISAT station, (c) for the 25 genotypes of the panel b during the2021 high VPD season in Bambey. Data are the mean of four replications per genotype.
+TABLE 2 | ANOVA table showing the genotypic variability for the
+water use efficiency (WUE) in the dry and rainy season experiment inIndia and the dry season experiment in Senegal.
+Source of variationDry
+season
+2018Rainy
+season
+2018Dry
+season
+2021
+Location India India Senegal
+Genotypes panel AAB
+Two ‐way ANOVA
+Genotype * **** *
+Genotype × Season *** NA NA
+**p< 0.01; * p< 0.05; *** p< 0.001; **** p< 0.0001.
+9 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+measurement at ground level on Day 44 showed that light was
+indeed appreciable within the canopy, to a larger extent for cano-
+pies with low than high density, at 10am (488 vs. 165 μmol m−²s−1
+respectively) and 2 pm (958 vs. 479 μmol m−²s−1respectively)
+(Figure 6c). This light penetration had a significant genotypic
+variation at ground level (45 DAS) and mid ‐height canopy (60
+DAS) ( t‐test,p< 0.0001), which correlated with WUE bmin the dry
+season (Figure 7a,b). Genotypes with the highest light intensity
+within the canopy (i.e. those that most let the light penetrate at
+mid‐canopy level) at 60 DAS when L AI was 3.9 were those that
+had highest WUE bm(r=0 . 4 4 , p=0 . 0 0 9 ) ( F i g u r e 7b). At this phe-
+nological stage, the genotypic co rrelation was observed with light
+intensity at mid ‐canopy level and not at ground level where light
+was close to zero because studied canopies had intercepted nearly
+all incident light. At earlier stage (45 DAS, LAI = 2.9), a similar
+positive genotypic correlation between WUE bmand light intensity
+at ground level was observed ( r=0 . 5 6 , p=0 . 0 4 ) ( F i g u r e 7a).
+H e n c e ,g e n o t y p e st h a tm o s tt r a n s p i r e da tag i v e ne v a p o r a t i v edemand were also those for which more light reached leaves in thelower canopy, potentially increasing the photosynthesis of theseleaves. Because the intra ‐canopy VPD was lower than air VPD
+(Figure 6a,b), the response of transpiration rate to ET
+refhad a
+higher effect on biomass than on transpiration, thereby increasingWUE
+bm(Figure S7a). This was not observed in the rainy season(Figure S7b), probably explaining the observed negative genotypic
+effect of transpiration on WUE bm.
+3.5 | Differences in WUE bmand in the Sensitivity
+of Transpiration to ET ref, and Their Link, May Stem
+From Genotypic Differences in CanopyArchitecture
+We then tested if differences in traits related to plant architec-
+ture could explain the differences in light penetration. For this,
+FIGURE 5 | Water use efficiency (WUE) plotted against the sensi-
+tivity of the transpiration to ETref (see Figure 2). (a) 20 genotypes of
+panel A in the dry season, India ( r= 0.64, p= 0.0001). (b) 27 genotypes
+of panel B in the dry season, Senegal ( r= 0.54, p= 0.004). (c) 20 gen-
+otypes of the panel A in the wet season, India ( r=−0.65, p< 0.01). Data
+are means of 4 replications per genotype and treatment ( p< 0.0001).
+ FIGURE 6 | (a) Vapour pressure deficit (VPD) measured in the air
+and within canopies with high and low densities (11 and 22 plants/m²
+respectively, HD and LD), as a function of time after sowing in the dry
+season field trial in Senegal. Black arrows in (a) represent dates atwhich LAI was measured (45 and 53 days after sowing), and starsindicates significant differences between HD and LD (paired t‐test,
+p< 0.001). (b) Daily time course of VPD during the 4th week of the
+same field experiment from 7am to 7 pm, where stars indicate signifi-
+cant differences between HD and LD (paired t‐test, p< 0.001).
+(c) Photosynthetically active Photon Flux Density (PPFD) at 4 timepoints across the same day in the two densities. Stars indicates signif-icant differences between HD and LD (paired t‐test, p< 0.0001). Each
+data point is the average of sensor data collected in three plots for eachof the densities. [Color figure can be viewed at wileyonlinelibrary.com ]
+10 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+we re ‐used the data from a recent paper where genotypic dif-
+ferences in several three ‐dimensional (3D) architecture traits
+were measured, in particular the leaf inclination and the aver-age surface angle (Xue et al. 2025 for method details). We found
+that WUE
+bmwas positively and significantly related to a higher
+leaf inclination (more erected leaves) (Figure 8a,r= 0.71,
+p= 0.006). Similarly, WUE bmwas positively and significantly
+related to a higher average surface angle (Figure S8A). Results
+also showed that low sensitivity to the evaporative demand(high slopes ETr ‐ET
+ref) was positively related to leaf inclination
+(Figure 8b,r= 0.67, p= 0.01) or average surface angle
+(Figure S8b), that is, genotypes that responded the most to the
+evaporative demand where those with a canopy architecturewith erected leaves and allowing more light penetration.
+4 | Discussion
+Five novel results, some unexpected, came from this study:
+i. Transpiration responses to ET refprovided a more accu-
+rate and comprehensive fit than that to VPD, in thecomparison of genotypes. This departs from most earlierstudies in which the evaporative demand was taken intoaccount via VPD alone as the main driver for transpira-tion, whereas light is an essential component of it.
+ii. No significant breakpoints were observed in the response
+curves of transpiration to evaporative demand, despiteextensive testing. While this result was unexpected, itadds new insights, particularly for comparing genotypesand also regarding physiological controls. We proposethat this absence may be linked to the decoupling of air
+and intra ‐canopy VPD, maintaining a high response at
+elevated evaporative demand.
+iii. A significant genetic variability was observed for tran-
+spiration at a given evaporative demand, with up to afour ‐fold difference between genotypes. This level of
+variability, observed only when using ET
+ref, has not been
+reported before.
+iv. Counter intuitively and departing from earlier expecta-
+tions, genotypes with the lowest sensitivity to ET ref(highest slope ETr ‐ETref) had the highest WUE bmduring
+the dry season with highest light intensity, and the lowest
+WUE bmduring the rainy season with lower light
+intensity.
+FIGURE 7 | Water use efficiency (WUE) measured in lysimeters plotted against the amount of light measured in the canopy in the adjacent field
+trial during the Senegal dry season, at (a) 45 DAS (ground level) and (b) 60 DAS (mid ‐canopy level). Data are the mean of four replications for WUE
+and three replications for light measurements.
+FIGURE 8 | Water use efficiency (WUE, a) and sensitivity of tran-
+spiration to ET ref(b), both measured using the lysimetric experiment
+data from Senegal, as a function of the leaf inclination trait obtainedfrom 3D scan images of plants generated in the glasshouse experimentin France. Dots represents genotypic means for the 13 genotypescommon to these two experiments. Linear regressions shows positiveand significant relations. Relationship coefficients and p ‐values are
+displayed.
+11 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+v. High WUE bmand low sensitivity to ETref were associated
+with more erect canopies (higher leaf inclination, higheraverage surface angle). High WUE
+bmalso correlated
+positively with more light penetration to the lower can-opy. This challenges existing views on the genetic varia-bility of WUE
+bm, its possible underlying physiological
+explanation, and its environmental interactions.
+These results, together with the recent viewpoint on the tran-
+spiration limitation trait (Gleason et al. 2025), call for a re ‐visit
+at the way this trait is approached and analyzed, to betterharness and target its potential.
+4.1 | ET refRather Than VPD
+Our study considered the evaporative demand as ET ref, calcu-
+lated via the Penman ‐Monteith equation or APSIM model and
+which includes light as a factor, as the main driver for tran-
+spiration. This may explain why transpiration better fitted to
+ETrefthan to VPD. By using ETref, we not only improved the
+description of the immediate environment experienced by theplants, but also make possible to integrate data from multipleexperiments, avoiding the confounding effects of VPD, tem-perature, and light.
+Why different shapes of the response of transpiration to eva-
+porative demand were observed between earlier results ingrowth chamber and in our outdoors study? We raise the pos-sibility that this is due to the difference in light intensitiesbetween the two conditions. Under relatively low light and highair movement (high coupling) (Jarvis and Mcnaughton 1986;L i
+et al. 2017), as in a growth chamber, the decrease in stomatal
+conductance with high VPD directly translates into a reductionin transpiration rate. In conditions with high light and lowerwind, uncoupling occurs between stomatal conductance andtranspiration for most species, so leaf temperature increaseswith stomatal closure, thereby increasing leaf ‐to‐air vapour
+pressure difference, largely decreasing the effect of stomatal
+closure on transpiration rate (Chaves et al. 2016). It was
+unexpected that a good relationship between transpiration andair VPD was still observed in our experiments in India, as it didin former studies (Kar et al. 2020; Kholova et al. 2010a ). This
+was probably due to the correlation between light intensity andVPD, observed in our study, but potentially not in other climatic
+conditions, for example in regions where the wind brings either
+dry air from continental areas, or wet air from the sea,depending on its direction, with an unchanged light intensity(Salah and Tardieu 1996). Indeed, this correlation was not
+observed in the Senegal experiment.
+4.2 | Simple Linear Rather Than Segmented
+Linear Regression
+The absence of a breakpoint in relationships may be, partially,
+a consequence of the fact that the Penman Monteith's eva-porative demand ETref was taken, in which light is taken into
+account as a key driver for transpiration. The discrepancy with
+earlier results may also be due to the fact that relationshipswere established at canopy level, so intra ‐canopy VPD
+increases less than air VPD. In this view, the breakpoint wouldbe a trend for isolated plants grown in growth chambers,whereas the decoupling between air and intra canopy VPDwould contribute to maintain the high response at high eva-porative demand.
+It was considered by Sinclair and other authors that the dif-
+ferential responses to evaporative demand is both characterisedby stomatal closure which occurs at differently high VPD foreach genotype (VPD breakpoints) and by differences in theslopes before and after the breakpoint, thereby resulting in a
+genetic variability of responses (e.g. Fletcher et al. 2008;
+Kholova et al. 2010a ). Here, quadratic terms of regressions, all
+positive when significant, indicated a concave rather than aconvex relationship. Several studies carried outdoors alsoshowed linear responses, even when the evaporative demandwas expressed via VPD only (Tharanya et al. 2018; Devi and
+Reddy 2018). In the same way, when a confusion of effect
+between temperature and VPD was avoided, only a small pro-
+portion of wheat genotypes presented a plateau under highevaporative demand (Tamang et al. 2022). Other studies have
+shown that certain genotypes that earlier showed a breakpointin the transpiration response to an increased VPD, lost thisbreakpoint when the transpiration response to VPD is measured
+under higher temperature (Pradhan et al. 2019; Shekoofa et al.
+2021). This could have in part been the case in our study.
+Importantly, some of the genotypes that had a linear responsein our study did show a marked plateau at high VPD in a studyin growth chamber (Karthika et al. 2019). Hence, a different
+representation emerges from studies carried out under highevaporative demand outdoors compared with those in growth
+chamber. Because no plateau for transpiration at high eva-
+porative demand was observed, the cause of the genetic varia-bility of the evapotranspiration could not be stomatal closure athigh VPD, but rather a difference in transpiration rate over thewhole range of evaporative demand. Indeed, an appreciablegenetic variability for stomatal conductance was observed in
+maize, even at relatively low evaporative demands, with high
+heritability and consistent QTLs (Alvarez Prado et al. 2017;
+Welcker et al. 2011). The results presented here are important
+because they offer a quite different view of how stomatal controlworks under high evaporative demand. Having breakpoints inthe transpiration response to an increase in the evaporativedemand implies that there is a transient partial closure of sto-
+mata that result in a transpiration plateau or a slower increase
+in transpiration past this breakpoint. Such transient closure ofstomata would imply rapid physiological processes, most likelyof hydraulic nature. Hydraulic conductance of the xylem ves-sels, aquaporins, root radial conductance and other factorscould be involved in these physiological processes, and these
+have been the object of much research to decipher the under-
+lying physiological cause of stomata closure at high evaporativedemand. In the absence of any breakpoint, the whole idea of atransient control of stomata aperture when the evaporativedemand increases is dismissed. In the absence of a breakpoint,differences in stomatal conductance at high evaporativedemand would be caused by inherent physiological processes
+that would not be triggered by changes in the evaporative
+demand. Some of these processes could also involve hydraulicconductance differences of different plant compartments.
+12 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+4.3 | A Large Genetic Variability of the Response
+of Transpiration to Evaporative Demand in NaturalConditions, From Plants in Canopy
+This study is to our knowledge the most thorough observation
+of a genetic variability in the response of transpiration to the
+evaporative demand in a canopy, and the first to consider
+evaporative demand via two of its components, VPD and lightintensity. This is not solely an extension of results from indoorto field studies because conditions were markedly differentfrom those indoors. Plants in growth chambers are well sepa-rated from one another and have all leaves exposed to similar
+light and VPD (predominance of diffuse light, low competition
+for light and similar VPD all over). This differs from plantsgrown in canopies, where the leaves in the lower canopy may beexposed to a lower VPD than the upper leaves because of can-opy transpiration, and a lower light because of self ‐shading.
+Provided they receive sufficient light, leaves in the lower can-opy, with partly closed stomata and facing a milder VPD than in
+open air, may have a higher WUE
+intthan upper leaves, which
+may eventually increase WUE bm. We observed significant linear
+relationships between evapotranspiration and ET refof each of
+the 47 tested genotypes, with a genetic variability in slopes inboth panels A and B. This genetic variability of slopes werepossibly due to stomatal behaviour, but also to other factors
+such as the canopy architecture. Given the high heritability of
+slopes, this genetic variability may be used in breeding to fordesign genotypes for either high transpiration rate (suited tofavourable environmental scenarios) or lower transpiration rate(suited to drought ‐prone areas). Notably, the accessions of panel
+A had a lower genetic variability and heritability for slopes thanthe germplasm of panel B. Panel A include elite breeding lines
+from the ICRISAT breeding programme that were mostly bred
+for the rainy season, which could have explained this lowervariation and would suggest that the response of transpirationto evaporative demand may have faced a selection pressure.Accessions from panel B, on the contrary, were germplasmaccessions with diverse geographic origins.
+4.4 | The Sign of the Relationship Between
+WUE bmand the Response of Evapotranspiration to
+the Evaporative Demand Was Season ‐Dependent
+WUE bmwas either positively correlated to the slope of the
+evapotranspiration response to ET refin seasons of high eva-
+porative demand, or negatively correlated in seasons of lowevaporative demand. This contrasts with earlier results showingthat WUE
+bmwas related to transpiration restriction under high
+VPD (Sinclair et al. 2005; Ryan et al. 2016). We propose that
+differences in WUE bmmay be related to differences in the
+distribution of the light resource in the lower canopy. During
+the dry season with high VPD and light, genotypes with thehighest slopes of the evapotranspiration response to ET
+refhad
+highest WUE bmand also allowed more light to penetrate deeper
+in the lower canopy. A lower VPD within the canopy mayincrease the WUE
+bmof leaves transpiring within the canopy,
+during seasons facing high VPD, because WUE is inversely
+related to VPD (Sinclair et al. 1984; Condon et al. 2002). We
+propose that observed differences in WUE bmamong genotypeswere, in part, a consequence of the proportion of transpiration,
+hence photosynthesis, contributed by leaves from the lowercanopy. The large and heritable genotypic variation response ofevapotranspiration to ET
+refsupports this hypothesis. Our
+interpretation is that a stronger evapotranspiration responsewould come from more leaves in the lower canopy actively
+participating in plant transpiration, and creating a positive
+feedback on WUE by releasing water vapour inside the canopy,contributing to increasing RH% and/or decreasing inner canopytemperature, then decreasing inner canopy VPD, as measuredin the field and in the glasshouse (Figures 6band S6), and
+finally increasing WUE
+intof leaves inside the canopy and then
+increasing whole plant WUE bm.
+On the contrary, during the rainy season with less incident light
+and VPD, a higher slope of the ETr response to ETref correlatedto a lower WUE
+bm. Our interpretation is that, since light
+resource was lower in that season (Figure 1), it may have been
+insufficient to penetrate deeply in the lower canopy, so both
+transpiration and light interception essentially involved the top
+leaves in the canopy, i.e. those exposed more to air VPD of theenvironment, average VPD value that were still above 2 kPaduring that season. Hence, we propose here that differences incanopy architecture allowed variations in the light available inthe lower canopy, which boosted transpiration under high
+evaporative demand, and increased WUE because of a higher
+proportion of transpiration benefitting from milder VPD con-ditions allowed by dense canopies. From an agronomic stand-point, our results also show the interest of using denser canopyto force milder VPD condition in the canopy and higher WUE,as shown in a recent study (Pilloni et al. 2024). The trade ‐off for
+these benefits would be under low light conditions that would
+not provide sufficient light to penetrate inside the canopy and
+benefit inner canopy leaves from a milder microclimate, orunder drought conditions.
+4.5 | 3D Architecture Traits May Explain
+Genotypic Differences in WUE bmand Sensitivity
+to ET ref
+Genotypes with highest WUE bmin high VPD seasons were
+those for which more light was available in the lower canopy.This likely created a positive feedback loop, whereby lighttriggered stomatal opening and photosynthesis, which in turn
+generated water vapour that increased RH% and decreased both
+temperature and VPD, and eventually increased WUE
+bm. These
+interpretations are supported by recent reports (Jaikumar et al.2025). Architectural features could be involved in this varia-
+bility of response. Indeed plant architecture strongly influencesvariables such as light interception (Falster and Westoby 2003;
+Duursma et al. 2012; Gitz et al. 2015) and radiation use effi-
+ciency (RUE) (George ‐jaeggli et al. 2013; Truong et al. 2015;
+Perez et al. 2019). Other studies have also shown a better effi-
+ciency of water use in varieties allowing a better distribution ofthe light resource in other species (Falster and Westoby 2003;
+Lee and Tollenaar 2007). Our findings of a positive relationship
+between WUE
+bm, the degree of sensitivity to ET ref, and the leaf
+inclination, supports this hypothesis. These results are consist-
+ent with the finding of significant relationships between PAR
+13 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+measured in the field at mid altitude in canopies and WUE bm.
+From a breeding point of view, selecting genotypes with erectedleaves (Jaikumar et al. 2021,2025) may be a way of boosting
+WUE
+bmin this crop.
+Acknowledgements
+The senior and corresponding authors are in part supported by a grant
+the Make Our Planet Great Again (MOPGA) ICARUS project (Improve
+Crops in Arid Regions and Future Climates) funded by the FrenchAgence Nationale de la Recherche and by the Region Occitanie (ANR,
+grant ANR ‐17‐MPGA ‐0011).
+Conflicts of Interest
+The authors declare no conflicts of interest.
+Data Availability Statement
+The data that support the findings of this study are available from the
+corresponding author upon reasonable request.
+References
+Adeniji, N. O., J. O. Adeniji, and O. Ojeikere. 2020. “Global Solar
+Radiation, Sunshine ‐Hour Distribution, and Clearness Index: A Case
+Study of Sub ‐Sahara Region in Nigeria. ”Journal of Renewable Energy
+Research and Application 1: 161 –174.
+Affortit, P., B. Effa ‐Effa, M. S. Ndoye, et al. 2022. “Physiological and
+Genetic Control of Transpiration Efficiency in African Rice, Oryza
+glaberrima Steud. ”Journal of Experimental Botany 73: 5279 –5293.
+https://doi.org/10.1093/jxb/erac156 .
+Allen, R. G., L. S. Pereira, D. Raes, M. Smith, and W. Ab. 1998. “Crop
+Evapotranspiration ‐Guidelines for Computing Crop Water Require-
+ments. Determination of ETo. ”InFAO Irrigation and Drainage Paper
+No. 56 ,1–15. FAO.
+Al‐Salman, Y., F. J. Cano, E. Mace, D. Jordan, M. Groszmann, and
+O. Ghannoum. 2024. “High Water Use Efficiency Due to Maintenance
+of Photosynthetic Capacity in Sorghum Under Water Stress. ”Journal of
+Experimental Botany 75: 6778 –6795. https://doi.org/10.1093/jxb/
+erae418 .
+Alvarez Prado, S., L. Cabrera ‐Bosquet, A. Grau, et al. 2017. “Phenomics
+Allows Identification of Genomic Regions Affecting Maize Stomatal
+Conductance With Conditional Effects of Water Deficit and Evaporative
+Demand. ”Plant Cell Environment 41: 314 –326. https://doi.org/10.1111/
+pce.13083 .
+Avramova, V., A. Meziane, E. Bauer, et al. 2019. “Carbon Isotope
+Composition, Water Use Efficiency, and Drought Sensitivity Are Con-
+trolled by a Common Genomic Segment in Maize. ”Theoretical and
+Applied Genetics 132: 53 –63.
+Barbieri, P., L. Echarte, A. della Maggiora, V. O. Sadras, H. Echeverria,
+and F. H. Andrade. 2012. “Maize Evapotranspiration and Water ‐Use
+Efficiency in Response to Row Spacing. ”Agronomy Journal 104:
+939–944.
+Blankenagel, S., S. Eggels, M. Frey, et al. 2022. “Natural Alleles of the
+Abscisic Acid Catabolism Gene ZmAbh4 Modulate Water Use Effi-
+ciency and Carbon Isotope Discrimination in Maize. ”Plant Cell 34:
+3860 –3872.
+Blum, A. 2009. “Effective Use of Water (EUW) and Not Water ‐Use
+Efficiency (WUE) Is the Target of Crop Yield Improvement Under
+Drought Stress. ”Field Crops Research 112: 119 –123.
+Chaves, M. M., J. M. Costa, O. Zarrouk, C. Pinheiro, C. M. Lopes, and
+J. S. Pereira. 2016. “Controlling Stomatal Aperture in Semi ‐AridRegions —The Dilemma of Saving Water or Being Cool? ”Plant
+Science 251: 54 –64.
+Chenu, K., E. J. Van Oosterom, G. McLean, et al. 2018. “Integrating
+Modelling and Phenotyping Approaches to Identify and Screen Com-plex Traits: Transpiration Efficiency in Cereals. ”Journal of
+Experimental Botany 69: 3181 –3194.
+Choudhary, S., A. Guha, J. Kholova, et al. 2020. “Maize, Sorghum, and
+Pearl Millet Have Highly Contrasting Species Strategies to Adapt to
+Water Stress and Climate Change ‐Like Conditions. ”Plant Science 295:
+110297.
+Condon, A. G. 2004. “Breeding for High Water ‐Use Efficiency. ”Journal
+of Experimental Botany 55: 2447 –2460. https://doi.org/10.1093/jxb/
+erh277 .
+Condon, A. G., R. A. Richards, G. J. Rebetzke, et al. 2002. “Improving
+Intrinsic Water ‐Use Efficiency and Crop Yield. ”Crop Science 42:
+122–
+131.
+Coupel ‐Ledru, A., E. Lebon, A. Christophe, et al. 2016. “Reduced
+Nighttime Transpiration Is a Relevant Breeding Target for High Water ‐
+Use Efficiency in Grapevine. ”Proceedings of the National Academy of
+Sciences 113: 8963 –8968.
+Devi, M. J., and V. R. Reddy. 2018. “Transpiration Response of Cotton to
+Vapor Pressure Deficit and Its Relationship With Stomatal Traits. ”
+Frontiers in Plant Science 871: 1 –12.
+Donatelli, M., G. L. Hammer, and R. L. Vanderlip. 1992. “Genotype and
+Water Limitation Effects on Phenology, Growth, and Transpiration
+Efficiency in Grain Sorghum. ”Crop Science 32: 781 –786.
+Duursma, R. A., D. S. Falster, F. Valladares, et al. 2012. “Light Inter-
+ception Efficiency Explained by Two Simple Variables: A Test Using a
+Diversity of Small ‐to Medium ‐Sized Woody Plants. ”New Phytologist
+193: 397 –408.
+Echarte, L., M. M. Echarte, D. Cerrudo, et al. 2020. “Sunflower Eva-
+potranspiration and Water Use Efficiency in Response to Plant Den-
+sity. ”Crop Science 60: 357 –366.
+Falster, D. S., and M. Westoby. 2003. “Leaf Size and Angle Vary Widely
+Across Species: What Consequences for Light Interception? ”New
+Phytologist 158: 509 –525.
+Flénet, F., J. R. Kiniry, J. E. Board, M. E. Westgate, and D. C. Reicosky.
+1996. “Row Spacing Effects on Light Extinction Coefficients of Corn,
+Sorghum, Soybean, and Sunflower. ”Agronomy Journal 88: 185 –190.
+https://doi.org/10.2134/agronj1996.00021962008800020011x .
+Fletcher, A., J. Christopher, M. Hunter, G. Rebetzke, and K. Chenu.
+2018. “A Low ‐Cost Method to Rapidly and Accurately Screen for
+Transpiration Efficiency in Wheat. ”Plant Methods 14: 77.
+Fletcher, A. L., T. R. Sinclair, and H. Allen 2008. “Vapor Deficit Effects
+on Leaf Area Expansion and Transpiration of Soybean Subjected to Soil
+Drying. ”Proceedings of the Crop and Soil Science Society of Florida 67:
+15–20.
+Geetika, G., E. J. van Oosterom, B. George ‐Jaeggli, et al. 2019. “Geno-
+typic Variation in Whole ‐Plant Transpiration Efficiency in Sorghum
+Only Partly Aligns With Variation in Stomatal Conductance. ”
+Functional Plant Biology 46: 1072 –1089. https://doi.org/10.1071/
+FP18177 .
+George ‐jaeggli, B., D. R. Jordan, E. J. van Oosterom, I. J. Broad, and
+G. L. Hammer. 2013. “Sorghum Dwarfing Genes Can Affect Radiation
+Capture and Radiation Use Efficiency. ”Field Crops Research 149:
+283–290.
+Gholipoor, M., T. R. Sinclair, and P. V. V. Prasad. 2012. “Genotypic
+Variation Within Sorghum for Transpiration Response to Drying Soil. ”
+Plant and Soil 357: 35 –40.
+Gholipoor, M., T. R. Sinclair, M. A. S. Raza, C. Löffler, M. Cooper, and
+C. D. Messina. 2013. “Maize Hybrid Variability for Transpiration
+14 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+Decrease With Progressive Soil Drying. ”Journal of Agronomy and Crop
+Science 199: 23 –29.
+Gilbert, M. E., M. A. Zwieniecki, and N. M. Holbrook. 2011. “Inde-
+pendent Variation in Photosynthetic Capacity and Stomatal Conduct-ance Leads to Differences in Intrinsic Water Use Efficiency in 11
+Soybean Genotypes before and During Mild Drought. ”Journal of
+Experimental Botany 62: 2875 –2887. https://doi.org/10.1093/jxb/erq461 .
+Gitz, I. I. I. D. C., Z. Xin, J. T. Baker, R. J. Lascano, and J. J. Burke. 2015.
+“Canopy Light Interception of a Conventional and an Erect Leafed
+Sorghum. ”American Journal of Plant Sciences 06: 2576 –2584.
+Gleason, S. M., S. K. Polutchko, B. S. Allen, et al. 2025. “A5 0 ‐year Look ‐
+Back on the Efficacy of Limited Transpiration Traits: Does the Evidence
+Support the Recent Surge in Interest? ”New Phytologist 246: 1439 –1450.
+https://doi.org/10.1111/nph.70071 .
+Halperin, O., A. Gebremedhin, R. Wallach, and M. Moshelion. 2017.
+“High ‐Throughput Physiological Phenotyping and Screening System for
+the Characterization of Plant –Environment Interactions. ”Plant Journal
+89: 839 –850. https://doi.org/10.1111/tpj.13425 .
+Hatfield, J. L., and C. Dold. 2019. “Water ‐Use Efficiency: Advances and
+Challenges in a Changing Climate. ”Frontiers in Plant Science 10: 1 –14.
+Jaikumar, N., T. Quach, Z. Ge, et al. 2025. “Constitutive Down ‐
+Regulation of Liguleless Alleles in Sorghum Drives Increased Produc-tivity and Water Use Efficiency. ”Plant Biotechnology Journal 23:
+3401 –3413. https://doi.org/10.1111/pbi.70150 .
+Jaikumar, N. S., S. S. Stutz, S. B. Fernandes, et al. 2021. “Can Improved
+Canopy Light Transmission Ameliorate Loss of Photosynthetic Effi-
+ciency in the Shade? An Investigation of Natural Variation in Sorghum
+bicolor .”Journal of Experimental Botany 72: 4965 –4980. https://doi.org/
+10.1093/jxb/erab176 .
+Jarvis, P. G., and K. G. Mcnaughton. 1986. “
+Stomatal Control of Tran-
+spiration: Scaling Up From Leaf to Region. ”Advances in Ecological
+Research 15: 1 –49.
+Kang, S., X. Hao, T. Du, et al. 2017. “Improving Agricultural Water
+Productivity to Ensure Food Security in China Under Changing En-
+vironment: From Research to Practice. ”Agricultural Water
+Management 179: 5 –17.
+Kar, S., R. Tanaka, L. B. Korbu, et al. 2020. “Automated Discretization
+of‘Transpiration Restriction to Increasing VPD' Features From Out-
+doors High ‐Throughput Phenotyping Data. ”Plant Methods 16: 140.
+Karthika, G., J. Kholova, S. Alimagham, et al. 2019. “Measurement of
+Transpiration Restriction Under High Vapor Pressure Deficit for Sor-
+ghum Mapping Population Parents. ”Indian Journal of Plant Physiology
+24: 74 –85.https://doi.org/10.1007/s40502 ‐019‐0432 ‐x.
+Kenney, A. M., J. K. McKay, J. H. Richards, and T. E. Juenger. 2014.
+“Direct and Indirect Selection on Flowering Time, Water ‐Use Efficiency
+(WUE, δ13C), and WUE Plasticity to Drought Inarabidopsis Thaliana. ”
+Ecology and Evolution 4: 4505 –4521. https://doi.org/10.1002/ece3.1270 .
+Kholová, J., C. T. Hash, M. Kocová, and V. Vadez. 2010b. “Constitutive
+Water Conserving Mechanisms Are Correlated With the Terminal
+Drought Tolerance of Pearl Millet ( Pennisetum americanum L.).”
+Journal of Experimental Botany 61: 369 –377.
+Kholová, J., C. T. Hash, P. L. Kumar, R. S. Yadav, M. Ko čová, and
+V. Vadez. 2010a. “Terminal Drought ‐Tolerant Pearl Millet [ Pennisetum
+glaucum (L.) R. Br.] Have High Leaf Aba and Limit Transpiration at
+High Vapour Pressure Deficit. ”Journal of Experimental Botany 61:
+1431 –1440.
+Kholová, J., T. Murugesan, S. Kaliamoorthy, et al. 2014. “Modelling the
+Effect of Plant Water Use Traits on Yield and Stay ‐Green Expression in
+Sorghum. ”Functional Plant Biology 41: 1019 –1034.
+Lee, E. A., and M. Tollenaar. 2007. “Physiological Basis of Successful
+Breeding Strategies for Maize Grain Yield. ”Crop Science 47: 202 –2015.
+https://doi.org/10.2135/cropsci2007.04.0010IPBS .Li, C., P. Jackson, X. Lu, et al. 2017. “Genotypic Variation in Transpi-
+ration Efficiency Due to Differences in Photosynthetic Capacity AmongSugarcane ‐Related Clones. ”Journal of Experimental Botany 68:
+2377 –2385. https://doi.org/10.1093/jxb/erx107 .
+Medlyn, B. E., R. A. Duursma, D. Eamus, et al. 2011. “Reconciling the
+Optimal and Empirical Approaches to Modelling Stomatal Conduct-
+ance. ”Global Change Biology 17: 2134 –2144.
+Messina, C. D., T. R. Sinclair, G. L. Hammer, et al. 2015. “Limited ‐
+Transpiration Trait May Increase Maize Drought Tolerance in the USCorn Belt. ”Agronomy Journal 107: 1978 –1986.
+Niinemets, Ü. 2010. “A Review of Light Interception in Plant Stands
+From Leaf to Canopy in Different Plant Functional Types and in Species
+With Varying Shade Tolerance. ”Ecological Research 25: 693 –714.
+Perez, R. P. A., C. Fournier, L. Cabrera ‐Bosquet, et al. 2019. “Changes in
+the Vertical Distribution of Leaf Area Enhanced Light Interception
+Efficiency in Maize Over Generations of Selection. ”Plant, Cell &
+Environment 42: 2105 –2119.
+Piccinni, G., J. Ko, T. Marek, and T. Howell. 2009. “Determination of
+Growth ‐Stage ‐Specific Crop Coefficients (KC) of Maize and Sorghum. ”
+Agricultural Water Management 96: 1698 –1704.
+Pilloni, R., K. Aparna, J. Kholova, F. Tardieu, and V. Vadez. 2024. “The
+Genotypic Variation in the Positive Response of Sorghum to HigherSowing Density Is Linked to an Increase in Water Use Efficiency. ”
+European Journal of Agronomy 158: 127207. https://doi.org/10.1016/j.
+eja.2024.127207 .
+Pilloni, R., A. Faye, A. Kakkera, et al. 2022. “Higher Sowing Density of
+Pearl Millet Increases Productivity and Water Use Efficiency in HighEvaporative Demand Seasons. ”
+Frontiers in Plant Science 13: 1035181.
+https://doi.org/10.3389/fpls.2022.1035181 .
+Pradhan, D., A. Shekoofa, and T. R. Sinclair. 2019. “Temperature Effect
+on Peanut ( Arachis hypogaea L.) Transpiration Response to Vapor
+Pressure Deficit and Its Recovery. ”Journal of Crop Improvement 33:
+177–186.
+Priestley, C. H. B., and R. J. Taylor. 1972. “On the Assessment of Surface
+Heat Flux and Evaporation Using Large ‐Scale Parameters. ”Monthly
+Weather Review 100: 81 –92.https://doi.org/10.1175/1520 ‐0493(1972)
+100<0081:OTAOSH>2.3.CO;2 .
+Prieto, J. A., G. Louarn, J. Perez Peña, H. Ojeda, T. Simonneau, and
+E. Lebon. 2012. “A Leaf Gas Exchange Model That Accounts for Intra ‐
+Canopy Variability by Considering Leaf Nitrogen Content and Local
+Acclimation to Radiation in Grapevine ( Vitis vinifera L.”Plant, Cell &
+Environment 35: 1313 –1328.
+Rosegrant, M. W., C. Ringler, and T. Zhu. 2009. “Water for Agriculture:
+Maintaining Food Security Under Growing Scarcity. ”Annual Review of
+Environment and Resources 34: 205 –222.
+Ryan, A. C., I. C. Dodd, S. A. Rothwell, et al. 2016. “Gravimetric Phe-
+notyping of Whole Plant Transpiration Responses to Atmospheric Va-
+pour Pressure Deficit Identifies Genotypic Variation in Water Use
+Efficiency. ”Plant Science 251: 101 –109.
+Salah, H. B. H., and F. Tardieu. 1996. “Quantitative Analysis of the
+Combined Effects of Temperature, Evaporative Demand and Light on
+Leaf Elongation Rate in Well ‐Watered Field and Laboratory ‐Grown
+Maize Plants. ”Journal of Experimental Botany 47: 1689 –1698.
+Schmidt, P., J. Hartung, J. Bennewitz, and H. P. Piepho. 2019. “Heri-
+tability in Plant Breeding on a Genotype ‐Difference Basis. ”Genetics 212:
+991–1008.
+Schoppach, R., and W. Sadok. 2012. “Differential Sensitivities of Tran-
+spiration to Evaporative Demand and Soil Water Deficit Among Wheat
+Elite Cultivars Indicate Different Strategies for Drought Tolerance. ”
+Environmental and Experimental Botany 84: 1 –10.
+Shekoofa, A., S. Safikhan, J. L. Snider, T. B. Raper, and F. M. Bourland.
+2021. “Variation In Stomatal Conductance Responses of Cotton
+15 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+Cultivars to High Vapour Pressure Deficit Under Controlled and
+Rainfed Environments. ”Journal of Agronomy and Crop Science 207:
+332–343.
+Sinclair, T. R., G. L. Hammer, a n dE .J .V a nO o s t e r o m .2 0 0 5 .
+“Potential Yield and Water ‐Use Efficiency Benefits in Sorghum From
+Limited Maximum Transpiration Rate. ”Functional Plant Biology 32:
+945–952.
+Sinclair, T. R., C. D. Messina, A. Beatty, and M. Samples. 2010.
+“Assessment Across the United States of the Benefits of Altered Soy-
+bean Drought Traits. ”Agronomy Journal 102: 475 –482.
+Sinclair, T. R., C. B. Tanner, and J. M. Bennett. 1984. “Water ‐Use
+Efficiency in Crop Production. ”BioScience 34: 36 –40.
+Song, Q., G. Zhang, and X. G. Zhu. 2013. “Optimal Crop Canopy
+Architecture to Maximise Canopy Photosynthetic CO2 Uptake Under
+Elevated CO2 ‐A Theoretical Study Using a Mechanistic Model of
+Canopy Photosynthesis. ”Functional Plant Biology 40: 108.
+Tamang, B. G., D. Monnens, J. A. Anderson, B. J. Steffenson, and
+W. Sadok. 2022. “The Genetic Basis of Transpiration Sensitivity to
+Vapor Pressure Deficit in Wheat. ”Physiologia Plantarum 174: e13752.
+https://doi.org/10.1111/ppl.13752 .
+Tardieu, F. 2022. “Different Avenues for Progress Apply to Drought
+Tolerance, Water Use Efficiency and Yield in Dry Areas. ”Current
+Opinion in Biotechnology 73: 128 –134.
+Tardieu, F., B. Parent, C. F. Caldeira, and C. Welcker. 2014. “Genetic
+and Physiological Controls of Growth Under Water Deficit. ”Plant
+Physiology 164: 1628 –1635.
+Tharanya, M., K. Sivasakthi, G. Barzana, J. Kholová,
+T. Thirunalasundari, and V. Vadez. 2018. “Pearl Millet ( Pennisetum
+glaucum ) Contrasting for the Transpiration Response to Vapour Pres-
+sure Deficit Also Differ in Their Dependence on the Symplastic and
+Apoplastic Water Transport Pathways. ”Functional Plant Biology 45:
+719–736. https://doi.org/10.1071/FP17161 .
+Truong, S. K., R. F. McCormick, W. L. Rooney, and J. E. Mullet. 2015.
+“Harnessing Genetic Variation in Leaf Angle to Increase Productivity of
+Sorghum bicolor .”Genetics 201: 1229 –1238.
+Turner, N. C., E. D. Schulze, and T. Gollan. 1984. “The Responses of
+Stomata and Leaf Gas Exchange to Vapour Pressure Deficits and Soil
+Water Content. I. Species Comparisons at High Soil Water Contents. ”
+Oecologia 63: 338 –342.
+Vadez, V., A. Grondin, K. Chenu, et al. 2024. “Crop Traits and Pro-
+duction Under Drought. ”Nature Reviews Earth & Environment 5:
+211–225. https://doi.org/10.1038/s43017 ‐023‐00514 ‐w.
+Vadez, V., J. Kholova, S. Medina, A. Kakkera, and H. Anderberg. 2014.
+“Transpiration Efficiency: New Insights Into an Old Story. ”Journal of
+Experimental Botany 65: 6141 –6153.
+Vadez, V., J. Kholová, R. S. Yadav, and C. T. Hash. 2013. “Small
+Temporal Differences in Water Uptake Among Varieties of Pearl Millet(Pennisetum glaucum (L.) R. Br.) Are Critical for Grain Yield Under
+Terminal Drought. ”Plant and Soil 371: 447 –462.
+Vadez, V., L. Krishnamurthy, C. T. Hash, H. D. Upadhyaya, and
+A. K. Borrell. 2011. “Yield, Transpiration Efficiency, and Water ‐Use
+Variations and Their Interrelationships in the Sorghum Reference
+Collection. ”Crop & Pasture Science 62: 645 –655. https://doi.org/10.
+1071/CP11007 .
+Vadez, V., R. Pilloni, A. Grondin, et al. 2023. “Water Use Efficiency
+Across Scales: From Genes to Landscapes. ”Journal of Experimental
+Botany 74: 4770 –4788. https://doi.org/10.1093/jxb/erad052 .
+Vadez, V., and P. Ratnakumar. 2016. “High Transpiration Efficiency
+Increases Pod Yield Under Intermittent Drought in Dry and Hot
+Atmospheric Conditions but Less so Under Wetter and Cooler Condi-
+tions in Groundnut ( Arachis hypogaea (L.)). ”Field Crops Research 193:
+16–23.https://doi.org/10.1016/j.fcr.2016.03.001 .Welcker, C., W. Sadok, G. Dignat, et al. 2011. “A Common Genetic
+Determinism for Sensitivities to Soil Water Deficit and EvaporativeDemand: Meta ‐Analysis of Quantitative Trait Loci and Introgression
+Lines of Maize. ”Plant Physiology 157: 718 –729. www.plantphysiol.org/
+cgi/doi/10.1104/pp.111.176479 .
+Xin, Z., R. Aiken, and J. Burke. 2009. “Genetic Diversity of Transpira-
+tion Efficiency in Sorghum. ”Field Crops Research 111: 74 –80.https://
+doi.org/10.1016/j.fcr.2008.10.010 .
+Xue, W., E. Kissel, A. Toth, R. Pilloni, and V. Vadez. 2025. “Identifying
+Phenotypic Markers Explaining Positive Sorghum Response to Sowing
+Density Using 3D ‐Imaging. ”Smart Agriculture Technology 10: 10756.
+https://doi.org/10.1016/j.atech.2024.100756 .
+Yin, X., and P. C. Struik. 2015. “Constraints to the Potential Efficiency
+of Converting Solar Radiation Into Phytoenergy in Annual Crops: From
+Leaf Biochemistry to Canopy Physiology and Crop Ecology. ”Journal of
+Experimental Botany 66: 6535 –6549.
+Zaman ‐Allah, M., D. M. Jenkinson, and V. Vadez. 2011. “A Conserva-
+tive Pattern of Water Use, Rather Than Deep or Profuse Rooting, IsCritical for the Terminal Drought Tolerance of Chickpea. ”Journal of
+Experimental Botany 62: 4239 –4252.
+Zhi, X., G. Hammer, A. Borrell, et al. 2022. “Genetic Basis of Sorghum
+Leaf Width and Its Potential as a Surrogate for Transpiration Effi-
+ciency. ”Theoretical and Applied Genetics 135: 3057 –3071. https://doi.
+org/10.1007/s00122 ‐022‐04167 ‐z.
+Zotarelli, L., M. D. Dukes, C. C. Romero, K. W. Migliaccio, and
+K. T. Morgan. 2014. Step by Step Calculation of the Penman ‐Monteith
+Evapotranspiration (FAO ‐56 Method) , 14. AE459. Institute of Food and
+Agricultural Sciences. University of Florida
+Supporting Information
+Additional supporting information can be found online in the
+Supporting Information section.
+Supporting Figure S1: Evapotranspiration measured on the lysimetric
+platform as a function of the ETref (calculated via the Penman ‐
+Monteith equation) or the VPD during the two 2018 lysimeters ex-
+periments in India for the 20 genotypes individually. Red triangle and
+circle represent HD and LD treatments during the summer season
+respectively. Blue rhombs and squares represent HD and LD treatmentsduring the rainy season respectively. Regressions considers all treat-ments and seasons and black, green and orange lines represents the
+adjusted model with linear, polynomial and segmental regressions
+respectively. The corresponding coefficient or relation (r) are displayedin the same color. Supporting Figure S2: Evapotranspiration mea-
+sured on the lysimetric platform as a function of the ETref (calculated
+via the Penman ‐Monteith equation) or the VPD during the 2021 ex-
+periment in Senegal for all the genotypes of panel B taken individually.
+Blue triangle and circles represent the high and low density canopiesrespectively. Regressions considers all treatments and black, green and
+orange lines represents the adjusted model with linear, polynomial and
+segmental regressions respectively. The corresponding coefficient or
+relation (r) are displayed in the same color. Supporting Figure S3: Leaf
+area index (LAI) measured 33 (a) and 40 (b) days after sowing in the2018 dry season field experiment as a function of the slope of the
+transpiration response to evaporative demand (ETref) from the adjacent
+lysimetric experiment. (India, Panel A). Supporting Figure S4: Linear
+regression of the slopes values generated with Kc method as a function
+of the values of the slopes generated with APSIM for the dry seasonexperiment in India (r= 0.99) (a). Water use efficiency (WUE) as a
+function of the slope generated by the regression of the measured
+evapotranspiration against the ETref calculated with the Penman ‐
+Monteith corrected with a crop constant (Kc) for the 20 genotypes of the
+panel A in the dry (b) and rainy (c) season in India. Supporting Figure
+S5:Water use efficiency (WUE) plotted against the slope of the time
+course of transpiration rate during the 3 hours preceding the maximum
+transpiration in the indoor lysimeter experiment (Montpellier, France, 9genotypes from panel B). Supporting Figure S6: Vapor pressure deficit
+16 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License
+
+(VPD) measured in air and within canopies with high and low densities
+(12 and 24 plants/m² respectively, HD and LD), as a function of time
+after sowing in the glasshouse experiment (Montpellier, France, 2
+genotypes from panel B). Stars indicates significant differences betweenair and HD VPD. Supporting Figure S7: Normalized biomass and
+evapotranspiration (ET) plotted against the slopes generated by the
+regression of measured evapotranspiration and ET
+refduring the dry (a)
+and wet (b) seasons in India. Supporting Figure S8: Water use effi-
+ciency (WUE, a) and sensitivity of transpiration to ETref (b), bothmeasured using the lysimetric experiment data from Senegal, as a
+function of the average surface angle trait measured from the 3D scan
+images of plants generated in a glasshouse experiment in France. Dots
+represents genotypic means for the 13 genotypes common to these two
+experiments. Linear regressions show positive and significant relations.Relation coefficients and p‐values are displayed. Supporting Table S1:
+Values of slopes, r coefficient, significance of the regressions, quadratic
+terms of the regressions and significance of the quadratic terms for all
+genotypes from the panel A tested in India. Regressions are ETr values
+from the lysimeters as a function both ETref (calculated via APSIMsoftware) or VPD (Calculated with T° et RH data from the adjacent
+meteorological station). *, p‐value < 0.05, **, p‐value < 0.01, *** p‐value
+< 0.001, ****, p‐value < 0.0001. Supporting Table S2: Values of slopes,
+r coef., significance of the regressions, quadratic terms of the regressions
+and significance of the quadratic terms in all genotypes from the panel
+B. Regressions are ETr values from the lysimeters as a function of Etref
+calculated via the Penman ‐Monteith equation corrected with a crop
+constant (Kc). *, p‐value < 0.05, **, p‐value < 0.01, *** p‐value < 0.001,
+****, p‐value < 0.0001.
+17 Plant, Cell & Environment , 2025
+ 13653040, 0, Downloaded from https://onlinelibrary.wiley.com/doi/10.1111/pce.70309 by Test, Wiley Online Library on [27/01/2026]. See the Terms and Conditions (https://onlinelibrary.wiley.com/terms-and-conditions) on Wiley Online Library for rules of use; OA articles are governed by the applicable Creative Commons License

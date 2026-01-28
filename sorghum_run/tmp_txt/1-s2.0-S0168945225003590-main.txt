@@ -1,0 +1,812 @@
+The WRKY Transcription Factor SbWRKY51 Positively Regulates Salt 
+Tolerance of Sorghum
+Xuemei Wanga,b,1, Hao Lia,1, Jingyi Wanga, Jie Songa, Na Suia,*
+aShandong Provincial Key Laboratory of Plant Stress, College of Life Sciences, Shandong Normal University, Jinan 250014, China
+bDongyingKey Laboratory of Salt Tolerance Mechanism and Application of Halophytes, Dongying Institute, Shandong Normal University, No. 2 Kangyang Road, 
+Dongying 257000, China
+ARTICLE INFO
+Keywords:
+Sorghum
+Salt stress
+WRKY
+ROS
+LigninABSTRACT
+Salt stress is one of the main abiotic stresses that affects plant growth and development, as well as crop yield. A 
+large number of studies have reported that the WRKY gene family plays significant roles in the plant responses to 
+salt stress, but the underlying mechanisms remain largely unknown, and research on WRKY proteins in sorghum 
+is also limited. In this study, we identified the sorghum gene SbWRKY51 , which encodes a group II WRKY 
+transcription factor. The expression of SbWRKY51 was up-regulated by salt stress, drought, and abscisic acid 
+(ABA) in sorghum. Overexpression of SbWRKY51 via Agrobacterium rhizogenes -mediated hairy root trans -
+formation enhanced salt tolerance of sorghum with longer root length, increased biomass accumulation, less Na
+content, and higher antioxidant enzyme activities compared with wild-type (WT) plants. Ectopic expression of 
+SbWRKY51 in Arabidopsis showed similar phenotypes, and mutation of the homologous gene AtWRKY11 
+increased salt sensitivity of Arabidopsis . Under salt stress, the SbWRKY51 -overexpressed transgenic sorghum 
+showed altered expression levels of genes related to oxidative stress and lignin biosynthesis, as well as increased 
+lignin content. Thus, these results suggest that SbWRKY51 positively regulates salt tolerance in sorghum by 
+affecting lignin biosynthesis.
+1.Introduction
+Soil salinization has become one of the major global environmental 
+issues for the modern agricultural productivity, which affects the 
+morphogenesis, growth, and development of plants, as well as the crop 
+yield and quality (He et al., 2024; Zhang et al., 2024 ). Salt stress can 
+initially cause osmotic stress to plants, which affects plant root water 
+uptake and stomatal closure. High salinity in soil can also induce ionic 
+stress resulted from the excess absorption of Naand Cl- in cells, which 
+can result in ion toxicity and nutrient imbalance (Hasegawa et al., 2000; 
+Zhu, 2003; Fang et al., 2021; He et al., 2024 ). Osmotic stress and ionic 
+stress can cause the excess accumulation of reactive oxygen species 
+(ROS) in plant cells, which leads to oxidative stress and can damage cell 
+structure and metabolic process (Wang et al., 2009; Fang et al., 2021; He 
+et al., 2024; Zhang et al., 2024 ). Plants have evolved multiple mecha -
+nisms to adapt to salt stress, such as the increase of antioxidant enzyme 
+activities. On the other hand, salt stress can activate stress response 
+pathways (e.g., ROS signaling) and key metabolic pathways, promoting the synthesis of various secondary metabolites, including lignin, which 
+is produced via the phenylpropanoid pathway. In addition, lignin is a 
+component of the plant cell wall (Chun et al., 2019 ). Under salt stress, 
+lignin accumulation leads to increased lignification of the root Casparian 
+strip, which effectively blocks the apoplastic transport of Na⁺ and Cl⁻ to 
+the shoots, thereby mitigating salt toxicity. Besides, regulating the 
+expression of downstream genes via transcription factors is also a key 
+mechanism for plants to response to salt stress (Song et al., 2020; He 
+et al., 2024 ).
+Many transcription factor families such as basic helix-loop helix 
+(bHLH) (Song et al., 2021 ), myeloblastosis (MYB) (Scully et al., 2016 ), 
+WRKY (Song et al., 2022 ), NAC (Zhang et al., 2016 ) have been reported 
+to be involved in plant responses to abiotic stress. Among these, the 
+WRKY family is one of the largest transcription factor families in plants 
+with multiple roles. WRKY transcription factors are defined by the 
+presence of one or two ~60-residue WRKY domains, each contains a 
+conserved N-terminal WRKYGQK core sequence and a C-terminal 
+zinc-finger motif (C2-HC or C2-H2) (Ülker and Somssich, 2004; Agarwal 
+*Corresponding author.
+E-mail address: suina@sdnu.edu.cn (N. Sui). 
+1These authors contributed equally to this manuscript.
+Contents lists available at ScienceDirect
+Plant Science
+u{�~zkw! s{yo|kro>! ÐÐÐ1ow�o �to~1m{y2w{m k�o2|wkz��m t
+https://doi.org/10.1016/j.plantsci.2025.112741
+Received 28 May 2025; Received in revised form 11 August 2025; Accepted 1 September 2025  Plant  Science  362 (2026)  112741  
+Available  online  2 September  2025  
+0168-9452/©  2025  Elsevier  B.V. All rights  are reserved,  including  those  for text and data mining,  AI training,  and similar  technologies.  
+et al., 2010; Bakshi and Oelmüller, 2014 ). According to the number of 
+WRKY domains and the pattern of zinc-finger motif, WRKY transcription 
+factors are classified into three groups: group I, II, and III (Eulgem et al., 
+2000; Jiang et al., 2017; Chen et al., 2018 ). Under abiotic stresses, the 
+WRKY transcription factor can regulate the expression of downstream 
+stress-responsive genes via binding to the W-box (TTGACC/T) within 
+their promoters (Yamasaki et al., 2005; Huang et al., 2022 ).
+Numerous studies have reported that WRKY transcription factors are 
+playing important roles in various plants. For example, cotton 
+GhWRKY17 affected plant salt and drought tolerance through regulating 
+ABA signaling and ROS production (Yan et al., 2014 ). OsWRKY54 was 
+reported to improve salt tolerance of rice by binding to the promoter of 
+OsHKT1;5 (Huang et al., 2022 ). SbWRKY55 affected sorghum salt 
+response through regulating ABA signaling (Song et al., 2022 ). Over-
+expression of GhWRKY34 could enhance the salt tolerance of Arabidopsis 
+transgenic plants (Zhou et al., 2015 ). Overexpression of SlWRKY8 
+enhanced plant tolerance to drought and salt stresses in Solanum lyco-
+persicum (Gao et al., 2019 ). Eggplant SmWRKY40 improved the salt 
+tolerance of transgenic Arabidopsis (Zhang et al., 2024 ). Although so 
+many WRKY transcription factors have been shown to be involved in 
+plant responses to salt stress, research on WRKY genes in sorghum is still 
+relatively limited.
+Sorghum (Sorghum bicolor [L.] moench) is an important grain, forage 
+and bioenergy crop and is also one of the widely cultivated crops 
+globally (Mullet et al., 2014; Boyles et al., 2018; Varoquaux et al., 2019; 
+Xie and Xu, 2019 ). Sorghum holds significant value both in agriculture 
+and industry, and it is an outstanding salt and alkali tolerant crop (Gao 
+et al., 2021; Chen et al., 2022; Zhang et al., 2022 ). Therefore, identifying 
+the genes and mechanisms regulating salt tolerance will help to cultivate 
+other salt tolerant crops through genetic engineering, thus enhancing 
+the comprehensive utilization of saline-alkali lands.
+In this study, we identified a WRKY gene SbWRKY51 from sorghum 
+transcriptome analysis, which was up-regulated under salt stress, 
+drought, and ABA treatments. SbWRKY51 -overexpressed sorghum and 
+Arabidopsis transgenic plants both showed enhanced salt tolerance. 
+Meanwhile, the Arabidopsis homologous gene mutant wrky11 of 
+SbWRKY51 exhibited reduced salt tolerance. Quantitative real-time PCR 
+(qRT-PCR) analyses indicated that the overexpression of SbWRKY51 led 
+to significant changes in the expression of genes related to oxidative 
+stress and lignin synthesis in sorghum. In summary, our results sug-
+gested that SbWRKY51 was a positive regulator of salt tolerance in 
+sorghum.
+2.Materials and methods
+2.1. Identification and phylogenetic analysis of WRKY family members in 
+sorghum
+The amino acid sequences of sorghum WRKY proteins were down -
+loaded from Ensembl Plants (https://plants.ensembl.org/index.html ). 
+We used the WRKY domain ID (PF03106) to identify putative WRKY 
+proteins from sorghum protein sequences through TBtools-II (Chen 
+et al., 2023 ). We use Batch CD-search (https://www.ncbi.nlm.nih.gov/ 
+Structure/bwrpsb/bwrpsb.cgi ) and SMART (https://smart.embl.de ) to 
+remove proteins without WRKY domain(s). The final identification and 
+nomenclature of WRKY family members were established with reference 
+to Baillo et al. (2020) .
+All identified SbWRKY protein sequences were aligned with Clus-
+talW and a phylogenetic tree was generated using MEGA7 software. We 
+obtained the conserved domain information of all identified SbWRKY 
+proteins from NCBI-CDD, and then combined with their amino acid se-
+quences, we could visualize the conserved domains using TBtools-II.
+2.2. Plant materials and growth conditions
+The Arabidopsis T-DNA insertion mutant wrky11 (SALK_141511C) was obtained from the Arabidopsis Biological Resource Center (ABRC). 
+The WT, mutants, overexpression, and complementary seeds were kept 
+in darkness for two days at 4•C and then sterilized and sowed on Mur-
+ashige & Skoog (MS 1) medium [4.43 g/L MS, 30 g/L sucrose, 8.0 g/L 
+agar, pH 5.8] (Ma et al., 2012; Xu et al., 2018 ). All lines were grown at 
+22•C, with a 16 h light/8 h dark photoperiod.
+The sorghum inbred line M-81E was used for SbWRKY51 gene 
+amplification, the sorghum line BTx623 was used for Agrobacterium 
+rhizogenes -mediated hairy root transformation. Sorghum seeds were 
+placed in fine mesh cloth and tied to a water pipe for rinsing for about 
+24 h. Evenly spread two layers of filter paper in a round dish and place 
+the seeds in the dish for cultivation. When the seeds germinate and have 
+long roots, transfer them into hydroponic boxes for continued cultiva -
+tion. Replace Hoagland nutrient solution every day and provide suffi-
+cient oxygen to the roots with an oxygen pump. Cultivate until the three- 
+leaf and one-heart stage.
+2.3. Bioinformatics analysis
+The CDS sequence and amino acid sequence of SbWRKY51 were 
+obtained from the National Center for Biotechnology Information 
+(NCBI) database (https://www.ncbi.nlm.nih.gov/ ) and Ensembl Plants 
+(https://plants.ensembl.org/ ). Ensembl Plants, SMART (https://smart. 
+embl.de ), NCBI, DNAMAN software and MEGA7 software were used 
+for multiple sequence alignment, conserved domain analysis, and 
+phylogenetic tree analysis.
+2.4. Quantitative real-time RT-PCR
+Total RNA was extracted from 0.1 g of Arabidopsis or sorghum leaves 
+using TRIzol Reagent (TransGen Biotech, China). cDNA was reverse 
+transcribed from total RNA using Reverse Transcriptase Evo M-MLV RT 
+kit. The qRT-PCR was performed with the following program: 95•C for 
+30 s, followed by 40 cycles of 95•C for 7 s, 60•C for 20 s, and 72•C for 
+10 s. The data set was normalized using Sbactin as an internal control. 
+The relative expression of each gene was calculated using the 2 ΔΔCT 
+method (Livak and Schmittgen, 2001 ). The primers used for qRT-PCR 
+are described in Table S2.
+2.5. Expression pattern of SbWRKY51 in sorghum
+At the three-leaf one-heart stage, sorghum seedlings were treated 
+with Hoagland nutrient solution containing 150 mM NaCl, 150 mM 
+mannitol, or 150 μM ABA for 0, 3, 6, 12, 24, and 48 h, respectively. 
+Then, 0.1 g of roots from each group was collected for RNA extraction to 
+determine the relative expression level of SbWRKY51 .
+2.6. SbWRKY51 subcellular localization and transcriptional activity 
+assay
+For subcellular localization of SbWRKY51, the CDS of SbWRKY51 
+was subcloned into the pCAMBIA1300 –35S-eGFP vector with the GFP at 
+the C terminus. The recombinant construct 35S: SbWRKY51 -GFP and the 
+empty vector were transiently infected into 4-week-old tobacco 
+epidermal cells via GV3101 transformation. The GFP fluorescence sig-
+nals were observed using a two-photon laser scanning confocal micro -
+scopy (TCS S8MP, Leica, Germany).
+Similarly, the CDS of SbWRKY51 was cloned into the pGBKT7 vector 
+(containing the TRP1 nutritional marker for selection in yeast) to 
+construct the pGBKT7- SbWRKY51 fusion vector, which was transformed 
+into yeast AH109 (MATa, trp1–901, leu2–3, 112, ura3 –52, his3–200, 
+gal4Δ, gal80 Δ, LYS2::GAL1 UAS–Gal1 TATA –His3, MEL1GA -
+L2UAS–Gal2 TATA –Ade2, URA3::MEL1 UAS–Mel1 TATA-lacZ). The expression 
+vectors pGBKT7- SbWRKY51 and empty pGBKT7 vector (as negative 
+vector) were transferred into the yeast strain AH109, separately. The 
+transformed yeast cells were streaked on SD/-Trp and SD/-Trp/-His/X-a- X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+2 
+Gal plates at 30 ◦C for 3–5 days.
+2.7. Acquisition of transgenic Arabidopsis plants
+The overexpression vector pCAMBIA1300 –35S:SbWRKY51 was 
+constructed and transformed into Agrobacterium tumefaciens GV3101, 
+which was then infected into Arabidopsis WT and wrky11 mutant using 
+floral dip method (Clough and Bent, 1998 ). T0 seeds were screened on 
+MS medium containing hygromycin. Positive seedlings confirmed by 
+DNA analysis were grown to the homozygous generation, and further 
+validated at both DNA and RNA levels before being used in subsequent 
+experiments.
+2.8. Acquisition of SbWRKY51-overexpressed sorghum lines through 
+Agrobacterium rhizogenes-mediated hairy root transformation
+Sorghum BTx623 seeds with uniform size were sterilized and sown 
+on MS1 medium, which were placed in the dark for 24 h. When the seeds 
+showed tender green bud tips of about 4–5 mm, they were ready to be 
+infected. The constructed vector pCAMBIA2300 –35S:SbWRKY51 was 
+transformed into the Agrobacterium K599, which then infected the bud 
+tip explants. The transformed bud tips were transferred to MS2 medium 
+(MS 100–300 mg/L Timentin), which were cultivated in the dark for 
+24 h and then in normal condition for 14 days. We detected GFP fluo-
+rescence signal, and selected non-contaminated hairy roots, which were 
+transplanted to nutrient soil and cultivated for 14 days. Overexpression 
+plants were screened by PCR and qRT-PCR assays. Treat each sorghum 
+line with 150 mM NaCl for 7 days and then measure the physiological 
+indexes.
+2.9. Determination of physiological indexes in Arabidopsis and Sorghum
+The seeds of different Arabidopsis lines were sown on MS containing 
+different salt concentrations, which were cultivated under normal con-
+dition. After 24 h, their germination rates were counted every day until 
+the 5th day. The main root lengths were photographed and measured in 
+the 7th day. The 3-week-old Arabidopsis seedlings in nutrient soil were 
+independently treated with 0 mM NaCl and 100 mM NaCl solution for 7 
+days. The fresh weight, dry weight, Nacontent, Kcontent, CAT ac-
+tivity, and SOD activity were determined. The Naand Kcontents were 
+determined according to Song et al. (2020) . NBT and DAB staining were 
+also performed according to Song et al. (2022) . Approximately 0.2 g of 
+leaves were grinded with 1.6 mL of 50 mM phosphate buffer (pH 7.8). 
+After centrifugation at 12000 rpm for 20 min at 4 ℃, the obtained su-
+pernatant was the crude enzyme solution. CAT and SOD activities were 
+determined as described by Hou et al. (2015) .
+About four-week-old transgenic sorghum plants and WT were treated 
+with 150 mM NaCl for 7 days, and the related physiological indexes 
+were determined.
+2.10. DAP-seq analysis
+The DAP-seq assay was performed by Bluescape Hebei Biotech 
+following the method described by Bartlett et al. (2017) . Briefly, the 
+genomic DNA of sorghum inbred M-81E was extracted using CTAB 
+method, and then was fragmented into approximately 200-bp fragments 
+to construct the DNA library. The CDS of the SbWRKY51 was inserted 
+into a pF3K WG (BYDV) Flexi ® Vector (Promega, USA, L5681). The 
+resulting fusion protein was expressed using the TNT ® SP6 Coupled 
+Wheat Germ Extract System (Promega, USA, L4130). The purified pro-
+tein was incubated with the genomic DNA library. The binding DNA 
+fragments were eluted and sequenced on an Illumina NovaSeq platform 
+by Bluescape Hebei Biotech.2.11. Determination of lignin content
+The phenolic hydroxyl groups in lignin undergo acetylation and 
+exhibit a characteristic absorption peak at 280 nm. The absorbance 
+value at 280 nm is positively correlated with the lignin content. The 
+determination of lignin content was carried out using a lignin content 
+assay kit purchased from Solarbio (Beijing, China).
+3.Results
+3.1. SbWRKY51 encodes a typical WRKY family protein
+Through bioinformatics analysis, we have identified 94 putative 
+members of the sorghum WRKY transcription factor family, and con-
+structed the phylogenetic tree based on multiple amino acid sequence 
+alignment (Figure S1). Each member contains at least one WRKY domain 
+(Figure S2). The SbWRKY51 gene contains 948 bases and encodes 315 
+amino acids. Amino acid sequence analysis revealed that SbWRKY51 
+protein has a typical WRKY domain located between amino acids 230 
+and 290, containing a WRKYGQK motif and a C2H2 zinc finger struc-
+ture. Aligning the SbWRKY51 protein sequence with homologous pro-
+teins of other species revealed that the WRKY domain is conserved in the 
+WRKY family (Fig. 1A). Thus, SbWRKY51 is a typical group II WRKY 
+protein.
+The phylogenetic tree analysis showed that the SbWRKY51 protein is 
+highly homologous to ZmWRKY51 in Zea mays, PaWRKY51 in Panicum 
+hallii, OsWRKY51 in Oryza sativa . In addition, SbWRKY51 also showed 
+high homology with AtWRKY11 in the model plant Arabidopsis thaliana . 
+The conserved domain analysis of these proteins revealed that they all 
+have the same conserved WRKY domain (Fig. 1B).
+3.2. SbWRKY51 is a salt stress-responsive transcription factor
+To investigate the function of SbWRKY51 in response to different 
+abiotic stresses, we detected the expression levels of SbWRKY51 in 
+sorghum inbred line M-81E under salt, mannitol, or ABA treatments. 
+qRT-PCR analysis showed that the expression of SbWRKY51 was 
+generally upregulated under different times of salt treatment. Similarly, 
+different times of mannitol or ABA treatment also generally upregulated 
+the expression of SbWRKY51 (Fig. 2A).
+Most transcription factors are located in the nucleus, to determine 
+the subcellular localization of SbWRKY51, the coding region of 
+SbWRKY51 was fused to the green fluorescent protein (GFP) gene under 
+the control of the CaMV 35S promoter. This recombinant plasmid and 
+the GFP vector were separately transfected into the tobacco leaves. The 
+green fluorescence of SbWRKY51-GFP was only observed in the nucleus, 
+while the signals of GFP alone were observed in plasma membranes and 
+nucleus (Fig. 2B), indicating that SbWRKY51 is a nucleus-localized 
+protein.
+Besides, to determine whether SbWRKY51 has transcriptional ac-
+tivity, the constructed pGBKT7- SbWRKY51 vector and pGBKT7 vector 
+alone were separately transformed into yeast cells. The results showed 
+that the transformants containing the pGBKT7- SbWRKY51 vector and 
+pGBKT7 vector both could grow on the SD/-Trp medium, but only 
+transformants containing the pGBKT7- SbWRKY51 vector could grow on 
+the SD/-Trp-His-Ade medium and turn blue on the SD/-Trp-His-Ade 
+X-α-gal medium (Fig. 2C). This result indicated that SbWRKY51 had 
+transcriptional activation activity in yeast cells.
+3.3. Overexpression of SbWRKY51 enhances salt tolerance of 
+Arabidopsis
+To further study the function of SbWRKY51 in plant response to salt 
+stress, we overexpressed SbWRKY51 under CaMV 35S promoter in 
+Arabidopsis . We screened homozygous transgenic seedlings (T3 genera -
+tions) through hygromycin selection and PCR analysis. According to the X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+3 
+result of qRT-PCR, the representative SbWRKY51 -overexpressed trans -
+genic lines OE5, OE8, and OE15, which showed high SbWRKY51 tran-
+script levels, were selected for the following experiments (Figure S1A- 
+C). Meanwhile, the T-DNA insertion mutant wrky11 (SALK_141511C) 
+were purchased from the TAIR website. The T-DNA was inserted in the 
+promoter of AtWRKY11 (Figure S1F). We selected homozygous mutants 
+by PCR (Figure S1D), and the transcript of AtWRKY11 was almost un-
+detectable in atwrky11 (Figure S1E). Besides, to determine whether 
+SbWRKY51 could complement the phenotypes of wrky11 , we obtained 
+SbWRKY51 complementary lines on the background of wrky11 . R10, 
+R12, and R16, with the SbWRKY51 transcript levels closest to the WT, 
+were selected for subsequent experiments (Figure S1G-I).
+We sowed each Arabidopsis line on 1/2 MS medium containing 0, 50, 
+100, and 150mM NaCl. The seed germination rate of each line was 
+counted every day, and the root length was measured at the seventh day. 
+The results showed that the germination rates of all the lines under 
+normal conditions had no significant difference. While with the increase 
+of salt concentration, the germination rates of all the lines decreased, 
+and the wrky11 mutant decreased most significantly. Under salt treat-
+ment, the germination rates of the three SbWRKY51 -overexpressed lines 
+were significantly higher than those of the WT, and the germination 
+rates of the complementary lines were similar to those of the WT 
+(Fig. 3C). As shown in Figs. 3A and 3B, the wrky11 mutant had signifi -
+cantly shorter root length, and the SbWRKY51 -overexpressed lines had 
+significantly longer root lengths compared with those of WT under the 
+corresponding salt treatments. Subsequently, we also determined the 
+relevant physiological indexes at the seedling stage. The expression level 
+of SbWRKY51 was similar in OE5 and OE8, as well as R12 and R16, thus 
+OE8 and OE15 were selected as representative lines of overexpression 
+transgenic plants, and R10 and R12 were selected as representative 
+complementary lines. Seedlings of different Arabidopsis lines were 
+treated with 100mM NaCl for 7 days, and the biomass was measured. As 
+shown in Figs. 4A and 4B, the biomass of the mutant decreased most 
+significantly, while the SbWRKY51 -overexpressed lines had the signifi -
+cantly higher biomass than those of other lines. These results suggested that overexpression of SbWRKY51 improved the seed germination rate 
+and biomass of Arabidopsis under salt stress.
+Salt stress can cause Naaccumulation in plant cells, and decrease 
+the absorption of K. Plant salt tolerance is closely related to Na/K
+ratio (Zhu, 2003; Shabala and Cuin, 2008 ). Thus, we measured the Na
+and Kcontents of WT, transgenic lines, and wrky11 mutant with or 
+without NaCl treatment. The results showed that no obvious differences 
+in Naand Kcontents were observed in all lines under normal condi -
+tion. After 7 days of 100mM NaCl treatment, Nacontent increased in 
+all lines, and the increase was the highest in wrky11 mutant, while the 
+SbWRKY51 -overexpressed lines absorbed significantly less Na
+compared with WT, wrky11 mutant, and the complementary lines 
+(Fig. 4C). In contrast, the Kcontent decreased in all lines, and the 
+SbWRKY51 -overexpressed lines absorbed more Kthan other lines 
+under salt treatment (Fig. 4D). Thus, the Na/Kratio was significantly 
+increased in wrky11 mutant, while that in SbWRKY51 -overexpressed 
+lines was significantly decreased when compared with WT (Fig. 4E). 
+This indicated that the overexpression of SbWRKY51 reduced the ab-
+sorption of Naby Arabidopsis .
+Under salt stress, plants produce excess ROS, such as superoxide 
+anions (O2 ), and hydrogen peroxide (H2O2) (Mittler, 2002 ), which can 
+bring oxidative damage to plant cells. We treated the isolated leaves of 
+different Arabidopsis lines with NBT and DAB to detect the accumulation 
+of O2 and H2O2 in these lines. The results showed that, under salt 
+treatment, the NBT and DAB staining in the wrky11 mutant were the 
+deepest, and the staining in the SbWRKY51 -overexpressed line was the 
+lightest among all lines (Fig. 4F, G). The results indicated that the 
+SbWRKY51 -overexpressed line produced less ROS while the mutant 
+produced more ROS when compared with WT. Antioxidant enzymes like 
+catalase (CAT) and superoxide dismutase (SOD) are important members 
+of plant ROS-scavenging system (Bartels and Sunkar, 2005 ), thus we 
+determined the CAT and SOD enzyme activities of different Arabidopsis 
+lines with or without salt treatment. The CAT and SOD enzyme activities 
+showed no significant differences in all lines under normal condition. 
+While after 7 days of 100mM NaCl treatment, the CAT and SOD enzyme 
+Fig. 1.Sequence and phylogenetic analyses of SbWRKY51. (A) Alignment of WRKY domains of SbWRKY51 with its homologous proteins using DNAMAN software. 
+(B) Phylogenetic and conversed domain analysis of SbWRKY51.X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+4 
+activities increased in all lines, and the increases in the SbWRKY51 -o-
+verexpressed lines were the highest, in contrast, the increase in the 
+wrky11 mutant was the lowest when compared to WT, and the levels of 
+CAT and SOD enzyme activities were similar in WT and the complementary lines (Fig. 4H, I). These results indicated that over-
+expression of SbWRKY51 reduced the ROS level and improved the 
+ROS-scavenging ability, thus enhancing the resistance to oxidative stress 
+of Arabidopsis under salt stress.
+Fig. 2.Relative expression, subcellular localization, and transcriptional activity of SbWRKY51 . (A) The expression levels of SbWRKY51 in sorghum roots under 
+150mM NaCl, 150mM mannitol, or 150 μM ABA. Data are presented as the mean ±SD of three biological replicates. (B) Subcellular localization of SbWRKY51 in 
+tobacco leaves. (C) Transactivation activity analysis of SbWRKY51 by yeast system. The pGBKT7 and pGBKT7- SbWRKY51 constructs were separately transformed 
+into the yeast AH109 cells. The BD plasmid enables Trp synthesis, complementing the Trp auxotrophy of the AH109 strain. Additionally, AH109 carries multiple 
+reporter genes, including HIS3, ADE2, and X-α-Gal.X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+5 
+3.4. SbWRKY51 positively regulates salt tolerance of sorghum
+To investigate whether this gene has the same function in regulating 
+salt tolerance in sorghum as it does in Arabidopsis , we overexpressed 
+SbWRKY51 under the control of the ubiquitin promoter in BTx623 (a 
+sorghum inbred) background through Agrobacterium rhizogenes -medi -
+ated hairy root transformation. OE3 and OE8 were screened out as 
+representative overexpressing lines through fluorescence level identifi -
+cation, PCR, and qRT-PCR analyses (Figure S2). After 7 days of 150mM 
+NaCl treatment, the SbWRKY51 -overexpressed transgenic lines grew 
+better and taller than the WT plants (Fig. 5A), with longer root length 
+(Fig. 5B) and more aboveground and underground biomass (Fig. 5C, D). 
+We also measured the Naand Kcontents with or without NaCl 
+treatment. The results showed that the SbWRKY51 -overexpressed lines 
+absorbed less Naand more K, with a lower Na/Kratio compared 
+with those of WT under 150mM NaCl treatment (Fig. 5E-G). The above results indicated that overexpression of SbWRKY51 enhanced the 
+tolerance of sorghum to salt stress.
+3.5. SbWRKY51 regulates the expression of oxidation-related genes and 
+lignin biosynthesis related genes under salt stress
+To further investigate the function of SbWRKY51 in response to salt 
+stress, we performed DNA affinity purification sequencing (DAP-seq) to 
+analyze its potential downstream target genes. DAP-seq analysis showed 
+that 22438 peaks overlapped between the two technical replicates and 
+were distributed across different chromosomes (Figure S3A, B). The 
+annotation statistics of peaks in the functional regions of genes showed 
+that 12.1 % of the binding peaks were located in the promoter region 
+(Figure S3C). Gene Ontology (GO) enrichment analysis revealed that the 
+binding peaks in promoters were highly enriched in the process of 
+response to oxidative stress (Figure S4A). As mentioned earlier, 
+Fig. 3.Root lengths and seed germination rates of WT, mutant, SbWRKY51 -overexpressed Arabidopsis lines, and complementary lines under salt stress. (A) Phe-
+notypes of different Arabidopsis lines under different NaCl treatments, with four seedlings in each group. (B) Root lengths of different Arabidopsis lines under different 
+NaCl treatments. Data are presented as the mean ±SD (n3), any two bars with a different letter mean they are significantly different (PD0.05), statistical 
+significance was assessed using one-way ANOVA with multiple comparisons. (C) Germination rates of different Arabidopsis lines under different NaCl treatments.X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+6 
+compared with the WT, the SbWRKY51 -overexpressed transgenic Ara-
+bidopsis plants accumulated less ROS and had higher antioxidant enzyme 
+activity. This indicated that SbWRKY51 might participate in regulating 
+cellular ROS levels and oxidative stress response. To investigate whether 
+SbWRKY51 participated in regulating ROS levels in sorghum, we 
+determined to examine the transcript levels of genes coding for ROS 
+scavenging enzymes [ascorbate peroxidase (APX), catalase (CAT), 
+glutathione peroxidase (GPX), and superoxide dismutase (SOD)] and 
+ROS producers, such as the respiratory burst oxidase homologs 
+(RBOHs). WRKY transcription factors regulate the expression of down -
+stream genes by specifically binding to the W-box in the promoter region 
+of these genes. We first analyzed the promoter elements of these genes 
+and found that the promoters of SbAPX , SbCAT , SbRBOHA , and SbGPX6 contained at least one W-box (Table S1). QRT-PCR analysis showed that 
+the expression levels of SbAPX , SbCAT , and SbGPX6 were generally 
+higher in sorghum overexpressing lines under salt treatment, with the 
+transcript accumulation of SbRBOHA being significantly lower than 
+those in WT (Fig. 6A). Moreover, the SbWRKY51 -overexpressed sor-
+ghum lines also displayed significantly higher SOD and CAT enzyme 
+activities than those of the WT under salt treatment (Fig. 6B, C).
+GO and KEGG enrichment analyses showed that the SbWRKY51 
+target genes were highly enriched in plant cell wall and phenyl -
+propanoid biosynthesis pathways (Figure S4). Lignin is a component of 
+the cell wall and one of the products of the phenylpropanoid biosyn -
+thesis pathway (Liu et al., 2015 ). Many studies have shown that lignin 
+biosynthesis is related with plant responses to abiotic stress (Guo et al., 
+Fig. 4.Changes of physiological parameters in WT, mutant, SbWRKY51 -overexpressed Arabidopsis lines, and complementary lines under salt stress. (A, B) Biomass of 
+different Arabidopsis lines under normal conditions or 100mM NaCl for 7 days. (C-E) Nacontents, Kcontents, and Na/Kratio of different Arabidopsis lines under 
+normal conditions or 100mM NaCl for 7 days. (F, G) NBT and DAB staining of different Arabidopsis lines under normal conditions or 100mM NaCl for 7 days. (H, I) 
+CAT and SOD activities of different Arabidopsis lines under normal conditions or 100mM NaCl for 7 days. Data are presented as the mean ±SD (n3), any two bars 
+with a different letter mean they are significantly different (PD0.05), statistical significance was assessed using one-way ANOVA with multiple comparisons.X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+7 
+2016; Wang et al., 2021; Dabravolski and Isayenkov, 2023 ). Therefore, 
+to investigate whether SbWRKY51 was involved in lignin biosynthesis, 
+we first analyzed the promoter elements of lignin biosynthesis-related 
+genes and screened out genes with W-boxes (Table S1). The qRT-PCR 
+analysis showed that the expression of SbPAL (phenylalanine 
+ammonia-lyase), SbC4H (cinnamate 4-hydroxylase), SbCCR1 (cinna -
+moyl-CoA reductace 1), SbC3H (p-coumarate 3-hydroxylase), SbF5H 
+(ferulate-5-hydroxylase), SbCOMT (caffeic acid O-methyltransferase) 
+were significantly upregulated in the overexpressed lines compared with 
+WT under salt stress (Fig. 6D). Moreover, the lignin content in the 
+overexpression lines after salt treatment was higher than that in the WT 
+(Fig. 6E). The above results suggested that SbWRKY51 might be 
+involved in regulating ROS levels and lignin biosynthesis in sorghum.
+4.Discussion
+Sorghum possesses excellent salt tolerant ability, so exploring its salt- 
+tolerant genes and the underlying mechanism of salt tolerance is of great 
+theoretical value for breeding other salt-tolerant crops. Accumulating 
+evidence has shown that WRKY proteins play important roles in biotic 
+and abiotic stress responses in various species (Gong et al., 2015; Cai 
+et al., 2017; Bao et al., 2018; Ye et al., 2021; Zhu et al., 2021 ). However, 
+only several WRKY genes have been reported to be involved in sorghum 
+salt tolerance until now. Thus, exploring the underlying mechanism of 
+sorghum WRKY genes in plant response to salt stress is of great signifi -
+cance. In this study, we identified a novel sorghum WRKY gene SbWRKY51 , whose expression was induced by several abiotic stresses 
+including salt stress (Fig. 2A). Multiple sequence alignment and protein 
+domain analysis showed that SbWRKY51 belongs to the group II WRKY 
+family (Fig. 1). Phylogenetic analysis indicated that SbWRKY51 showed 
+high similarity to AtWRKY11 in Arabidopsis (Fig. 1B). SbWRKY51 was 
+located in nucleus and showed transcriptional activation activity in 
+yeast cells (Fig. 2B, C). Therefore, these results suggested that 
+SbWRKY51 might function as a group II WRKY transcription factor 
+involved in salt stress response in plants. In this study, SbWRKY51 -o-
+verexpressed sorghum and ectopic expression Arabidopsis , as well as 
+wrkt11 mutant and complementary lines were used for salt tolerance 
+assays. In this study, under salt stress treatment, the Arabidopsis over-
+expression lines showed higher germination rate, longer root length, 
+higher biomass than those of WT and complementary lines, and these 
+physiological indexes in the mutant was the lowest (Figs. 3, 4A-B). 
+Similarly, the sorghum overexpression lines also displayed longer root 
+length and higher biomass than those of WT (Fig. 5A-D). These results 
+indicated that SbWRKY51 might play a positive role in plant response to 
+salt stress. Salt stress usually disturbs Na/Khomeostasis in plants, and 
+Na/Kratio is an important indicator for the salt tolerance of plants. In 
+this study, the SbWRKY51 -overexpressed Arabidopsis and sorghum 
+transgenic lines displayed lower Na/Kratio than that in WT plants 
+(Figs. 4C-E, 5E-G), indicating that SbWRKY51 -overexpressed plants kept 
+relatively strong ability to maintain Na/Khomeostasis in cells, 
+thereby enhancing plant salt tolerance.
+Salt stress imposes osmotic stress and ionic stress to plants, which 
+Fig. 5.Overexpression of SbWRKY51 enhanced the tolerance of sorghum to salt stress. (A) Phenotypes of WT and SbWRKY51 -overexpressed sorghum lines under 
+150mM NaCl treatment for 7 days. (B) Root lengths of WT and SbWRKY51 -overexpressed sorghum lines under salt stress. (C, D) Aerial and underground fresh weight 
+of WT and SbWRKY51 -overexpressed sorghum lines under salt stress. (E-G) Nacontents, Kcontents, and Na/Kratio of WT and SbWRKY51 -overexpressed 
+sorghum lines under salt stress. Data are presented as the mean ±SD (n3), any two bars with a different letter mean they are significantly different (PD0.05), 
+statistical significance was assessed using one-way ANOVA with multiple comparisons.X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+8 
+cause the chloroplasts, mitochondria, and NADPH oxidases (such as 
+RBOH) to produce ROS, mainly H2O2 and O2- (Li and Kim, 2022; Rivas 
+et al., 2024 ). A moderate amount of ROS can act as a signaling molecule 
+to trigger the stress responses in plants (Suzuki et al., 2011; Lodeyro 
+et al., 2016 ). However, excessive ROS can damage the structure and 
+function of plant cells, causing oxidative damage to plants. In this study, 
+the NBT and DAB staining showed that the SbWRKY51 -overexpressed 
+Arabidopsis transgenic lines accumulated less ROS than the WT plants 
+under salt stress (Fig. 4F, G). To quench excessive ROS, plants have an 
+antioxidant enzyme system consisting of multiple ROS-scavenging en-
+zymes, such as CAT and SOD. In this study, the SbWRKY51 -overex -
+pressed Arabidopsis and sorghum transgenic plants showed higher CAT 
+and SOD activities than those in the WT plants (Figs. 4H-I, 6B-C). 
+Moreover, our study also revealed that, under salt stress, the expression 
+of ROS-scavenging genes, like APX, CAT and GPX6 , were up-regulated in 
+the sorghum overexpression lines, while the expression of 
+ROS-producing gene RBOHA was significantly down-regulated 
+compared with the WT plants (Fig. 6A). Furthermore, the GO enrich -
+ment analysis of DAP-seq also revealed that the target genes of 
+SbWRKY51 were highly enriched in the response to oxidative stress 
+process (Figure S4A). Taken together, these results suggested that 
+SbWRKY51 might play an important role in regulating cellular ROS 
+levels, and therefore participate in oxidative stress.
+The GO and KEGG enrichment analyses revealed that the target 
+genes of SbWRKY51 were enriched in plant-type cell wall and phenyl -
+propanoid biosynthesis pathway (Figure S4). Lignin is an important 
+component of plant cell wall, and the phenylpropanoid biosynthesis 
+pathway provides monomers for the biosynthesis of lignin (Liu et al., 
+2015; Dong and Lin, 2021 ). Moreover, many studies have reported that 
+lignin is involved in the salt stress response of plants (Guo et al., 2016; Hu et al., 2019; Duan et al., 2020; Dabravolski and Isayenkov, 2023 ). 
+Salt stress can lead to cell dehydration, the deposition of lignin in the 
+secondary cell wall can enhance the mechanical support of the cell wall 
+and maintain tissue morphology (Liu et al., 2018; Muro-Villanueva 
+et al., 2019 ). Cell wall lignification can limit the diffusion of Nainto 
+the cells and reduce ionic toxicity. The lignification of the root endo-
+dermis (such as the Casparian strip) forms a selective barrier that pre-
+vents Nafrom entering the vascular bundles through the apoplast 
+pathway (Dabravolski and Isayenkov, 2023; Yadav and Chattopadhyay, 
+2023 ). Moreover, salt stress can up-regulate the gene expression of key 
+enzymes in the phenylpropanoid pathway (such as PAL, C4H), pro-
+moting lignin synthesis (Shafi et al., 2015; Ma and Constabel, 2019; 
+Torres et al., 2020; Kim et al., 2022 ). In this study, we analyzed the 
+expression levels of genes coding for key enzymes directly related to 
+lignin synthesis in the phenylpropanoid pathway, including SbPAL , 
+SbC4H , SbCCR1 , SbC3H , SbF5H , and SbCOMT . The results showed that, 
+under salt stress, the expression of these lignin biosynthesis-related 
+genes in SbWRKY51 -overexpressed sorghum lines were significantly 
+up-regulated compared to WT (Fig. 6D). Moreover, the lignin content in 
+the sorghum overexpression lines was also significantly higher than that 
+in WT plants (Fig. 6E). Therefore, SbWRKY51 might improve plant salt 
+tolerance by regulating ROS levels and influencing lignin synthesis.
+Taken together, under salt stress, the overexpression of SbWRKY51 
+in sorghum increased the activities of antioxidant enzymes and 
+improved the expression levels of ROS-scavenging related genes and 
+lignin biosynthesis-related genes, as well as the lignin contents. Our 
+research indicates that SbWRKY51 positively regulates the salt tolerance 
+of sorghum. However, whether SbWRKY51 plays a direct positive role in 
+regulating ROS levels and lignin biosynthesis still needs further inves -
+tigation in the future.
+Fig. 6.The overexpression of SbWRKY51 affected the ROS scavenging and lignin biosynthesis in sorghum under salt stress. (A) The expression of ROS-scavenging 
+and producing genes in WT and SbWRKY51 -overexpressed sorghum lines under salt stress. (B, C) SOD and CAT activities of WT and SbWRKY51 -overexpressed 
+sorghum lines under salt stress. (D) The expression of lignin biosynthesis related genes in WT and SbWRKY51 -overexpressed sorghum lines under salt stress. (E) 
+Lignin contents in WT and SbWRKY51 -overexpressed sorghum lines under normal conditions and salt stress. Data are presented as the mean ±SD (n3), any two 
+bars with a different letter mean they are significantly different (PD0.05), statistical significance was assessed using one-way ANOVA with multiple comparisons.X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+9 
+CRediT authorship contribution statement
+Na Sui: Writing – review & editing, Funding acquisition, Concep -
+tualization. Jingyi Wang: Methodology, Investigation, Formal analysis. 
+Jie Song: Writing – review & editing, Conceptualization. Hao Li: 
+Writing – original draft, Methodology, Investigation, Formal analysis. 
+Xuemei Wang: Writing – original draft, Supervision, Methodology, 
+Investigation, Funding acquisition.
+Author Contributions
+Xuemei Wang and Hao Li contributed equally to this work. Xuemei 
+Wang and Na Sui initiated the manuscript. Xuemei Wang, Hao Li, and 
+Jingyi Wang performed experiments. Jie Song and Na Sui conceptual -
+ized the idea and revised the manuscript. All authors read and approved 
+the final manuscript.
+Declaration of Competing Interest
+The authors declare that they have no conflict of interest.
+Acknowledgements
+The authors are grateful for financial support from the Modern 
+Agriculture Industrial Technology Systems Project of Shandong Prov-
+ince (SDAIT-15 –04), the National Natural Science Research Foundation 
+of China (32272040), the National Key R&D Program of China 
+(2022YFD1201702), the Special Fund for TaiShan Scholars (No. 
+tsqn202211106), the National Natural Science Research Foundation of 
+China (32301746), and the Natural Science Research Foundation of 
+Shandong Province (ZR2023QC192).
+Appendix A.Supporting information
+Supplementary data associated with this article can be found in the 
+online version at doi:10.1016/j.plantsci.2025.112741 .
+Data availability
+Data will be made available on request.
+REFERENCES
+P. Agarwal, M.P. Reddy, J. Chikara, WRKY: its structure, evolutionary relationship, DNA- 
+binding selectivity, role in stress tolerance and development of plants, Mol. Biol. 
+Rep. 38 (6) (2010) 3883 –3896, https://doi.org/10.1007/s11033-010-0504-5 .
+E.H. Baillo, M.S. Hanif, Y. Guo, Z. Zhang, P. Xu, S.A. Algam, Genome-wide identification 
+of WRKY transcription factor family members in sorghum (Sorghum bicolor (L.) 
+moench), Plos One 15 (8) (2020) e0236651, https://doi.org/10.1371/journal. 
+pone.0236651 .
+M. Bakshi, R. Oelmüller, WRKY transcription factors, Plant Signal. Behav. 9 (2) (2014) 
+e27700, https://doi.org/10.4161/psb.27700 .
+W. Bao, X. Wang, M. Chen, T. Chai, H. Wang, A WRKY transcription factor, PcWRKY33, 
+from polygonum cuspidatum reduces salt tolerance in transgenic arabidopsis 
+thaliana, Plant Cell Rep. 37 (7) (2018) 1033 –1048, https://doi.org/10.1007/ 
+s00299-018-2289-2 .
+D. Bartels, R. Sunkar, Drought and salt tolerance in plants, Crit. Rev. Plant Sci. 24 (1) 
+(2005) 23–58, https://doi.org/10.1080/07352680590910410 .
+A. Bartlett, R.C. O’Malley, S.-sC. Huang, M. Galli, J.R. Nery, A. Gallavotti, et al., Mapping 
+genome-wide transcription factor binding sites using DAP-seq, Nat. Protoc. 12 (8) 
+(2017) 1659 –1672, https://doi.org/10.1016/j.cell .
+R.E. Boyles, Z.W. Brenton, S. Kresovich, Genetic and genomic resources of sorghum to 
+connect genotype with phenotype in contrasting environments, Plant J. 97 (1) 
+(2018) 19–39, https://doi.org/10.1111/tpj.14113 .
+R. Cai, W. Dai, C. Zhang, Y. Wang, M. Wu, Y. Zhao, et al., The maize WRKY transcription 
+factor ZmWRKY17 negatively regulates salt stress tolerance in transgenic arabidopsis 
+plants, Planta 246 (6) (2017) 1215 –1231, https://doi.org/10.1007/s00425-017- 
+2766-9 .
+C. Chen, X. Shang, M. Sun, S. Tang, A. Khan, D. Zhang, et al., Comparative transcriptome 
+analysis of two sweet sorghum genotypes with different salt tolerance abilities to 
+reveal the mechanism of salt tolerance, Int. J. Mol. Sci. 23 (4) (2022) 2272, https:// 
+doi.org/10.3390/ijms23042272 .C. Chen, Y. Wu, J. Li, X. Wang, Z. Zeng, J. Xu, et al., TBtools-II: a “one for all, all for one” 
+bioinformatics platform for biological big-data mining, Mol. Plant 16 (11) (2023) 
+1733 –1742, https://doi.org/10.1016/j.molp.2023.09.010 .
+F. Chen, Y. Hu, A. Vannozzi, K. Wu, H. Cai, Y. Qin, et al., The WRKY transcription factor 
+family in model plants and crops, Crit. Rev. Plant Sci. 36 (5-6) (2018) 311–335, 
+https://doi.org/10.1080/07352689.2018.1441103 .
+H.J. Chun, D. Baek, H.M. Cho, S.H. Lee, B.J. Jin, D.-J. Yun, et al., Lignin biosynthesis 
+genes play critical roles in the adaptation of arabidopsis plants to high-salt stress, 
+Plant Signal. Behav. 14 (8) (2019) 1625697, https://doi.org/10.1080/ 
+15592324.2019.1625697 .
+S.J. Clough, A.F. Bent, Floral dip: a simplified method forAgrobacterium-mediated 
+transformation ofarabidopsis thaliana, Plant J. 16 (6) (1998) 735–743, https://doi. 
+org/10.1046/j.1365-313x.1998.00343.x .
+S.A. Dabravolski, S.V. Isayenkov, The regulation of plant cell wall organisation under salt 
+stress, Front. Plant Sci. 14 (2023), https://doi.org/10.3389/fpls.2023.1118313 .
+N.Q. Dong, H.X. Lin, Contribution of phenylpropanoid metabolism to plant development 
+and plant –environment interactions, J. Integr. Plant Biol. 63 (1) (2021) 180–209, 
+https://doi.org/10.1111/jipb.13054 .
+A.-Q. Duan, J.-P. Tao, L.-L. Jia, G.-F. Tan, J.-X. Liu, T. Li, et al., AgNAC1, a celery 
+transcription factor, related to regulation on lignin biosynthesis and salt tolerance, 
+Genomics 112 (6) (2020) 5254 –5264, https://doi.org/10.1016/j. 
+ygeno.2020.09.049 .
+T. Eulgem, P.J. Rushton, S. Robatzek, I.E. Somssich, The WRKY superfamily of plant 
+transcription factors, Trends Plant Sci. 5 (5) (2000) 199–206.
+X. Fang, W. Li, H. Yuan, H. Chen, C. Bo, Q. Ma, et al., Mutation of ZmWRKY86 confers 
+enhanced salt stress tolerance in maize, Plant Physiol. Biochem. 167 (2021) 
+840–850, https://doi.org/10.1016/j.plaphy.2021.09.010 .
+Y. Gao, J. Cui, G. Ren, S. Wei, P. Yang, C. Yin, et al., Changes in the root-associated 
+bacteria of sorghum are driven by the combined effects of salt and sorghum 
+development, Environ. Micro 16 (1) (2021), https://doi.org/10.1186/s40793-021- 
+00383-0 .
+Y.F. Gao, J.K. Liu, F.M. Yang, G.Y. Zhang, D. Wang, L. Zhang, et al., The WRKY 
+transcription factor WRKY8 promotes resistance to pathogen infection and mediates 
+drought and salt stress tolerance in solanum lycopersicum, Physiol. Plant. 168 (1) 
+(2019) 98–117, https://doi.org/10.1111/ppl.12978 .
+X. Gong, J. Zhang, J. Hu, W. Wang, H. Wu, Q. Zhang, et al., FcWRKY70, a WRKY protein 
+of fortunella crassifolia, functions in drought tolerance and modulates putrescine 
+synthesis by regulating arginine decarboxylase gene, Plant Cell Environ. 38 (11) 
+(2015) 2248 –2262, https://doi.org/10.1111/pce.12539 .
+H. Guo, Y. Wang, L. Wang, P. Hu, Y. Wang, Y. Jia, et al., Expression of the MYB 
+transcription factor gene BplMYB46 affects abiotic stress tolerance and secondary 
+cell wall deposition in betula platyphylla, Plant Biotechnol. J. 15 (1) (2016) 
+107–121, https://doi.org/10.1111/pbi.12595 .
+P.M. Hasegawa, R.A. Bressan, J.-K. Zhu, H.J. Bohnert, Plantcellular 
+andmolecularresponses tohighsalinity, Annu. Rev. Plant Physiol. Plant Mol. Biol. 51 
+(1) (2000) 463–499, https://doi.org/10.1146/annurev.arplant.51.1.463 .
+J. He, S. Chen, R. Chen, X. Li, J. Wu, Y. Zheng, et al., Okra WRKY transcription factor 
+AeWRKY32 and AeWRKY70 are involved in salt stress response, Int. J. Mol. Sci. 25 
+(23) (2024) 12820, https://doi.org/10.3390/ijms252312820 .
+C. Hou, T. Lv, Y. Zhan, Y. Peng, Y. Huang, D. Jiang, et al., Overexpression of the RIXI 
+xylanase inhibitor improves disease resistance to the fungal pathogen, magnaporthe 
+oryzae, in rice, Plant Cell Tissue Organ Culture (PCTOC 120 (1) (2015) 167–177, 
+https://doi.org/10.1007/s11240-014-0590-5 .
+P. Hu, K. Zhang, C. Yang, BpNAC012 positively regulates abiotic stress responses and 
+secondary wall biosynthesis, Plant Physiol. 179 (2) (2019) 700–717, https://doi. 
+org/10.1104/pp.18.01167 .
+J. Huang, F. Liu, D. Chao, B. Xin, K. Liu, S. Cao, et al., The WRKY transcription factor 
+OsWRKY54 is involved in salt tolerance in rice, Int. J. Mol. Sci. 23 (19) (2022) 
+11999, https://doi.org/10.3390/ijms231911999 .
+J. Jiang, S. Ma, N. Ye, M. Jiang, J. Cao, J. Zhang, WRKY transcription factors in plant 
+responses to stresses, J. Integr. Plant Biol. 59 (2) (2017) 86–101, https://doi.org/ 
+10.1111/jipb.12513 .
+D. Kim, S.J. Jeon, S. Yanders, S.C. Park, H.S. Kim, S. Kim, MYB3 plays an important role 
+in lignin and anthocyanin biosynthesis under salt stress condition in arabidopsis, 
+Plant Cell Rep. 41 (7) (2022) 1549 –1560, https://doi.org/10.1007/s00299-022- 
+02878-7 .
+M. Li, C. Kim, Chloroplast ROS and stress signaling, Plant Commun. 3 (1) (2022) 100264, 
+https://doi.org/10.1016/j.xplc.2021.100264 .
+J. Liu, A. Osbourn, P. Ma, MYB transcription factors as regulators of phenylpropanoid 
+metabolism in plants, Mol. Plant 8 (5) (2015) 689–708, https://doi.org/10.1016/j. 
+molp.2015.03.012 .
+Q. Liu, L. Luo, L. Zheng, Lignins: biosynthesis and biological functions in plants, Int. J. 
+Mol. Sci. 19 (2) (2018) 335, https://doi.org/10.3390/ijms19020335 .
+K.J. Livak, T.D. Schmittgen, Analysis of relative gene expression data using Real-Time 
+quantitative PCR and the 2 ΔΔCT method, Methods 25 (4) (2001) 402–408, 
+https://doi.org/10.1006/meth.2001.1262 .
+A.F. Lodeyro, M. Gir˘o, H.O. Poli, G. Bettucci, A. Cortadi, A.M. Ferri, et al., Suppression of 
+reactive oxygen species accumulation in chloroplasts prevents leaf damage but not 
+growth arrest in Salt-Stressed tobacco plants, Plos One 11 (7) (2016) e0159588, 
+https://doi.org/10.1371/journal.pone.0159588 .
+D. Ma, C.P. Constabel, MYB repressors as regulators of phenylpropanoid metabolism in 
+plants, Trends Plant Sci. 24 (3) (2019) 275–289, https://doi.org/10.1016/j. 
+tplants.2018.12.003 .
+L. Ma, H. Zhang, L. Sun, Y. Jiao, G. Zhang, C. Miao, et al., NADPH oxidase AtrbohD and 
+AtrbohF function in ROS-dependent regulation of Na/Khomeostasis in X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+10 
+arabidopsis under salt stress, J. Exp. Bot. 63 (1) (2012) 305–317, https://doi.org/ 
+10.1093/jxb/err280 .
+R. Mittler, Oxidative stress, antioxidants and stress tolerance, Trends Plant Sci. 7 (9) 
+(2002) 405–410.
+J. Mullet, D. Morishige, R. McCormick, S. Truong, J. Hilley, B. McKinley, et al., Energy 
+Sorghum–a genetic model for the design of C4 grass bioenergy crops, J. Exp. Bot. 65 
+(13) (2014) 3479 –3489, https://doi.org/10.1093/jxb/eru229 .
+F. Muro-Villanueva, X. Mao, C. Chapple, Linking phenylpropanoid metabolism, lignin 
+deposition, and plant growth inhibition, Curr. Opin. Biotechnol. 56 (2019) 202–208, 
+https://doi.org/10.1016/j.copbio.2018.12.008 .
+F.J.M. Rivas, A.R. Fernie, F. Aarabi, Roles and regulation of the RBOHD enzyme in 
+initiating ROS-mediated systemic signaling during biotic and abiotic stress, Plant 
+Stress 11 (2024) 100327, https://doi.org/10.1016/j.stress.2023.100327 .
+E.D. Scully, T. Gries, G. Sarath, N.A. Palmer, L. Baird, M.J. Serapiglia, et al., 
+Overexpression of SbMyb60 impacts phenylpropanoid biosynthesis and alters 
+secondary cell wall composition in sorghum bicolor, Plant J. 85 (3) (2016) 378–395, 
+https://doi.org/10.1111/tpj.13112 .
+S. Shabala, T.A. Cuin, Potassium transport and plant salt tolerance, Physiol. Plant. 133 
+(4) (2008) 651–669, https://doi.org/10.1111/j.1399-3054.2007.01008.x .
+A. Shafi, R. Chauhan, T. Gill, M.K. Swarnkar, Y. Sreenivasulu, S. Kumar, et al., Expression 
+of SOD and APX genes positively regulates secondary cell wall biosynthesis and 
+promotes plant growth and yield in arabidopsis under salt stress, Plant Mol. Biol. 87 
+(6) (2015) 615–631, https://doi.org/10.1007/s11103-015-0301-6 .
+Y. Song, J. Li, Y. Sui, G. Han, Y. Zhang, S. Guo, et al., The sweet sorghum SbWRKY50 is 
+negatively involved in salt response by regulating ion homeostasis, Plant Mol. Biol. 
+102 (6) (2020) 603–614, https://doi.org/10.1007/s11103-020-00966-4 .
+Y. Song, S. Li, Y. Sui, H. Zheng, G. Han, X. Sun, et al., SbbHLH85, a bHLH member, 
+modulates resilience to salt stress by regulating root hair growth in sorghum, Theor. 
+Appl. Genet. 135 (1) (2021) 201–216, https://doi.org/10.1007/s00122-021-03960- 
+6.
+Y. Song, H. Zheng, Y. Sui, S. Li, F. Wu, X. Sun, et al., SbWRKY55 regulates sorghum 
+response to saline environment by its dual role in abscisic acid signaling, Theor. 
+Appl. Genet. 135 (8) (2022) 2609 –2625, https://doi.org/10.1007/s00122-022- 
+04130-y .
+N. Suzuki, S. Koussevitzky, R.O.N. Mittler, G.A.D. Miller, ROS and redox signalling in the 
+response of plants to abiotic stress, Plant Cell Environ. 35 (2) (2011) 259–270, 
+https://doi.org/10.1111/j.1365-3040.2011.02336.x .
+C.A. Torres, C. Azocar, P. Ramos, R. P˘erez-Díaz, G. Sepulveda, M.A. Moya-Le ˘on, 
+Photooxidative stress activates a complex multigenic response integrating the 
+phenylpropanoid pathway and ethylene, leading to lignin accumulation in apple 
+(Malus domestica Borkh.) fruit, Hortic. Res. 7 (1) (2020), https://doi.org/10.1038/ 
+s41438-020-0244-1 .
+B. Ülker, I.E. Somssich, WRKY transcription factors: from DNA binding towards 
+biological function, Curr. Opin. Plant Biol. 7 (5) (2004) 491–498, https://doi.org/ 
+10.1016/j.pbi.2004.07.012 .
+N. Varoquaux, B. Cole, C. Gao, G. Pierroz, C.R. Bakerd, D. Patel, et al., Transcriptomic 
+analysis of field-droughted sorghum from seedling to maturity reveals biotic and 
+metabolic responses, PNAS 116 (52) (2019) 27124 –27132, https://doi.org/ 
+10.1073/pnas.1907500116/-/DCSupplemental.y .J. Wang, Z. Ma, B. Tang, H. Yu, Z. Tang, T. Bu, et al., Tartary buckwheat (Fagopyrum 
+tataricum) NAC transcription factors FtNAC16 negatively regulates of pod cracking 
+and salinity tolerant in arabidopsis, Int. J. Mol. Sci. 22 (6) (2021) 3197, https://doi. 
+org/10.3390/ijms22063197 .
+W.-B. Wang, Y.-H. Kim, H.-S. Lee, K.-Y. Kim, X.-P. Deng, S.-S. Kwak, Analysis of 
+antioxidant enzyme activity during germination of alfalfa under salt and drought 
+stresses, Plant Physiol. Biochem. 47 (7) (2009) 570–577, https://doi.org/10.1016/j. 
+plaphy.2009.02.009 .
+Q. Xie, Z. Xu, Sustainable agriculture: from sweet sorghum planting and ensiling to 
+ruminant feeding, Mol. Plant 12 (5) (2019) 603–606, https://doi.org/10.1016/j. 
+molp.2019.04.001 .
+G. Xu, Z. Jiang, H. Wang, R. Lin, The central circadian clock proteins CCA1 and LHY 
+regulate iron homeostasis in arabidopsis, J. Integr. Plant Biol. 61 (2) (2018) 
+168–181, https://doi.org/10.1111/jipb.12696 .
+S. Yadav, D. Chattopadhyay, Lignin: the building block of defense responses to stress in 
+plants, J. Plant Growth Regul. 42 (10) (2023) 6652 –6666, https://doi.org/10.1007/ 
+s00344-023-10926-z .
+K. Yamasaki, T. Kigawa, M. Inoue, M. Tateno, T. Yamasaki, T. Yabuki, et al., Solution 
+structure of an arabidopsis WRKY DNA binding domain, Plant Cell 17 (3) (2005) 
+944–956, https://doi.org/10.1105/tpc.104.026435 .
+H. Yan, H. Jia, X. Chen, L. Hao, H. An, X. Guo, The cotton WRKY transcription factor 
+GhWRKY17 functions in drought and salt stress in transgenic nicotiana benthamiana 
+through ABA signaling and the modulation of reactive oxygen species production, 
+Plant Cell Physiol. 55 (12) (2014) 2060 –2076, https://doi.org/10.1093/pcp/ 
+pcu133 .
+H. Ye, L. Qiao, H. Guo, L. Guo, F. Ren, J. Bai, et al., Genome-Wide identification of wheat 
+WRKY gene family reveals that TaWRKY75-A is referred to drought and salt 
+resistances, Front. Plant Sci. 12 (2021), https://doi.org/10.3389/fpls.2021.663118 .
+A. Zhang, J. Shang, K. Xiao, M. Zhang, S. Wang, W. Zhu, et al., WRKY transcription factor 
+40 from eggplant (Solanum melongena L.) regulates ABA and salt stress responses, 
+Sci. Rep. 14 (1) (2024), https://doi.org/10.1038/s41598-024-69670-3 .
+F. Zhang, F. Lu, Y. Wang, Z. Zhang, J. Wang, K. Zhang, et al., Combined transcriptomic 
+and physiological metabolomic analyses elucidate key biological pathways in the 
+response of two sorghum genotypes to salinity stress, Front. Plant Sci. 13 (2022), 
+https://doi.org/10.3389/fpls.2022.880373 .
+L. Zhang, L. Zhang, C. Xia, G. Zhao, J. Jia, X. Kong, The novel wheat transcription factor 
+TaNAC47 enhances multiple abiotic stress tolerances in transgenic plants, Front. 
+Plant Sci. 6 (2016), https://doi.org/10.3389/fpls.2015.01174 .
+L. Zhou, N.-N. Wang, S.-Y. Gong, R. Lu, Y. Li, X.-B. Li, Overexpression of a cotton ( 
+Gossypium hirsutum) WRKY gene, GhWRKY34, in arabidopsis enhances salt- 
+tolerance of the transgenic plants, Plant Physiol. Biochem. 96 (2015) 311–320, 
+https://doi.org/10.1016/j.plaphy.2015.08.016 .
+H. Zhu, Y. Jiang, Y. Guo, J. Huang, M. Zhou, Y. Tang, et al., A novel salt inducible WRKY 
+transcription factor gene, AhWRKY75, confers salt tolerance in transgenic peanut, 
+Plant Physiol. Biochem. 160 (2021) 175–183, https://doi.org/10.1016/j. 
+plaphy.2021.01.014 .
+J.-K. Zhu, Regulation of ion homeostasis under salt stress, Curr. Opin. Plant Biol. 6 (5) 
+(2003) 441–445, https://doi.org/10.1016/s1369-5266(03)00085-2 .X. Wang et al.                                                                                                                                                                                                                                   Plant Science  362 (2026)  112741  
+11 

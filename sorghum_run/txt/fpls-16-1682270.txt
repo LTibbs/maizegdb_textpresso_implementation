@@ -1,0 +1,796 @@
+Genome-wide association study
+of salt tolerance in sorghumduring germination
+Lihua Wang1,2*, Zhichao Xing1,2, Jiajie Zhou1,2, Min Jiang1,2,
+Qiwu Fan1,2, Guobao Yang1,2, Long Li1,2, Yunlong Wang1,2,
+Ephrem Habyarimana3, Yongfei Wang1,2, Die Hu1,2
+and Yi-Hong Wang4*
+1College of Agriculture, Anhui Science and Technology University, Chuzhou, Anhui, China,2International
+Joint Research Center of Forage Bio-Breeding in Anhui Province, Chuzhou, China,3The International
+Crops Research Institute for the Semi-Arid Tropics (ICRISAT), Patancheru, Telangana, India,4Department
+of Biology, University of Louisiana at Lafayette, Lafayette, LA, United States
+Introduction: Salt stress is a major abiotic factor restricting sorghum seed
+germination and early seedling establishment, particularly in saline-affected soils.
+Understanding the genetic architecture underlying salt tolerance during
+germination is essential for impro ving sorghum adaptation to saline
+environments. Genome-wide association studies (GWAS) based on high-density
+genomic variants provide an effective approach for uncovering loci and genes
+controlling complex stress-response traits. However, the genetic basis of sorghum
+salt tolerance at the seedling stage remains insuf ﬁciently characterized.
+Methods: To dissect the genetic architecture of salt tolerance during germination,
+we conducted a genome-wide association study (GWAS) using a panel of 245
+sorghum mini core accessions and 6,094,317 high-quality SNPs obtained through
+whole genome resequencing. Seedlings were evaluated under ﬁve NaCl
+concentrations (0, 50, 100, 150, and 200 mmol/L) in 2019 and three (0, 50, and
+200 mmol/L) in 2020 for shoot/root length, shoot/root fresh weight, and shoot/
+root dry weight, resulting in 84 trait/treatment/year combinations for GWAS.
+Results and Discussion: GWAS mapped 35 salt tolerance loci and 39 candidate
+genes were identi ﬁed for salt tolerance from 29 of the 35 loci. Majority of these
+candidate genes (29 of the 39) have orthologs in other species that have been
+shown to play roles in salt tolerance in plants. These candidate genes potentially
+involved in ion transport, stress signaling, and growth regulation were identi ﬁed
+in genomic regions in or adjacent to the location of associated markers. These
+ﬁndings provide valuable insights into the genetic basis of salt tolerance in
+sorghum and offer potential targets for marker-assisted selection and genetic
+improvement of salt-tolerant cultivars.
+KEYWORDS
+sorghum, mini core, GWAS, salt tolerance, seedling
+Frontiers in Plant Science frontiersin.org 01
+OPEN ACCESS
+EDITED BY
+Peng Lv,
+Hebei Academy of Agricultural and Forestry
+Sciences, China
+REVIEWED BY
+Wang Yuexing,
+Chinese Academy of Agricultural Sciences,
+ChinaZhang Jiwei,Sichuan Agricultural University, China
+*CORRESPONDENCE
+Lihua Wang
+wanglihuaerr@126.com
+Yi-Hong Wang
+yihong.wang@louisiana.edu
+RECEIVED 08 August 2025
+REVISED 03 October 2025
+ACCEPTED 12 November 2025
+PUBLISHED 10 December 2025
+CITATION
+Wang L, Xing Z, Zhou J, Jiang M, Fan Q,
+Yang G, Li L, Wang Y, Habyarimana E, Wang Y,
+Hu D and Wang Y-H (2025) Genome-wide
+association study of salt tolerance in sorghumduring germination.Front. Plant Sci. 16:1682270.
+doi: 10.3389/fpls.2025.1682270
+COPYRIGHT
+© 2025 Wang, Xing, Zhou, Jiang, Fan, Yang, Li,
+Wang, Habyarimana, Wang, Hu and Wang. Thisis an open-access article distributed under the
+terms of the Creative Commons Attribution
+License (CC BY). The use, distribution or
+reproduction in other forums is permitted,provided the original author(s) and the
+copyright owner(s) are credited and that the
+original publication in this journal is cited, inaccordance with accepted academicpractice. No use, distribution or reproduction
+is permitted which does not comply with
+these terms.TYPE Original Research
+PUBLISHED 10 December 2025
+DOI10.3389/fpls.2025.1682270
+Introduction
+Crop yield can be signi ﬁcantly reduced by soil salinity which can
+occur naturally from the retention of soluble salt in the soil ( Amombo
+et al., 2022 ) and also as a result of irrigation practices due to increased
+evaporation in periods of drought ( van Zelm et al., 2020 ). Globally,
+abiotic stresses including soil salinity can cause as much as 80% yield
+reduction in sorghum ( Zurbriggen et al., 2010 ). Salt stress negatively
+affects sorghum growth and yield. It can reduce germination rate by
+80% depending on salt concentration ( Chen et al., 2022 ). Yield
+reduction is also positively correlated with degree of salinity. For
+example, biomass yield in sorghum can be reduced by 11-33% at 60
+mM NaCl but 30-58% at 120 mM NaCl ( Rajabi Dehnavi et al., 2024 ).
+Similarly, sorghum grain yield can be reduced by half when grown in
+saline soils ( Daniells et al., 2001 ). Because of salt ’s negative impact on
+sorghum growth, shoot growth ( Wang et al., 2025 ) at germination
+phase ( Mansour et al., 2021 ) has been demonstrated to be reliable
+measure of salt tolerance in sorghum although the molecular
+mechanisms of how salinity affect shoot growth is still poorly
+understood ( van Zelm et al., 2020 ;Yu et al., 2023 ).
+Plant cellular response to salinity can be broken down into four
+phases. Early salt sensing is within 5 min of salt stress application. Then
+from 5 min to 5 hours (h) after salt exposure, a period called stop
+phase, root growth rate decreases, stays decreased in the quiescent
+phase 5 –9 h after salt exposure, and partly recovers during the ensuing
+growth recovery phase 9 h after salt exposure ( van Zelm et al., 2020 ).
+The immediate effect of salt stress is three-fold: it produces osmotic
+stress, causes cytotoxic accumulation of reactive oxygen species (ROS),
+as well as Na+/Cl-toxicity ( Amombo et al., 2022 ;van Zelm et al., 2020 ).
+Plants confront ROS by activating antioxidant genes, osmotic stress by
+genetic pathways as well as changes in root system architecture, and
+Na+/Cl-toxicity by Na+sequestration in the vacuoles through Na+/H+
+antiporter ( Amombo et al., 2022 ;Mansour et al., 2021 ;Ukwatta et al.,
+2021;van Zelm et al., 2020 ). ROS may cause double-stranded break in
+DNA as a result of salt stress ( Zvanarou et al., 2020 ).
+Among the grasses, mapping of salt tolerance has been
+extensively performed in rice. Kong et al. (2021) reported a total
+of seven QTLs (quantitative trait loci) identi ﬁed on chromosome 3,
+4, 5, 6, and 8 while Yu et al. (2018) revealed 12 such loci. Other
+studies reported far more salt tolerance QTLs. Yuan et al. (2020)
+identi ﬁed 21 QTLs, and Cui et al. (2018) andLv et al. (2022) found
+56 and 155 signi ﬁcant SNPs, respectively. Two groups have
+conducted salt tolerance mapping in sorghum. Wang et al. (2014 ,
+2020) mapped six major QTLs for salt tolerance in sorghum using
+181 recombinant inbred lines. Similarly, Hostetler et al. (2021)
+identi ﬁed 10 salt tolerance QTLs in sorghum. Searching the
+Sorghum QTL Atlas ( Mace et al., 2019 ) only turned up one salt
+tolerance QTL identi ﬁed by Wang et al. (2014) and listed only one
+locus on chromosome 7 (7:59547957-61793814) not overlapping
+with loci mapped in this study. This suggests that sorghum salt
+tolerance research is lagging behind other crops.
+Candidate genes were also being identi ﬁed. Using bulked
+segregation analysis (BSA) sequencing, Zhang et al. (2022) pinpointed
+Sobic.001G283700 encoding glycerol-3 -phosphate acyltransferase as the
+salt tolerance gene in sorghum. By comparing two sorghum genotypes,Ren et al. (2022) suggested that ﬂavonoid pathways may play an
+important physiological role in sorghum salt tolerance. Candidate
+genes were also found in other grasses. Nayyeripasand et al. (2021)
+reported F-box andNa+/H+antiporter among their rice salt tolerance
+genes. Luo et al. (2019) found a double-strand b reak repair protein
+MRE11 (GRMZM2G106056) as a salt tolerance gene in maize.
+Extensive lists of candidate genes have been provided by Cui et al.
+(2018) ;Liu et al. (2019) ;Lv et al. (2022) andYu et al. (2018 ,2023) in rice,
+Javid et al. (2022) in wheat, and Luo et al. (2019) in maize.
+In this study, we aim to perform a genome-wide association
+study (GWAS) using a panel of 245 sorghum mini core accessions
+and 6,094,317 SNPs to identify salt tolerance genes in sorghum. We
+evaluated seedlings under ﬁve NaCl concentrations (0, 50, 100, 150,
+and 200 mmol/L), and measured shoot/root length, shoot/root fresh
+weight, and shoot/root dry weight. GWAS mapped 35 salt tolerance
+loci and we identi ﬁed 39 candidate genes for salt tolerance from 29
+of the 35 loci. Majority of these candidate genes (29 of the 39) have
+orthologs in other species that have been shown to play roles in salt
+tolerance in plants.
+Materials and methods
+Plant materials and salt tolerance
+evaluation
+The mini core panel of 239 accessions ( Upadhyaya et al., 2009 )
+was used for this study. Salt (NaCl) treatments were conducted in
+2019 and 2020. A total of ﬁve NaCl concentrations (0, 50, 100, 150,
+and 200 mmol/L) were applied in 2019, while three levels (0, 50, and
+200 mmol/L) were tested in 2020 because based on 2019 results we
+found that 100 and 150 mmol/L didn ’t provide more information.
+Each treatment was performed with three replicates. For each
+treatment, 200 plump and uniform seeds from each accession
+were sterilized with 0.1% mercuric chloride (HgCl 2) solution for
+15 minutes and then rinsed thoroughly three times with sterile
+distilled water. The sterilized seeds were placed in a germination
+chamber with a light intensity of 4000 lx at 30°C for 24 hours to
+induce germination. Germinated seeds were then sown (20 seeds
+per box) in germination boxes (12 cm × 12 cm) lined with two
+layers of moist germination paper. The germination conditions
+were set at 25°C with 4000 lx light for 12 hours (h) (daytime), and
+20°C in darkness for 12 h (nighttime). From each replicate, ten
+seedlings with uniform growth were selected to measure shoot/root
+length (SL/RL) and shoot/root fresh weight (SFW/RFW) on the 7th
+day. After drying the roots and shoots at 75°C for 24 hours, shoot/
+root dry weight (SDW/RDW) were also measured. SL/RL were
+recorded to the nearest mm. SFW/RFW and SDW/RDW were
+measured with an analytical balance with a precision of 0.0001 g.
+Data analysis
+Salt tolerance was calculated using the Seedling Tolerance
+Coefﬁcient (STC) ( Qiu et al., 2007 ;Yu et al., 2021 ) as follows:Wang et al. 10.3389/fpls.2025.1682270
+Frontiers in Plant Science frontiersin.org 02
+STC=(value under treatment/value under control) × 100%
+STC calculated for each trait was denoted with a subscript, i.e.,
+RLSTCfor root length STC, while root length at 50 mM or 200 mM
+NaCl concentrations conducted in 2020 were denoted as
+RLSTC20Na_50 and RL STC20Na_200, respectively, and control as
+RL20. These totaled to 84 trait/treatment/year combinations (see
+Supplementary Figure S1 ;Supplementary Table 1 ). Each of the 84
+traits was averaged over three replicates for GWAS.
+Association mapping
+GWAS was conducted as described ( Min et al., 2025 ). In short,
+GWAS for the 84 traits ( Supplementary Table S1 ) was performed
+with 6,094,317 SNPs. We used EMMAX ( Kang et al., 2010 )t o
+generate the kinship matrix (K) and STRUCTURE 2.3.4 ( Pritchard
+et al., 2000 ) to calculate the Q matrix. Both were used for GWAS in
+an MLM model ( Yu et al., 2006 ). Association signi ﬁcance threshold
+was based on the modi ﬁed Bonferroni correction at a= 0.05, with
+the threshold Pvalue of 8.2×10-9,o ra −log10( P) value of 8.08. We
+also included markers with Pvalue below 10-4(Famoso et al., 2011 ;
+van Rooijen et al., 2015 ;Zhao et al., 2011 ) to account for association
+of at least three markers at a locus across more than two trait
+combinations to declare an association ( Prinzenberg et al., 2020 ).
+Identi ﬁcation of candidate genes and
+haplotype analysis
+The reference Sorghum bicolor v3.1.1 genome ( McCormick
+et al., 2018 ) at Phytozome ( Goodstein et al., 2012 )1 3( https://
+phytozome-next.jgi.doe.gov/ ) was used to identify candidate genes.
+As described by Min et al. (2025) , two criteria were used to ﬁnd
+candidate genes: they either include the linked SNP or were closest
+to the linked SNPs. Only SNPs with <5% missing data rate were
+used for haplotype analysis.
+Quantitative real-time PCR analysis
+qPCR was performed as previously described ( Wang et al.,
+2025 ). Two salt-tolerant (IS 32787 and IS 12937) and two salt-
+sensitive (IS 4515 and IS 9108) mini core accessions were
+germinated as above. RNA was extracted from roots using the
+RNAprep Pure Plant Total RNA Extraction Kit (TIANGEN,
+Beijing, China) following the manufacturer ’s instructions.
+ToloScript all-in-one RT EasyMix for qPCR Kit (TOLOBIO,
+Shanghai, China) was used to reverse transcribe mRNA into
+cDNA. Applied Biosystems real-time ﬂuorescence quantitative
+PCR reagent (Thermo Fisher Scienti ﬁc, Waltham, MA, USA) was
+used. The primers ( Supplementary Table S2 ) were designed by
+QuantPrime ( Arvidsson et al., 2008 ) with PP2A as the reference
+gene ( Sudhakar Reddy et al., 2016 ). qPCR reaction was in a 20 mLvolume and each sample was replicated three times. The reaction
+contained 5 mL cDNA, 2 mL each primer (0.1 nmol/ mL), 10 mL2×
+Q3 SYBR Qpcr Master mix and 3 mL ddH 2O. The samples were run
+with one cycle of 95 °C for 30 s, 40 cycles of 95°C for 10 s, 60°C for
+30 s, and one cycle each of 95°C for 15 s, 60°C for 1 min, and 95°C
+for 15 s. Melting curves, melting temperatures and C tvalues were
+analyzed with QuantStudio™Real-Time PCR software v1.6.1,
+where C tvalues were used to calculate relative expression.
+Results
+Phenotypic analysis
+Salt treatments signi ﬁcantly reduced sorghum seedling growth.
+On average in both years, 50 mM NaCl treatment reduced RL by
+15-16%, SL by 10-11%, and RDW by 10-13%, but SDW was only
+reduced by 0.5-1%, indicating that sorghum plants have basic salt
+tolerance; however, at 200 mM NaCl, RL was reduced by 53-54%,
+SL by 50-55%, RDW by 50-54%, SDW by 38-42% ( Supplementary
+Table S3 ). Based on STC results, IS 32787 and IS 12937 were ranked
+as salt-tolerant and IS 4515 and IS 9108 as salt-sensitive accessions(Supplementary Table S3 ).
+We calculated correlation coef ﬁcients ( r) among the 84 trait
+combinations and made the following observations ( Supplementary
+Table S4 ). 1) In both years, correlation of treatments with control
+decreased as the salt levels increased for RDW19, RFW19, RL19,
+SDW19, SFW19, SL19, RFW20, RL20, SFW20, and SL20, with r
+ranging from 0.48-0.91. 2) There was also signi ﬁcant positive
+correlation between RL19 and RFW19 ( r= 0.43-0.82), RDW19 and
+SDW19 ( r= 0.42-0.67), and SL19 and SFW19 ( r= 0.35-0.88) within
+each treatment. 3) Phenotypic values among the treatment within the
+same trait were also signi ﬁcantly correlated for RDW19, RL19, SFW19,
+SL19, RFW20, RL20, SFW20, and SL20. 4) RDW and SDW were
+highly correlated ( r= 0.42-0.67) within treatments, indicating some
+degree of growth coordination be tween shoots and roots. 5) Both
+RL
+STCand SL STCwere highly and positively correlated ( r= 0.63-0.83).
+These suggest that growth under control condition was highly
+predictable of growth under salt stress treatment, but this
+predictability diminished slightly with increasing salt stress.
+GWAS mapping
+We mapped 35 salt tolerance related loci, each represented by
+m u l t i p l eS N Pm a r k e r s ;1 8o ft h e3 5w e r eS T Ct r a i t s .A m o n gt h e3 5l o c i ,
+all except one (10-4) were detected in at least one other experiment
+(control or treatment), indicating the mapped loci were stable across
+experiments in the same year. The locus with strongest [highest -log( P)
+value] association was 8 –1w i t h- l o g ( P) value ranging from 35.8323 to
+48.6724. Loci 1-3, 1-4, and 7 –2 were each detected across six treatment/
+trait combinations while 3-4, 3-5, 4-6, 6-1, 7-1, 9 –2 were each detected
+across ﬁve treatment/trait combinations; the rest were detected between
+2–4 treatment/trait combinations. Among the 35 loci, 14 wereWang et al. 10.3389/fpls.2025.1682270
+Frontiers in Plant Science frontiersin.org 03
+pleiotropic for more than one trait while the other 21 were for single
+growth traits, six for RDW, ﬁve for SDW, four for SFW and three each
+for SL and RL. Two RFW loci (1 –3a n d1 0 - 4 )w e r ep l e i o t r o p i cw i t h
+other traits. One pleiotropic locus (4-6) was mapped to the control
+(RDW19) and all four salt treat ments (RDW19Na_50, RDW19Na_100,
+RDW19Na_150, RDW19Na_200) ( Supplementary Table S8 ).
+Candidate gene identi ﬁcation
+In 29 of the 35 loci, we identi ﬁed 39 candidate genes for salt
+tolerance ( Supplementary Table S8 ). Majority of these genes (29 of
+the 39) have orthologs in other species that have been shown to play
+roles in salt tolerance (see Discussion). Three of these genes, in Loci
+2-7, 6 –2 and 7-1, were sorghum-speci ﬁc genes with unknown
+functions. There were three F-box containing proteins in Loci 2-
+1, 3–4 and 4-3, respectively ( Supplementary Table S8 ). We found 21
+of the 39 genes contained linked SNPs in either its proximal
+promoter, coding or 3 ’-UTR. Among eight cases where SNP(s)
+was located in exon(s), in two cases it caused synonymous mutation
+but non-synonymous in the other six cases. In the remaining 13
+cases, these SNPs were either located in introns (Loci 1-4, two genesin 3-2, 4-6, 7-2, 9 –3 and 10-1), 3 ’-UTRs [Loci 2-6 (two genes), 10 –2
+and 10-4] or promoters (Loci 4 –1 and 4-4) ( Table 1 ).
+Gene expression and qPCR
+Candidate gene expression based on data available from
+GeneAtlas v2 FPKM ( McCormick et al., 2018 )i sp r o v i d e di n
+Supplementary Table S5 . Nine of the 39 candidate genes from
+eight loci showed root-preferential expression: Sobic.003G021600
+(3-2; ATP-dependent RNA helicase DDX35 ),Sobic.004G008300 (4-2;
+fatty acid hydroxylase ),Sobic.004G264000 (4-6; receptor protein
+kinase ),Sobic.007G050700 (7-1; unknown protein ),
+Sobic.007G059400 (7-2; anthocyanin 5-aromatic acyltransferase ),
+Sobic.009G015166 (DUF247 )a n d Sobic.009G015200 (unknown
+protein ) (9-2), Sobic.009G256800 (9-4; unknown protein ), and
+Sobic.010G234400 (10-4; O-methyltransferase ZRP4 ).
+We selected eight candidate genes for qPCR analysis:
+Sobic.001G038601 (unknown ),Sobic.003G207600 (F-box domain ),
+Sobic.004G225600 (DEAD-box ATP-dependent RNA helicase 47A ),
+Sobic.004G264000 (receptor protein kinase ),Sobic.004G264100
+(Na+/H+antiporter ),Sobic.007G059400 (anthocyanin 5-aromatic
+acyltransferase ),Sobic.010G025850 (Myeloid leukemia factor 1-
+interacting protein ), and Sobic.010G234400 (O-methyltransferase
+ZRP4 ). Two of these genes, Sobic.003G207600 and
+Sobic.004G264100 , failed. For Sobic.004G225600 ,s a l tt r e a t m e n t
+down-regulated its expression in both the tolerant and sensitive
+accessions upon salt treatment; the only difference was that its
+down-regulation was signi ﬁcant in sensitive accessions ( Figure 1A ).
+On the other hand, Sobic.010G234400 ’s expression was signi ﬁcantly
+down-regulated in salt-tolerant accessions but up-regulated in salt-
+sensitive accessions ( Figure 1B ). The expression of the other four
+genes was less consistent ( Supplementary Figure S2 ).Haplotype analysis
+We performed haplotype analysis with SNPs from Locus 4 –5
+for SDW19Na_200 and 10 –4 for RFW20Na_200. The four SNPs
+from Locus 4-5, 57576627, 57576638, 57576654 and 57576672,
+were all located between Sobic.004G225600 andSobic.004G225700
+(DNA REPAIR PROTEIN RAD7 ). They fell into two haplotypes
+(Table 2 ), including 100 Haplotype Is, and 22 IIs. Their SFW
+(SFW19Na_200) averaged 0.1817 and 0 .3366 g/plant, respectively
+TABLE 1 Location of linked SNPs in genic regions in sorghum.
+Locus Gene ID SNP annotation
+1-4Sobic.001G43140071037460/71039135 in introns
+2, 5
+Sobic.001G43150071047857/71048187 in exon
+but both synonymous
+2-5 Sobic.002G39310074592425 in exon 6 is non-
+synonymous; all others in the
+second intron
+2-6Sobic.002G421300 all in 3 ’-UTR
+Sobic.002G421350 all in introns or 3 ’-UTR
+3-1 Sobic.003G0199001750689/1750699 in exon 2
+(see text)
+3-2Sobic.003G021500 1838250 in intron 1
+Sobic.003G0216001846262 and 1855323 both in
+introns
+Sobic.003G0217001860237 in exon 2 is
+nonsynonymous
+4-1 Sobic.004G003900526 bp upstream from coding
+region
+4-2 Sobic.004G008300733965 in exon 2 is
+synonymous
+4-4 Sobic.004G101900407 bp upstream from coding
+region
+4-6 Sobic.004G264000 60885024 in intron 1
+6-1 Sobic.006G06470042467059 in exon 3 is non-
+synonymous; all others in
+introns or 3 ’-UTR
+7-2 Sobic.007G059400 all in introns
+9-2Sobic.009G0151661349130 UAG is a stop codon;
+1349692 is synonymous; allothers are in introns
+Sobic.009G0152001384724 in exon 7; 1386013 in
+exon 6; both non-synonymous
+9-3 Sobic.009G211200 all in intron 810-1 Sobic.010G025850 all in intron 7
+10-2 Sobic.010G162500 all in 3 ’-UTR
+10-4 Sobic.010G234400 57710773 in 3 ’-UTRWang et al. 10.3389/fpls.2025.1682270
+Frontiers in Plant Science frontiersin.org 04
+and Haplotype II with 0.3366 average SFW were signi ﬁcantly
+higher than that of Haplotype I ’s average of 0.1817 ( P<1 . 3 6×1 0-7)
+(Figure 2A ) and all top seven SFW accessions were Haplotype II
+(Supplementary Table S6 ). Similarly, among the three SNPs from
+Locus 10-4, 57710585, 57710592 and 57710613 were all in the 3 ’-
+UTR of Sobic.010G234300 (unknown protein) which overlaps with
+the 3 ’-UTR of Sobic.010G234400 (O-methyltransferase ZRP4 ). The
+three also fell into three haplotypes ( Table 3 ). In this locus,
+Haplotypes I, II and III had 45, 181, and 7 accessions and their
+RFW (RFW20Na_200) averaged 0.28, 0.18 and 0.30, respectively.
+Again, Haplotypes I and III accessions had signi ﬁcantly higher RFWthan those of II ( Figure 2B ) and all top four RFW accessions were of
+Haplotype I ( Supplementary Table S7 ). This information may be
+useful in marker-assisted selection in sorghum breeding.
+Discussion
+In this study, we mapped seedling salt tolerance of the sorghum
+mini core collection to 35 loci. Interestingly, the most tightlyTABLE 2 Two haplotypes of SNPs from Locus 4-5 (see Figure 2A ).
+SNP
+Haplotype57576627 57576638 57576654 57576672
+Haplotype I A A C C
+Haplotype II M R Y Y
+FIGURE 1
+qPCR of Sobic.004G225600 (A)and Sobic.010G234400 (B)from roots of two salt-tolerant (IS 12937, IS 32787) and two salt-sensitive (IS 4515, IS
+9108) mini core accessions. CK: control. NaCl: 200 mM NaCl treatment. *, **, *** indicate signi ﬁcant differences with control at P < 0.05, 0.01 and
+0.001, respectively.
+TABLE 3 Three haplotypes of SNPs from Locus 10-4 (see Figure 2B ).
+SNP
+Haplotype57710585 57710592 57710613
+Haplotype I A G G
+Haplotype II G T T
+Haplotype III R K K
+FIGURE 2
+Haplotypic effects of Loci 4 –5 and 10 –4 on SFW19Na_200 (A)and RFW20Na_200 (B), respectively. In both (A, B) , from left to right are Haplotypes I
+to III and Pvalues were based on comparison to the lowest haplotypes. The × inside each box in the boxplot represents the mean and the
+horizontal line represents the median value of each data group. ** and *** indicates difference from the lowest was at P< 0.01 and 0.001,
+respectively, using t-test.Wang et al. 10.3389/fpls.2025.1682270
+Frontiers in Plant Science frontiersin.org 05
+associated locus 8 –1 is located in a non-coding region (no protein-
+coding genes are annotated within 80 kb regions on each side of the
+locus). Causal variants identi ﬁed by GWAS in non-coding regions
+are not uncommon, especially in humans ( Alsheikh et al., 2022 ).
+These non-coding regions may impact the phenotype by altering
+enhancers, transcription factor binding sites, chromatin state
+(Alsheikh et al., 2022 ;Schipper and Posthuma, 2022 )o r
+microRNA expression ( Boz ̌ic ́et al., 2024 ). Future projects will
+investigate these possibilities. But for the rest of the loci, 29 of the
+39 candidate genes have been found to have orthologs in other
+species. In the following sections, we outline their roles in plant
+salt tolerance.
+Response of gene network to salt in sorghum has been elegantly
+presented by Amombo et al. (2022) and many candidate genes
+reported in this study may play a role in sorghum salt tolerance in
+this network. Salt immediately causes three problems: osmotic
+stress, cytotoxic ROS accumulation and Na+/Cl-toxicity
+(Amombo et al., 2022 ;van Zelm et al., 2020 ). But before all these
+are started, plants need to sense the salt presence. This seems to be
+carried out by receptor-like kinases (RLKs) ( van Zelm et al., 2020 ).
+For example, RLK can sense the salt-induced changes in the cell wall
+(Feng et al., 2018 ). We found an RLK gene ( Sobic.004G264000 ) from
+Locus 4 –6 that may play this role in sorghum. Plants confront ROS
+by activating antioxidant genes to scavenge excess ROS ( Amombo
+et al., 2022 ) and if the ROS is not maintained at normal level, it may
+cause double-stranded DNA break ( Zvanarou et al., 2020 ).DNA
+REPAIR PROTEIN RAD7 from Locus 4 –5 may be an enzyme for
+such DNA repair. Myeloid leukemia factor 1-interacting protein
+(MLF ) in Locus 10 –1 may be related to ROS as stressors induce both
+ROS production and MLF expression ( Wu et al., 2023 ). Fatty acid
+hydroxylases such as the one found in Locus 4 –2 enhance salt
+tolerance by modulating fatty acid metabolic pathways and
+improving cell membrane stability and antioxidant capacity ( Gu
+et al., 2025 ). Flavonoids including anthocyanins are powerful
+antioxidants to scavenge ROS ( Huchzermeyer et al., 2022 ) and
+have been demonstrated to play a major role in sorghum salt
+tolerance ( Ren et al., 2022 ). This is why anthocyanin synthesis
+related genes such as anthocyanin 5-aromatic acyltransferase
+(Murayama et al., 2021 )f r o mL o c u s7 –2a n d HOMEOBOX-
+LEUCINE ZIPPER PROTE IN ANTHOCYANINLESS 2 (Kubo
+et al., 1999 ) from Locus 3 –3 can be induced by salt treatment
+(Wang et al., 2023 ). Related to ROS, Sobic.010G162500 (CO
+dehydrogenase ﬂavoprotein-like, FAD-binding ) in Locus 10 –2i s
+ortholog to AT4G20860 (BBE22 )i n v o l v e di nH 2O2generation
+(Santamar ı ́ae ta l . ,2 0 1 8 ).O-methyltransferase (Locus 10-4)
+(Hafeez et al., 2021 ) and ﬂavonol synthase from Locus 3 –2 are
+involved in ﬂavonoid synthesis an d overexpressing ﬂavonol
+synthases in plants increases tolerance to saline-alkali stress by
+enhancing ﬂavonol accumulation, antioxidant capacity and osmotic
+balance ( Zhang et al., 2023 ) and increases K+/Na+ratio which in
+turn leads to salt tolerance ( Wang et al., 2021 ). Therefore, the
+ﬂavonoid pathway may also be relevant in maintaining K+/Na+
+homeostasis to minimize Na+/Cl-toxicity ( Amombo et al., 2022 ;
+Ren et al., 2022 ). Similarly, overexpressing sorghum Na+/H+
+antiporter (one found in Locus 4-6) also promoted antioxidativeenzyme activities, lower Na+and higher Ca2+levels in roots which
+led to Na+exclusion and increased salt tolerance ( Kumari et al.,
+2017 ). Also playing a role in maintaining K+/Na+homeostasis are
+response regulators such as the one found in Locus 6-1,
+Sobic.006G064700 (RESPONSE REGUL ATORY DOMAIN-
+CONTAINING PROTEIN ), which is orthologous to Arabidopsis
+AT2G25180 ( ARR12 ). ARR12 regulates Na+accumulation in the
+shoots by controlling the expression of AtHKT1;1 (HKT: high-
+afﬁnity K+transporter) in the roots ( Mason et al., 2005 ) and HKT is
+also central to alleviating Na+/Cl-toxicity ( Amombo et al., 2022 ).
+Na+/Ca2+exchanger NCL such as the one in Locus 3 –2 transport
+Ca2+to the cytosol and sequester cytosolic Na+into the vacuole;
+consequently, Arabidopsis atncl mutant is sensitive to salt stress
+(Ishu et al., 2025 ;Wang et al., 2012 ). Also affecting the K+/Na+
+homeostasis is nitric-oxide (NO) synthase (ortholog found in Locus
+4-1) as its mutation produces greater Na+/K+ratio in shoots due to
+enhanced Na+and reduced K+accumulation when exposed to salt
+(Zhao et al., 2007 ). Brassinosteroid (BR) biosynthesis genes can be
+induced by salt and BR-mediated S-nitrosoglutathione reductase
+negatively regulates NO to reduce ROS and induce genes related to
+Na+and K+transport, leading to the decrease of Na+/K+ratio in the
+roots ( Zeng et al., 2024 ).Sobic.002G393100 (estrogen 17-
+oxidoreductase )i nL o c u s2 –6i so r t h o l o g o u st o AT5G50700
+(AtHSD1 ; HSD: 11- b-hydroxysteroid dehydrogenase) and plants
+overexpressing AtHSD1 constitutively expressed BR response genes
+(Li et al., 2007 ), linking this gene to salt tolerance through BR.
+Citrate synthase ( Liang et al., 2021 ) (ortholog in Locus 4-4) and
+small subunit ribosomal protein S3Ae ( Liang et al., 2015 ) (ortholog
+in Locus 1-4) provide salt tolerance through tolerance to
+osmotic stress.
+Other candidate genes provide salt tolerance through other/
+unknown pathways not included by Amombo et al. (2022) .a/b-
+Hydrolases (ortholog in Locus 1-4) include many members and
+some have been shown to enhance salt tolerance ( Liu et al., 2014 ).
+Another large gene family is F-box proteins (orthologs found in
+Loci 2-1, 3-4, and 4-3) and again some members are induced by salt
+(Jia et al., 2017 ) or confer salt tolerance ( Xu et al., 2014 ).RICIN B-
+LIKE LECTIN R40G3 in Locus 2 –7i so r t h o l o g o u st o
+LOC_Os07g48500 (Osr40g3 ) which improves salt tolerance ( Roy
+et al., 2025 ). GDSL lipase/esterase (ortholog in Locus 3-1) in
+Arabidopsis, AtLTL1 , increases salt tolerance when overexpressed
+(Naranjo et al., 2006 ). ATP-dependent RNA helicases (found in
+Loci 3 –2 and 4-5) can be salt-induced ( Nakamura et al., 2004 )o r
+increase salt tolerance when overexpressed ( Nguyen et al., 2018 ).
+Heading date 5 in 7 –2 is orthologous to AT4G14540/NF-YB3 and
+overexpression of PwNF-YB3 in Arabidopsis showed a signi ﬁcant
+tolerance to salinity, drought and osmotic stress ( Zhang et al.,
+2015 ).tRNA(His) guanylyltransferase in Locus 9 –3 is orthologous to
+riceLOC_Os05g45890 /AET1 whose mutation causes sensitivity to
+both salt and drought ( Chen et al., 2019 ).
+In summary, we conducted a GWAS using a panel of 245
+sorghum mini core accessions and 6,094,317 SNPs. We evaluated
+seedlings under ﬁve NaCl concentrations (0, 50, 100, 150, and 200
+mmol/L) in 2019 and three (0, 50, and 200 mmol/L) in 2020 for
+shoot/root length, shoot/root fresh weight, and shoot/root dryWang et al. 10.3389/fpls.2025.1682270
+Frontiers in Plant Science frontiersin.org 06
+weight, resulting in 84 trait/treatment/year combinations. GWAS of
+these 84 combinations mapped 35 loci, 39 candidate genes were
+identi ﬁed from 29 of the 35 loci and 29 of the 39 have orthologs in
+other species that have been shown to play roles in salt tolerance in
+plants. These candidate genes include those potentially involved in
+K+/Na+homeostasis such as O-methyltransferase (Locus 10-4),
+ﬂavonol synthase (Locus 3-2), Na+/H+antiporter (Locus 4-6),
+response regulators (Locus 6-1, Na+/Ca2+exchanger NCL (Locus
+3-2), nitric-oxide synthase (Locus 4-1) and estrogen 17-
+oxidoreductase/11- b-hydroxysteroid dehydrogenase (Locus 2-6).
+Other genes are potentially related to stress signaling and growth
+regulation were also identi ﬁed in genomic regions in or adjacent to
+the location of associated markers. These ﬁndings provide genes for
+functional studies and markers for molecular breeding.
+Data availability statement
+The original contributions presented in the study are included
+in the article/ Supplementary Material . Further inquiries can be
+directed to the corresponding author.
+Author contributions
+LW: Writing –review & editing, Writing –original draft. JZ:
+Writing –original draft, Data curation, Investigation. MJ: Writing –
+original draft, Investigation. QF: Writing –original draft,
+Investigation. GY: Writing –original draft, Investigation. LL:
+Writing –original draft, Investigation. YuW: Writing –original
+draft, Investigation. EH: Writing –original draft, Data curation.
+YoW: Writing –original draft, Formal Analysis. DH: Writing –
+original draft, Investigation. YW: Writing –review & editing,
+Writing –original draft. ZX: Validation, Writing –review & editing.
+Funding
+The author(s) declare ﬁnancial support was received for the
+research and/or publication of this article. This research was funded
+by the National Natural Science Foundation of China(32372134),
+PhD Stable Talent Funding(No.NXWD202401), Chuzhou “Star of
+Innovation and Entrepreneurship ”Industrial Innovation Team.Conﬂict of interest
+The authors declare that the research was conducted in the
+absence of any commercial or ﬁnancial relationships that could be
+construed as a potential con ﬂict of interest.
+Generative AI statement
+The author(s) declare that no Generative AI was used in the
+creation of this manuscript.
+Any alternative text (alt text) provided alongside ﬁgures in this
+article has been generated by Frontiers with the support of arti ﬁcial
+intelligence and reasonable e fforts have been made to ensure
+accuracy, including review by the authors wherever possible. If
+you identify any issues, please contact us.
+Publisher ’s note
+All claims expressed in this article are solely those of the
+authors and do not necessarily represent those of their af ﬁliated
+organizations, or those of the publisher, the editors and the
+reviewers. Any product that may be evaluated in this article, or
+claim that may be made by its manufacturer, is not guaranteed or
+endorsed by the publisher.
+Supplementary material
+The Supplementary Material for this article can be found online
+at:https://www.frontiersin.org/articles/10.3389/fpls.2025.1682270/
+full#supplementary-material
+SUPPLEMENTARY FIGURE 1
+Genmone-wide association analysis of 84 Traits for Salt Stress
+Manhattan plots.
+SUPPLEMENTARY FIGURE 2
+qPCR of four selected candidate genes Sobic.001G038601 (A),
+Sobic.004G264000 (B),Sobic.007G059400 (C)and Sobic.010G025850 (D)
+from roots in two salt-tolerant (IS12937, IS32787) and two salt-sensitive
+(IS4515, IS9108) accessions. CK: control. NaCl: 200 mM NaCl treatment. *,
+**, indicate signi ﬁcant differences with control at P < 0.05 and
+0.01, respectively.
+References
+Alsheikh, A. J., Wollenhaupt, S., King, E. A., Reeb, J., Ghosh, S., Stolzenburg, L. R.,
+et al. (2022). The landscape of GWAS validation; systematic review identifying 309validated non-coding variants across 130 human diseases. BMC Med. Genomics 15, 74.
+doi: 10.1186/s12920-022-01216-w
+Amombo, E., Ashilenje, D., Hirich, A., Kouisni, L., Oukarroum, A., Ghoulam, C.,
+et al. (2022). Exploring the correlation between salt tolerance and yield: researchadvances and perspectives for salt-tolerant forage sorghum selection and geneticimprovement. Planta 255, 71. doi: 10.1007/s00425-022-03847-w
+Arvidsson, S., Kwasniewski, M., Riaño-Pacho ́n, D. M., and Mueller-Roeber,
+B. (2008). QuantPrime –aﬂexible tool for reliable high-throughput primerdesign for quantitative PCR. BMC Bioinf. 9, 465. doi: 10.1186/1471-2105-9-
+465
+Boz ̌ic ́, M., Ignjatovic ́Micic ́, D., Delic ́, N., and Nikolic ́, A. (2024). Maize miRNAs and
+their putative target genes involved in chilling stress response in 5-day old seedlings.BMC Genomics 25, 479. doi: 10.1186/s12864-024-10403-1
+Chen, K., Guo, T., Li, X. M., Zhang, Y. M., Yang, Y. B., Ye, W. W., et al. (2019).
+Translational regulation of plant response to high temperature by a dual-function tRNAHis
+guanylyltransferase in rice. Mol. Plant 12, 1123 –1142. doi: 10.1016/j.molp.2019.04.012
+Chen, C., Shang, X., Sun, M., Tang, S., Khan, A., Zhang, D., et al. (2022).
+Comparative transcriptome analysis of two sweet sorghum genotypes with differentWang et al. 10.3389/fpls.2025.1682270
+Frontiers in Plant Science frontiersin.org 07
+salt tolerance abilities to reveal the mechanism of salt tolerance. Int. J. Mol. Sci. 23,
+2272. doi: 10.3390/ijms23042272
+Cui, Y., Zhang, F., and Zhou, Y. (2018). The application of multi-locus GWAS for the
+detection of salt-tolerance loci in rice. Front. Plant Sci. 9, 1464. doi: 10.3389/
+fpls.2018.01464
+Daniells, I. G., Holland, J. F., Young, R. R., Alston, C. L., and Bernardi, A. L. (2001).
+Relationship between yield of grain sorghum ( Sorghum bicolor ) and soil salinity under
+ﬁeld conditions. Aust. J. Exp. Agri 41, 211 –217. doi: 10.1071/EA00084
+Famoso, A. N., Zhao, K., Clark, R. T., Tung, C. W., Wright, M. H., Bustamante, C.,
+et al. (2011). Genetic architecture of aluminum tolerance in rice ( Oryza sativa )
+determined through genome-wide association analysis and QTL mapping. PloS
+Genet. 7, e1002221. doi: 10.1371/journal.pgen.1002221
+Feng, W., Kita, D., Peaucelle, A., Cartwright, H. N., Doan, V., Duan, Q., et al. (2018).
+The FERONIA receptor kinase maintains cell-wall integrity during salt stress throughCa2+signaling. Curr. Biol. 28, 666 –6675. doi: 10.1016/j.cub.2018.01.023
+Goodstein, D. M., Shu, S., Howson, R., Neupane, R., Hayes, R. D., Fazo, J., et al.
+(2012). Phytozome: a comparative platform for green plant genomics. Nucleic Acids
+Res.40, D1178 –D1186. doi: 10.1093/nar/gkr944
+Gu, H., Feng, W., Mehari, T. G., Wang, Y., Wang, Z., Xu, Y., et al. (2025). Genome-
+wide analysis and functional validation of the cotton FAH gene family for salt stress.BMC Genomics 26, 271. doi: 10.1186/s12864-025-11450-y
+Hafeez, A., Ge ̌, Q., Zha ̄ng, Q., Lï, J., Go ̄ng, J., Liu ́, R., et al. (2021). Multi-responses of
+O-methyltransferase genes to salt stress and ﬁber development of Gossypium species.
+BMC Plant Biol. 21, 37. doi: 10.1186/s12870-020-02786-6
+Hostetler, A. N., Govindarajulu, R., and Hawkins, J. S. (2021). QTL mapping in an
+interspeci ﬁc sorghum population uncovers candidate regulators of salinity tolerance.
+Plant Stress 2, 100024. doi: 10.1016/j.stress.2021.100024
+Huchzermeyer, B., Menghani, E., Khardia, P., and Shilu, A. (2022). Metabolic
+pathway of natural antioxidants, antioxidant enzymes and ROS providence.Antioxidants (Basel) 11, 761. doi: 10.3390/antiox11040761
+Ishu,, Shumayla,, Madhu,, and Upadhyay, S. K. (2025). Complementation with
+TaNCL2-A reinstates growth and abiotic stress response in atncl mutant of
+Arabidopsis. Plant Sci. 353, 112411. doi: 10.1016/j.plantsci.2025.112411
+Javid, S., Bihamta, M. R., Omidi, M., Abbasi, A. R., Alipour, H., and Ingvarsson, P. K.
+(2022). Genome-Wide Association Study (GWAS) and genome prediction of seedling
+salt tolerance in bread wheat ( Triticum aestivum L.). BMC Plant Biol. 22, 581.
+doi: 10.1186/s12870-022-03936-8
+Jia, Q., Xiao, Z. X., Wong, F. L., Sun, S., Liang, K. J., and Lam, H. M. (2017). Genome-
+wide analyses of the soybean F-box gene family in response to salt stress. Int. J. Mol. Sci.
+18, 818. doi: 10.3390/ijms18040818
+Kang, H. M., Sul, J. H., Service, S. K., Zaitlen, N. A., Kong, S. Y., Freimer, N. B., et al.
+(2010). Variance component model to account for sample structure in genome-wideassociation studies. Nat. Genet. 42, 348 –354. doi: 10.1038/ng.548
+Kong, W., Zhang, C., Zhang, S., Qiang, Y., Zhang, Y., Zhong, H., et al. (2021).
+Uncovering the novel QTLs and candidate genes of salt tolerance in rice with linkagemapping, RTM-GWAS, and RNA-seq. Rice (N Y) 14, 93. doi: 10.1186/s12284-021-
+00535-3
+Kubo, H., Peeters, A. J., Aarts, M. G., Pereira, A., and Koornneef, M. (1999).
+ANTHOCYANINLESS2, a homeobox gene affecting anthocyanin distribution androot development in Arabidopsis. Plant Cell 11, 1217 –1226. doi: 10.1105/tpc.11.7.1217
+Kumari, P. H., Kumar, S. A., Sivan, P., Katam, R., Suravajhala, P., Rao, K. S., et al.
+(2017). Overexpression of a plasma membrane bound Na
++/H+Antiporter-like protein
+(SbNHXLP ) confers salt tolerance and improves fruit yield in tomato by maintaining
+ion homeostasis. Front. Plant Sci. 7, 2027. doi: 10.3389/fpls.2016.02027
+Li, F., Asami, T., Wu, X., Tsang, E. W., and Cutler, A. J. (2007). A putative
+hydroxysteroid dehydrogenase involved in regulating plant growth and development.Plant Physiol. 145, 87 –97. doi: 10.1104/pp.107.100560
+Liang, X., Liu, S., Wang, T., Li, F., Cheng, J., Lai, J., et al. (2021). Metabolomics-driven
+gene mining and genetic improvement of tolerance to salt-induced osmotic stress in
+maize. New Phytol. 230, 2355 –2370. doi: 10.1111/nph.17323
+Liang, X., Liu, Y., Xie, L., Liu, X., Wei, Y., Zhou, X., et al. (2015). A ribosomal protein
+AgRPS3aE from halophilic Aspergillus glaucus confers salt tolerance in heterologous
+organisms. Int. J. Mol. Sci. 16, 3058 –3070. doi: 10.3390/ijms16023058
+Liu, C., Chen, K., Zhao, X., Wang, X., Shen, C., Zhu, Y., et al. (2019). Identi ﬁcation of
+genes for salt tolerance and yield-related traits in rice plants grown hydroponically andunder saline ﬁeld conditions by genome-wide association study. Rice (N Y) 12, 88.
+doi: 10.1186/s12284-019-0349-z
+Liu, D., Wang, L., Zhai, H., Song, X., He, S., and Liu, Q. (2014). A novel a/b-
+hydrolase gene IbMas enhances salt tolerance in transgenic sweetpotato. PLoS One 9,
+e115128. doi: 10.1371/journal.pone.0115128
+Luo, X., Wang, B., Gao, S., Zhang, F., Terzaghi, W., and Dai, M. (2019). Genome-
+wide association study dissects the genetic bases of salt tolerance in maize seedlings. J.
+Integr. Plant Biol. 61, 658 –674. doi: 10.1111/jipb.12797
+Lv, Y., Ma, J., Wei, H., Xiao, F., Wang, Y., Jahan, N., et al. (2022). Combining GWAS,
+genome-wide domestication and a transcriptomic analysis reveals the loci and naturalalleles of salt tolerance in rice ( Oryza sativa L.). Front. Plant Sci. 13, 912637.
+doi: 10.3389/fpls.2022.912637Mace, E., Innes, D., Hunt, C., Wang, X., Tao, Y., Baxter, J., et al. (2019). The Sorghum
+QTL Atlas: a powerful tool for trait dissection, comparative genomics and cropimprovement. Theor. Appl. Genet. 132, 751 –766. doi: 10.1007/s00122-018-3212-5
+Mansour, M. M. F., Emam, M. M., Salama, K. H. A., and Morsy, A. A. (2021).
+Sorghum under saline conditions: responses, tolerance mechanisms, and managementstrategies. Planta 254, 24. doi: 10.1007/s00425-021-03671-8
+Mason, M. G., Mathews, D. E., Argyros, D. A., Maxwell, B. B., Kieber, J. J., Alonso, J.
+M., et al. (2005). Multiple type-B response regulators mediate cytokinin signaltransduction in Arabidopsis. Plant Cell 17, 3007 –3018. doi: 10.1105/tpc.105.035451
+McCormick, R. F., Truong, S. K., Sreedasyam, A., Jenkins, J., Shu, S., Sims, D., et al.
+(2018). The Sorghum bicolor reference genome: improved assembly, gene annotations,
+a transcriptome atlas, and signatures of genome organization. Plant J. 93, 338 –354.
+doi: 10.1111/tpj.13781
+Min, H., Wang, K., Wang, T., Cheng, X., Habyarimana, E., Wang Wang, Y., et al.
+(2025). Association mapping and candidate gene identi ﬁcation for drought tolerance in
+sorghum. Front. Plant Sci. 16, 1629615. doi: 10.3389/fpls.2025.1629615
+Murayama, K., Kato-Murayama, M., Sato, T., Hosaka, T., Ishiguro, K., Mizuno, T.,
+et al. (2021). Anthocyanin 5,3 ’-aromatic acyltransferase from Gentiana tri ﬂ
+ora,a
+structural insight into biosynthesis of a blue anthocyanin. Phytochemistry 186,
+112727. doi: 10.1016/j.phytochem.2021.112727
+Nakamura, T., Muramoto, Y., Yokota, S., Ueda, A., and Takabe, T. (2004). Structural
+and transcriptional characterization of a salt-responsive gene encoding putative ATP-
+dependent RNA helicase in barley. Plant Sci. 167, 63 –70. doi: 10.1016/
+j.plantsci.2004.03.001
+Naranjo, M. A., Forment, J., Rolda ́n, M., Serrano, R., and Vicente, O. (2006).
+Overexpression of Arabidopsis thaliana LTL1 , a salt-induced gene encoding a GDSL-
+motif lipase, increases salt tolerance in yeast and transgenic plants. Plant Cell Environ.
+29, 1890 –1900. doi: 10.1111/j.1365-3040.2006.01565.x
+Nayyeripasand, L., Garoosi, G. A., and Ahmadikhah, A. (2021). Genome-
+wide association study (GWAS) to identi fy salt-tolerance QTLs carrying novel
+candidate genes in rice during early vegetative stage. Rice (N Y) 14, 9. doi: 10.1186/
+s12284-020-00433-0
+Nguyen, L. V., Seok, H. Y., Woo, D. H., Lee, S. Y., and Moon, Y. H. (2018).
+Overexpression of the DEAD-box RNA helicase gene atRH17 confers tolerance to salt
+stress in Arabidopsis. Int. J. Mol. Sci. 19, 3777. doi: 10.3390/ijms19123777
+Prinzenberg, A. E., Campos-Dominguez, L., Kruijer, W., Harbinson, J., and Aarts, M.
+G. M. (2020). Natural variation of photosynthetic ef ﬁciency in Arabidopsis thaliana
+accessions under low temperature conditions. Plant Cell Environ. 43, 2000 –2013.
+doi: 10.1111/pce.13811
+Pritchard, J. K., Stephens, M., and Donnelly, P. (2000). Inference of population
+structure using multilocus genotype data. Genetics 155, 945 –959. doi: 10.1093/genetics/
+155.2.945
+Qiu, F., Zheng, Y., Zhang, Z., and Xu, S. (2007). Mapping of QTL associated with
+waterlogging tolerance during the seedling stage in maize. Ann. Bot. 99, 1067 –1081.
+doi: 10.1093/aob/mcm055
+Rajabi Dehnavi, A., Zahedi, M., and Piernik, A. (2024). Understanding salinity stress
+responses in sorghum: exploring genotype variability and salt tolerance mechanisms.Front. Plant Sci. 14, 1296286. doi: 10.3389/fpls.2023.1296286
+Ren, G., Yang, P., Cui, J., Gao, Y., Yin, C., Bai, Y., et al. (2022). Multiomics analyses of
+two sorghum cultivars reveal the molecular mechanism of salt tolerance. Front. Plant
+Sci.13, 886805. doi: 10.3389/fpls.2022.886805
+Roy, C., Sahid, S., Debgupta, J., Roy, A., Shee, D., Datta, R., et al. (2025). Osr40g3
+imparts salt tolerance by regulating GF14e-mediated gibberellin metabolism to activateEG45 in rice. Plant Cell Physiol. 66, 797 –814. doi: 10.1093/pcp/pcaf023
+Santamar ı ́a, M. E., Arnaiz, A., Velasco-Arroyo, B., Grbic, V., Diaz, I., and Martinez,
+M. (2018). Arabidopsis response to the spider mite Tetranychus urticae depends on theregulation of reactive oxygen species homeostasis. Sci. Rep. 8, 9432. doi: 10.1038/
+s41598-018-27904-1
+Schipper, M., and Posthuma, D. (2022). Demystifying non-coding GWAS variants:
+an overview of computational tools and methods. Hum. Mol. Genet. 31, R73 –R83. doi:
+10.1093/hmg/ddac198
+Sudhakar Reddy, P., Srinivas Reddy, D., Sivasakthi, K., Bhatnagar-Mathur, P., Vadez,
+V., and Sharma, K. K. (2016). Evaluation of Sorghum [ Sorghum bicolor (L.)] Reference
+Genes in Various Tissues and under Abiotic Stress Conditions for Quantitative Real-Time PCR Data Normalization. Front. Plant Sci. 7, 529.
+Ukwatta, J., Pabuayon, I. C. M., Park, J., Chen, J., Chai, X., Zhang, H., et al. (2021).
+Comparative physiological and transcriptomic analysis reveals salinity tolerance
+mechanisms in Sorghum bicolor (L.) Moench. Planta 254, 98. doi: 10.1007/s00425-
+021-03750-w
+Upadhyaya, H. D., Pundir, R. P., Dwivedi, S. L., Gowda, C. L., Reddy, V. G., and
+Singh, S. (2009). Developing a mini core collection of sorghum for diversi ﬁed
+utilization of germplasm. Crop Sci. 49, 1769 –1780. doi: 10.2135/cropsci2009.01.0014
+van Rooijen, R., Aarts, M. G., and Harbinson, J. (2015). Natural genetic variation for
+acclimation of photosynthetic light use ef ﬁciency to growth irradiance in Arabidopsis.
+Plant Physiol. 167, 1412 –1429. doi: 10.1104/pp.114.252239
+van Zelm, E., Zhang, Y., and Testerink, C. (2020). Salt tolerance mechanisms of plants.
+Annu. Rev. Plant Biol. 71, 403 –433. doi: 10.1146/annurev-arplant-050718-100005Wang et al. 10.3389/fpls.2025.1682270
+Frontiers in Plant Science frontiersin.org 08
+Wang, H., Chen, G., Zhang, H., Liu, B., Yang, Y., Qin, L., et al. (2014). Identi ﬁcation
+of QTLs for salt tolerance at germination and seedling stage of Sorghum bicolor L.
+Moench. Euphytica 196, 117 –127. doi: 10.1007/s10681-013-1019-7
+Wang, Y., Li, D., Liu, C., Shi, X., Huang, Y., Liu, C., et al. (2025). Screening and
+identi ﬁcation of grain sorghum germplasm for salt tolerance at seedling stage. Front.
+Plant Sci. 16, 1610685. doi: 10.3389/fpls.2025.1610685
+Wang, P., Li, Z., Wei, J., Zhao, Z., Sun, D., and Cui, S. (2012). A Na+/Ca2+exchanger-
+like protein (AtNCL) involved in salt stress in Arabidopsis. J. Biol. Chem. 287, 44062 –
+44070. doi: 10.1074/jbc.M112.351643
+W a n g ,M . ,R e n ,T . ,H u a n g ,R . ,L i ,Y . ,Z h a n g ,C . ,a n dX u ,Z .( 2 0 2 1 ) .O v e r e x p r e s s i o no fa n
+Apocynum venetum ﬂavonols synthetase gene confers salinity stress tolerance to transgenic
+tobacco plants. Plant Physiol. Biochem. 162, 667 –676. doi: 10.1016/j.plaphy.2021.03.034
+Wang, H., Wang, R., Liu, B., Yang, Y., Qin, L., Chen, E., et al. (2020). QTL analysis of
+salt tolerance in Sorghum bicolor during whole-plant growth stages. Plant Breed 139,
+455 –465. doi: 10.1111/pbr.12805
+Wang, K., Wang, L., Shen, Q., Hu, L., Xing, Z., Wang, Y., et al. (2025). Association
+analysis and identi ﬁcation of candidate genes for sorghum coleoptile color. Agronomy
+15, 688. doi: 10.3390/agronomy15030688
+Wang, J., Yuan, Z., Li, D., Cai, M., Liang, Z., Chen, Q., et al. (2023). Transcriptome
+analysis revealed the potential molecular mechanism of Anthocyanidins ’Improved salt
+tolerance in maize seedlings. Plants (Basel) 12, 2793. doi: 10.3390/plants12152793
+Wu, J. H., Lee, J. C., Ho, C. C., Chiu, P. W., and Sun, C. H. (2023). A myeloid
+leukemia factor homolog is involved in tolerance to stresses and stress-induced protein
+metabolism in Giardia lamblia. Biol. Direct 18, 20. doi: 10.1186/s13062-023-00378-6
+Xu, G., Cui, Y., Wang, M., Li, M., Yin, X., and Xia, X. (2014). OsMsr9, a novel putative
+rice F-box containing protein, confers enhanced salt tolerance in transgenic rice andArabidopsis. Mol. Breed 34, 1055 –1064. doi: 10.1007/s11032-014-0096-1
+Yu, J., Pressoir, G., Briggs, W. H., Vroh Bi, I., Yamasaki, M., Doebley, J. F., et al.
+(2006). A uni ﬁed mixed-model method for association mapping that accounts for
+multiple levels of relatedness. Nat. Genet. 38, 203 –208. doi: 10.1038/ng1702
+Yu, R., Wang, G., Yu, X., Li, L., Li, C., Song, Y., et al. (2021). Assessing alfalfa
+(Medicago sativa L.) tolerance to salinity at seedling stage and screening of the salinity
+tolerance traits. Plant Biol. (Stuttg) 23, 664 –674. doi: 10.1111/plb.13271
+Yu, J., Zhao, W., Tong, W., He, Q., Yoon, M. Y., Li, F. P., et al. (2018). A Genome-Wide
+Association Study Reveals Candidate Genes Related to Salt Tolerance in Rice ( Oryza
+sativa ) at the Germination Stage. Int. J. Mol. Sci. 19, 3145. doi: 10.3390/ijms19103145Yu, J., Zhu, C., Xuan, W., An, H., Tian, Y., Wang, B., et al. (2023). Genome-wide
+association studies identify OsWRKY53 as a key regulator of salt tolerance in rice. Nat.
+Commun. 14, 3550. doi: 10.1038/s41467-023-39167-0
+Yuan, J., Wang, X., Zhao, Y., Khan, N. U., Zhao, Z., Zhang, Y., et al. (2020). Genetic
+basis and identi ﬁcation of candidate genes for salt tolerance in rice by GWAS. Sci. Rep.
+10, 9958. doi: 10.1038/s41598-020-66604-7
+Zeng, L. L., Song, L. Y., Wu, X., Ma, D. N., Song, S. W., Wang, X. X., et al. (2024).
+Brassinosteroid enhances salt tolerance via S-nitrosoglutathione reductase and nitricoxide signaling pathway in mangrove Kandelia obovata. Plant Cell Environ. 47, 511 –
+526. doi: 10.1111/pce.14745
+Zhang, L., Sun, Y., Ji, J., Zhao, W., Guo, W., Li, J., et al. (2023). Flavonol synthase gene
+MsFLS13 regulates saline-alkali stress tolerance in alfalfa. Crop J. 11, 1218 –1229.
+doi: 10.1016/j.cj.2023.05.003
+Z h a n g ,T . ,Z h a n g ,D . ,L i u ,Y . ,L u o ,C . ,Z h o u ,Y . ,a n dZ h a n g ,L .( 2 0 1 5 ) .
+Overexpression of a NF-YB3 transcription factor from Picea wilsonii
+confers
+tolerance to salinity and drought stress in transformed Arabidopsis thaliana. Plant
+Physiol. Biochem. 94, 153 –164. doi: 10.1016/j.plaphy.2015.05.001
+Zhang, K., Zhang, Z., Lu, F., Wang, Y., Ke, F., Zhu, Z., et al. (2022). Bulked
+Segregant Analysis-Sequencing identi ﬁcation of candidate genes for salt tolerance at
+the seedling stage of sorghum ( Sorghum bicolor ).Plant Breed 141, 366 –378.
+doi: 10.1111/pbr.13022
+Zhao, M. G., Tian, Q. Y., and Zhang, W. H. (2007). Nitric oxide synthase-dependent
+nitric oxide production is associated with salt tolerance in Arabidopsis. Plant Physiol.
+144, 206 –217. doi: 10.1104/pp.107.096842
+Zhao, K., Tung, C. W., Eizenga, G. C., Wright, M. H., Ali, M. L., Price, A. H.,
+et al. (2011). Genome-wide association mapping reveals a rich geneticarchitecture of complex traits in Oryza sativa. Nat. Commun. 2, 467. doi: 10.1038/
+ncomms1467
+Zurbriggen, M. D., Hajirezaei, M. R., and Carrillo, N. (2010). Engineering the
+future. Development of transgenic plants with enhanced tolerance to adverseenvironments. B i o t e c h n o l .G e n e t .E n g .R e v . 27, 33 –56. doi: 10.1080/
+02648725.2010.10648144
+Zvanarou, S., Va ́gnerova ́, R., Mackievic, V., Usnich, S., Smolich, I., Sokolik, A., et al.
+(2020). Salt stress triggers generation of oxygen free radicals and DNA breaks in
+Physcomitrella patens protonema. Env. Exp. Bot. 180, 104236. doi: 10.1016/
+j.envexpbot.2020.104236Wang et al. 10.3389/fpls.2025.1682270
+Frontiers in Plant Science frontiersin.org 09

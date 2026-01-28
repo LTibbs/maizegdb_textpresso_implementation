@@ -1,0 +1,1109 @@
+Plant and Cell Physiology , 2026, 00(00),1–14. https://doi.org/10.1093/pcp/pcaf160
+© The Author(s) 2025. Published by Oxford University Press on behalf of the Japanese Society of Plant Physiologists.
+This is an Open Access article distributed under the terms of the Creative Commons Attribution-NonCommercial License(
+https://creativecommons.org/licenses/by-nc/4.0/ ), which permits non-commercial re-use, distribution, and reproduction in any medium, provided the original
+work is properly cited. For commercial re-use, please contact reprints@oup.com for reprints and translation rights for reprints. All other permiss ions can be
+obtained through our RightsLink service via the Permissions link on the article page on our site—for further information please contact
+journals.permissions@oup.com.Regular PaperSorghum bicolor membrane steroid binding protein 1 can
+bind heme and remodel ER membranes
+Khuanpiroon Ratanasopa1,2,†,Rocio Ochoa-Fernandez1,†,Silas B Mellor1,†,Valentina Travaglia1,
+Kasper Hinz1,Pernille S Tuelung3,4andTomas Laursen1,*
+1Department of Plant and Environmental Sciences, University of Copenhagen, Thorvaldsensvej 40, 1871 Frederiksberg, Denmark,2Department of
+Immunotechnology, Lund University, Medicon Village, Scheelevägen 2, 221 00 Lund, Sweden,3CHPSAXS, Department of Drug Design and
+Pharmacology, University of Copenhagen, Universitetsparken 2, 2100 K /obenhavn, Denmark,4Present address: Ascendis Pharma, A/S, 2900 Hellerup,
+Denmark
+*Corresponding author: E-mail, tola@plen. ku.dk
+†These authors contributed equally to this work.
+Received 25 April 2025; Accepted 29 November 2025
+Abstract
+Plant membrane steroid binding proteins (MSBPs) belong
+to the membrane-associated progesterone receptors
+(MAPRs), which is present in all eukaryotic kingdoms.Plant MSBPs have been shown to regulate the function
+of cytochrome P450 enzymes, bind different steroidal
+compounds and confer salt tolerance. However, the exact
+molecular function of plant MSBPs remains elusive. Here,
+we perform a phylogenetic analysis of the six MAPR genesencoded in the Sorghum bicolor genome. Of these, four
+group into a distinct MSBP clade characterized by being N-
+terminally membrane anchored followed by a cytochromeb
+5domain and an extended disordered C-terminal. Bio-
+physical characterization of SbMSBP1 demonstrates that
+this protein can bind heme, which leads to dimerizationpotentially through a heme–heme stacking mechanism.
+Using untargeted proteomics, We further show that MSBPs
+are upregulated in both root and shoot tissues upon expo-sure to salt stress. Based on weighted gene co-expression
+network analysis, we find that SbMSBP1 abundance clusters
+with endoplasmic reticulum (ER) remodeling and vesicletransport proteins. We further show that overexpression
+of SbMSBP1 in S. bicolor protoplasts and tobacco results in
+formation of structures consistent with organized smooth
+ER. Our data indicate that SbMSBP1 functions to remodel
+ER membranes, which may be directly linked to a functionalrole in stress resilience toward both biotic and abiotic
+stresses and furthermore could serve as a useful tool
+for metabolic engineering of ER-scaffolded biosyntheticpathways.
+Keywords: ER membrane dynamics •organized smooth
+endoplasmic reticulum •membrane steroid binding protein •
+salt stress •Sorghum bicolor •vesicle transportIntroduction
+Membrane steroid binding protein (MSBP) family belongs to
+the group of membrane-associated progesterone receptors
+(MAPRs), which are present in all eukaryotic kingdoms
+(Hehenberger et al. 2020 ), whose members include Neuferricin
+(NEUFC) ( Kimura et al. 2010a ), Neudesin ( Kimura et al. 2005 ),
+and the most well-characterized mammalian Progesterone
+Receptor Membrane Component (PGRMC) 1 and 2. Severalindependent reports indicate that PGRMC1 functions in
+various cellular processes, such as modulating vesicular
+trafficking (
+Ahmed et al. 2010 ), heme metabolism ( PielIIIet al.
+2016 ), reticulophagy ( Chen et al. 2021 ), the activity of drug-
+metabolizing cytochrome P450s, and steroidogenesis ( Rohe
+et al. 2009 ,Ryuet al. 2017 ). Hence, the protein plays a crucial
+role in cell metabolism and cancer biology ( Youet al. 2021 ,Lee
+et al. 2022 ).
+The first structural characterization of human PGRMC1
+was the crystal structure of the cytochrome b5-like domain,
+which confirmed the conserved fold of this domain ( Kabe et al.
+2016 ). The crystal structure revealed that the protein binds
+heme via a tyrosine residue (Y113) and dimerizes through a
+heme stacking mechanism. Dimerization of PGRMC1 has beenshown to be important for interaction with Epidermal Growth
+Factor Receptors and cytochrome P450 enzymes (CYP3A4 and
+CYP1A2) (
+Kabe et al. 2016 ). However, a later study showed
+that binding to PGRMC stabilized P450 in a heme-independent
+manner ( McGuire et al. 2021 ). Although the mechanism
+of PGRMC1-mediated stabilization of P450s is currentlyunknown, multiple studies have confirmed that PGRMC1
+binds to P450 enzymes from many families (
+McGuire et al.
+2021 ).
+The MSBP protein family has attracted attention in the
+plant kingdom based on their role in tolerance towardabiotic challenges such as drought, salinity, and temperatureDownloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Ratanasopa et al.
+(Witzel et al. 2018 ,Berka et al. 2020 ) and biotic stress ( Kuhn
+et al. 2010 ,vonSivers et al. 2019 ). The best-characterized plant
+MAPR proteins are those from Arabidopsis thaliana ,w h i c h
+harbors four AtMAPR genes (AtMAPR2–5). AtMAPR5, also
+referred to as Membrane Steroid Binding Protein1 (AtMSBP1),has been demonstrated to bind to progesterone and multiple
+other steroids with lower affinities in vitro (
+Yang et al. 2005 ).
+So far, only a single plant MSBP structure (AtMAPR2) has beensolved by nuclear magnetic resonance (NMR) spectroscopy in
+its apo form (
+Song et al. 2004 ).
+Previously, AtMSBP1 was shown to play a role in pho-
+tomorphogenesis, acting as an inhibitor of cell elongation
+(Yang et al. 2005 ), indicating that AtMSBP1 plays an essential
+role in plant growth and development. Later, AtMSBP1 was
+shown to be involved in brassinosteroid (BR) signaling by
+enhancing endocytosis of BAK1 [Brassinosteroid Insensitive 1(BRI1)-Associated Receptor Kinase 1] (
+Song et al. 2009 ). Based
+on these observations, it has been proposed that MSBPs are
+involved in steroid-related cellular processes ( Yang et al. 2008 ,
+Shiet al. 2011 ), though the molecular mechanisms involved
+in BAK1, BRI1, and AtMSBP1 in endocytosis remain unclear.
+A direct interaction between AtMSBP1 and an intracellularQc-SNARE protein, AtBS14b, has been suggested to act as
+a bridge, enabling the interaction between AtMSBP1 and
+the extracellular domain of BAK1 and further enhancingendocytosis of BAK1 (
+Zhu et al. 2014 ). Most recently, direct
+interactions were demonstrated between AtMSBP1 and 2 and
+P450 enzymes involved in lignin biosynthesis in A. thaliana, indi-
+cating that it also functions as a P450 scaffolding protein ( Gou
+et al. 2018 ).
+In connection with recent studies on cytochrome P450-
+dependent specialized metabolism in the sub-tropical cop plant
+Sorghum bicolor , we have used styrene maleic acid copolymer
+to extract discrete lipid particles (SMALPs) ( Leeet al. 2016 )
+directly from plant membrane fractions ( Smith et al. 2017 ,
+Bassard andLaursen 2019 ) .I s o l a t i o no ft h ed h u r r i nb i o s y n t h e t i c
+enzymes (POR, CYP79A1, and CYP71E1) in SMALPs isolated
+from sorghum endoplasmic reticulum (ER) revealed a strong
+enrichment of SbMSBP1 ( Laursen et al. 2016 ). Given the
+demonstrated effects of MSBP proteins on P450 enzymes,
+this led us to consider the potential role of SbMSBP1 in
+sorghum specialized metabolism. Here, we report an overviewof sorghum MAPR proteins within a wider phylogenetic
+comparison of plant MAPR proteins, along with biophysical
+characterization of SbMSBP1. We confirm that SbMSBP1 isa heme-binding protein with a disordered C-terminus, and
+that the protein undergoes heme-dependent oligomerization.
+Using untargeted proteomics of sorghum seedlings exposed tosalt stress, we show that the expression of SbMSBP1 is highly
+correlated with SNARE proteins and other proteins known to be
+involved in vesicular fusion and vesicle trafficking. By transient
+expression in sorghum protoplast, we furthermore show that
+SbMSBP1 localizes to the ER membrane and induces ER-derivedvesicle formation. Our findings suggest a potential role of
+SbMSBP1 in vesicle-mediated transport between subcellular
+compartments.Results
+Phylogenetic analysis of membrane-associated
+progesterone receptor family in plants
+The genome of S. bicolor (L.) Moench contains six genes encod-
+ing membrane-associated progesterone receptor (MAPR)
+proteins. These proteins are all classified as belonging to the
+Membrane-Associated Progesterone Receptor Component-Related family in the Panther classification system [PTHR10281,
+(
+Thomas et al. 2022 )], and considered to be closely related to
+the animal PGRMC proteins. To investigate the evolutionaryrelationship, we constructed a phylogenetic tree using the 526
+sequences classified to this family retrieved from the Panther
+database (
+Fig. 1a ). This phylogeny reveals three distinct clades
+of MAPR proteins in plants, designated MSBP clade, c-cup clade,
+and NEUFC clades, based on Panther subfamily nomenclature.
+Of these three clades, only proteins belonging to the MSBPclade appear to be membrane anchored, whereas those in the
+NEUFC clade possess N-terminal signal peptides, and proteins
+in the c-cup clade comprise only the cytochrome b
+5-like
+domain ( Fig. 1b ). Besides cytochrome b5-domain containing
+proteins, two distant sub-clades grouped into this family are
+the vacuolar membrane protein clades a and b, which harbor
+some sequence similarity but have distinct folds based on
+inspection of alphafold models (not shown). Four of the MAPRprotein in S. bicolor group in the MSBP clade and will be
+referred to as SbMSBP1–4, while the c-cup and NEUFC clades
+contain each one MAPR protein, designated SbMAPR2 tofollow Arabidopsis nomenclature, and SbNEUFC, respectively
+(
+Fig. 1a ,Supplementary Table S1 ). The functions of the latter
+MAPR clades in plants are currently unknown.
+SbMSBP1 and other MAPR proteins lack the two histidine
+residues responsible for coordinating the heme group in clas-
+sical cytochrome b5proteins, and instead shares the canonical
+residues known to coordinate heme in other MAPR proteins
+(Fig. 1c ). All these sequences share a similar propensity of pre-
+dicted disordered regions in the ∼30 amino acids connect-
+ing transmembrane (TM) and cytochrome b5-like domains,
+as well as the C-terminus of the protein ( Fig. 1d ). The amino
+acid residues in these regions consist mainly of amino acidsthat are either polar, charged, or only moderately hydropho-
+bic (Ala, Val). A proline-rich linker between the TM domain
+and cytochrome b
+5-like domain appears to be common in the
+monocot sequences but only partly conserved with A. thaliana
+homologs ( Fig. 1c ).
+Heme binding induces oligomerization of SbMSBP1
+To investigate heme binding by SbMSBP1, we first com-pared heme binding of the full-length protein to that of
+cytochrome b
+5. Purified SbMSBP1 showed a brown color,
+and showed a spectrum consistent with pentacoordinate
+heme binding, which was lost upon reduction with dithionite
+(Supplementary Fig. S1 ). We next investigated the ability of
+SbMSBP1 to undergo heme-dependent oligomerization as
+described for its homologues from human and Arabidopsis
+2Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Membrane steroid binding protein 1 heme and ER dynamics
+Figure 1. Phylogenetic tree of plant membrane steroid binding proteins (MSBP) and alignment of selected MSBP sequences. (a) Unrooted
+phylogram of all proteins classified into Panther family PTHR10281. Monophyletic plant and animal clades are colored and indicated by asteriskor open circle, respectively. Sequences used for multiple sequence alignment in (c) are indicated in bold type. (b) Schematic overview of domain
+structure in plant MAPR protein clades. (c) Multiple sequence alignment of HsPGRMC1, AtMSBP1 and 2, HvMSBP1, and SbMSBP1, performed
+using MAFFT, with shading to indicate sequence conservation. Predicted TM domains of all proteins and the Pro-rich linker of HvMSBP1 andSbMSBP1 are outlined, with the conserved Tyr residue responsible for heme binding indicated by asterisk. (d) IUPred2 predictions for SbMSBP1,
+AtMSBP1–2, HvMSBP1, and HsPGRMC1 shows similar overall disorder propensity along the primary sequence. From N- to C-terminus, predicted
+TM and cytochrome b
+5-like domains are shaded. IUPred 2 scores >0.5 indicate disordered sequence, shown by a dashed line. TM, transmembrane
+domain; NENF, Neudesin; NEUFC, Neuferricin; VMP1, vacuolar membrane protein 1. Residue spans for truncated SbMSBP1 variants used in this
+study are shown above the plot.
+(Kabe et al. 2016 ,Gou et al. 2018 ) by expressing and purifying
+the protein without TM domain. We initially prepared a variantmissing the TM domain as well as the N-terminal disordered
+region (residues 1–68,
+Fig. 1d ) but this protein formed gel-like
+aggregates upon purification that could not be redissolved.To resolve this, we generated a TM-less variant removing
+residues 1–44 only to retain the N-terminal disordered domain.
+This variant (referred to as SbMSBP1
+ΔN) purified as a mixture
+of apo- and heme-bound forms that could be separated by
+anion exchange chromatography ( Supplementary Fig. S2a
+and b). Purified apo-SbMSBP1ΔNproduced a similar ferric
+heme-bound spectrum upon incubation with hemin, as well
+as dithionite-induced heme dissociation as the full-lengthprotein (
+Supplementary Fig. S2c ). Analytical size exclusion
+chromatography (SEC) showed retention of apo-SbMSBP1ΔNcorresponding to a molecular mass roughly that expected
+from its sequence (19.4 kDa) ( Supplementary Fig. S3a ).
+By comparison, the C-terminal disordered domain alone
+(SbMSBPC) showed a corresponding shift in retention to
+higher molecular mass equivalent, while an SbMSBP1 variant
+lacking the TM and C-terminal domains (SbMSBP1ΔN,C,
+14.6 kDa) showed good correspondence with expected
+retention ( Supplementary Fig. S3a ). Performing SEC-MALS
+produced the expected molecular masses based on refractiveindex measurements (
+Supplementary Fig. S3b ). Together, these
+SEC-UV and SEC-MALS results indicate that the observed shifts
+in retention time is likely caused by disorder in the C-terminaldomain (
+Supplementary Fig. S3a andb).
+Next, we used SEC-UV to investigate heme-dependent
+oligomerization by SbMSBP1ΔN.I n c u b a t i n gt h ep r o t e i nw i t h
+3Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Ratanasopa et al.
+Figure 2. Characterization of SbMSBP1 by SEC-UV and SAXS. (a) Separation of 50 μM apo-SbMSBP1ΔNon Superdex 200 increase in the presence of
+increasing hemin concentrations, as detected by UV (top) and hemin Soret absorbance (bottom). (b)1H-15N-HSQC spectrum of apo-SbMSBP1ΔN
+and heme-SbMSBP1ΔN, with the spectrum of SbMSBPCincluded to show peaks derived from C-terminal residues. (c) Dimensionless Kratky plots
+o f5m gm L−1of apo-SbMSBP1ΔNand heme-SbMSBP1ΔNsuggest a mixture of globular and disordered parts. (d) Ensemble optimization method
+fits to data at 5 mg mL−1for apo- and heme-SbMSBP1ΔN. Chi-square values are indicated for each fit and normalized fit residuals shown in
+bottom panel. (e) Rg frequency distributions for apo- and heme-SbMSBP1ΔNa t5m gm L−1. (f) D maxfrequency distributions for apo- and heme-
+SbMSBP1ΔNa t5m gm L−1.
+increasing hemin concentrations caused a partial retention
+time shift consistent with formation of a higher, hemin-
+bound oligomeric state ( Fig. 2a ). Estimates of molecular
+weight of these oligomers by SEC-MALS was inaccurate due
+to background scattering from bound heme but suggested
+the major early eluting peak to be dimeric SbMSBP1ΔN
+(Supplementary Fig. S3c ). 2D1H-15N-heteronuclear single-
+quantum coherence (HSQC) NMR showed loss of signal from
+the cytochrome b5-like domain of SbMSBP1ΔNupon heme
+binding due to paramagnetic peak broadening, whereas the
+signal corresponding to the C-terminal unstructured domain
+(residues 175–223) remained broadly unperturbed ( Fig. 2b ).
+Together, these results indicate that SbMSBP1ΔNbinds heme
+and is induced to equilibrate between monomer and oligomeric
+states in vitro . Performing the corresponding experiments
+with progesterone did not yield detectable oligomerization,
+nor any observable change in the1H-15N-HSQC spectrum of
+SbMSBP1ΔN(Supplementary Fig. S4 ).
+Small angle X-ray scattering supports presence of
+heme-bound dimer of SbMSBP1
+Next, we used small angle X-ray scattering (SAXS) to better
+understand the structure of the heme-bound oligomericform of SbMSBP1ΔN. Dimensionless Kratky plots for both
+apo- and heme-SbMSBP1ΔNindicate a mixture of folded
+and disordered regions, consistent with disorder of the C-
+terminus ( Fig. 2c ). Plots for lower protein concentrations
+show less distinct bell-shaped features at q/Rg=3 , r e l a t i v e t o
+the rising signal at increasing q/Rg(Supplementary Fig. S5 ),
+suggesting higher flexibility at lower concentrations. Approxi-
+mated R g-values were larger for heme-SbMSBP1ΔNthan apo-
+SbMSBP1ΔN, (34.18 ±1.02 Å and 28.15 ±0.66 Å, respectively,
+Supplementary Fig. S6 ,Supplementary Table S2 ), but the high
+degree of flexibility precluded molecular weight estimationand maximal particle dimensions (D
+max) estimation from pair-
+distance distribution functions.
+We next used ensemble optimization method (EOM) to
+model scattering profiles ( Kikhney and Svergun 2015 ,Tria
+et al. 2015 ). We used the AlphaFold2 structure of SbMSBP1ΔN
+(Jumper et al. 2021 ), and treated the cytochrome b5-like domain
+of SbMSBP1 as a rigid body and N- and C-terminal regions
+(residues 45–65 and 169–223, respectively) as disordered,which is consistent with our data shown above and with
+low predicted Local Distance Difference Test (pLDDT) scores
+(<70) for these regions in the AlphaFold2 model. We then
+generated combined pools consisting of 10 000 models each
+in monomer and dimer conformations (based on the dimer
+4Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Membrane steroid binding protein 1 heme and ER dynamics
+structure of human PGRMC1). EOM ensembles showed good
+fits to the experimental scattering profiles for both apo-and heme-SbMSBP1
+ΔNproteins at all concentrations ( Fig. 2d ,
+Supplementary Fig. S7 ,Supplementary Table S3 ). The R g
+and D maxdistributions of the selected model ensembles at
+5m gm L−1showed one and two major peaks for apo-SbMSBP
+1ΔNand heme-SbMSBP1ΔN, respectively ( Fig. 2e and f), and
+Rgestimates at all concentrations showed good agreement
+with Guinier estimates ( Supplementary Tables S2 and S3).
+Inspecting the models in the ensembles selected by EOM, apo-
+SbMSBP1ΔNensembles exclusively comprise monomers, except
+at the highest concentration, whereas the heme-SbMSBP1ΔN
+ensembles comprise a mixture of monomers and dimers atall concentrations (
+Supplementary Fig. S8 ). Together, our data
+shows that heme binding induces a shift towards a higher order
+oligomeric state consistent with a dimeric conformation.
+SbMSBP1 expression is correlated with SNARE
+proteins in S. bicolor and is distinct from other
+MSBP isoforms
+In barley ( Hordeum vulgare ), the closest SbMSBP1 homolog
+(HvMSBP1 ) has been shown to be highly upregulated in
+response to salt stress and knockout of the Arabidopsis
+homolog AtMSBP1 showed altered root morphology that
+could be rescued by expression of the barley protein ( Witzel
+et al. 2018 ). Together, these lines of evidence indicate that
+these proteins could have wide-ranging functions across manytissues. We sought to investigate whether this characteristic is
+shared with sorghum MSBP proteins and uncover proteins with
+similar patterns of expression by growing S. bicolor seedlings
+in water or 100 mM NaCl for 7 days before dissecting into
+root, stem (mesocotyl), and tip and performing tissue-levelglobal proteomics (
+Fig. 3a ). We could quantify a total of 11 312
+protein groups for the entire dataset with median coefficients
+of variation below 13% ( Supplementary Fig. S9a andb). After
+normalization and imputation ( Supplementary Fig. S9c ), we
+observed clear separation according to tissue type along the
+first and second principal component axes, and separationaccording to treatment along first and third principal com-
+ponent axis (
+Fig. 3b and c). A total of 2799 proteins were
+significantly different in salt-treated samples across all tissues(P>0.001,
+Supplementary Fig. S10 ).
+Terms for response to chemical and salt stress were
+among the significantly upregulated proteins in all tissues,confirming the effect of the treatment applied, with other
+stress-response and signaling-related terms showing more
+tissue-specific enrichment, such as oxylipin biosynthesis and
+gluthathione-related processes (
+Supplementary Fig. S11a ),
+while processes related to central metabolism and pho-tosynthesis were enriched among downregulated proteins
+(
+Supplementary Fig. S11b ). Altogether, our enrichment analysis
+finds systemic responses consistent with the applied salttreatment. To compare the abundances of individual S.
+bicolor MAPR proteins, we compared intensity-based absolute
+quantities (iBAQ), which summarize protein abundancesto provide intensities equivalent to molar concentrations
+(
+Schwanhausser et al. 2011 ). Based on iBAQ intensities,
+SbMAPR2 was the most abundant MSBP homolog, consistently
+in the top 95th percentile of proteins, while SbMSBP1 was thesecond most abundant homolog across tissues and treatments
+(
+Supplementary Fig. S12 ). SbMSBP4 was the third most abun-
+dant homolog, except in tips, where SbMSBP3 abundance was
+comparable ( Supplementary Fig. S12 ). To investigate proteins
+with related patterns of accumulation to SbMSBP1 in ourdataset (
+Fig. 3d ), we performed weighted gene co-expression
+network analysis (WGCNA), which yielded 26 distinct clusters
+(Supplementary Fig. S13 ,Supplementary File S1 ). The S. bicolor
+MAPR proteins were grouped into five clusters and SbMSBP1
+alone fell into cluster darkturquoise, which comprised proteins
+increasing in abundance in response to salt treatment acrossall tissues (
+Fig. 3e ). Gene ontology (GO) enrichment analysis of
+the darkturquoise cluster found enrichment of proteins related
+to SNARE-dependent ER-Golgi vesicle transport ( Fig. 3f ). Our
+proteomics data thus implicate SbMSBP1 in vesicle-mediated
+transport between these endomembrane compartments.
+SbMSBP1 expression induces formation of
+ER-derived vesicles in protoplasts and tobacco:effect appears to be independent of heme-binding
+To investigate the functional role of SbMSBP1 in vesicle-
+mediated transport, we expressed SbMSBP1 fused to
+monomeric enhanced green fluorescent protein (mEGFP) inprotoplasts derived from 6-day-old S. bicolor seedlings and
+examined its localization by confocal laser scanning microscopy.
+Expression of SbMSBP1-mEGFP led to the formation of
+what appeared to be thick-walled vesicles and to a lesser
+extent strands reminiscent of ER membrane (
+Fig. 4a ,l e f t ) .
+To investigate whether these structures could be ER-derived,
+we co-expressed theSbMSBP1-mEGFP fusion protein with
+an ER membrane marker ( Fig. 4a , middle) derived from the
+N-terminal ER membrane anchor of Arabidopsis CYP51G1
+(Bassard et al. 2012 ), as well as a soluble fluorophore targeted
+to the ER lumen ( Fig. 4a , right) by fusion with rice α-amylase
+8 and an ER retention signal (SEKDEL). In both cases, we
+observed similar vesicles upon co-expression of ER markers
+with SbMSBP1-mEGFP, with overlapping signals for bothfluorophores. We generally saw low expression of the luminal
+ER marker when co-expressed with soluble mEGFP, but much
+stronger signal in the presence of SbMSBP1, which may derivefrom concentration of marker signal in these membrane
+vesicles. The vesicles show increased membrane thickness
+reminiscent of that previously reported for whorls of organized
+smooth ER (OSER) (
+Agee et al. 2010 ,Ferrero et al. 2015 ,Sandor
+et al. 2021 ), or possibly vacuolar bulbs ( Saito et al. 2011 ,
+Segami et al. 2014 ), and z-stacks suggest these structures form
+elongated vesicles in the cell ( Supplementary Files S4–S6 ). To
+ensure the observed vesicles were not due to overexpressiondriven by the 35S promoter, we also expressed SbMSBP1-
+mEGFP under control of its own promoter comprising 1.6 kb
+upstream of the SbMSBP1 start codon (
+Fig. 4b ). In this case,
+5Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Ratanasopa et al.
+Figure 3. Untargeted proteomics of roots, stem (mesocotyl), and tip from sorghum seedlings under salt stress. (a) Outline of the salt stress
+experiment. (b) Principal component analysis of label-free protein quantities in treated and control tissue samples shows clear separation
+according to tissue types along first and second principal components (PC). (c) Principal component analysis showing PC2 and 3, with separation
+along PC3 according to treatment. (d) Label-free quantities of SbMSBP1. Centerline of boxes indicate mean LFQ intensities, with box edgesindicating one standard deviation. (e) Scaled expression profile for proteins belonging to WGCNA cluster darkturquoise. Means of scaled LFQ
+intensities of individual proteins are plotted as black lines, while the cluster median is indicated by a red line. Overlaid boxplots show data
+distribution for individual proteins in each condition. (F) GO enrichment of proteins belonging to the darkturquoise cluster. BP, biological proce ss;
+MF, molecular function; CC, cellular compartment.
+we still observed the formation of vesicles, though they were
+lower in number and generally smaller in size than observedin the case of 35S expression, suggesting vesicle formation
+and morphology is to an extent dose dependent. We next
+investigated the origin of these vesicles by co-expressing themwith organellar markers for Golgi, plasma membranes, and
+peroxisomes (
+Fig. 4c ). We observed some overlap between
+the SbMSBP1-mEGFP signal and the Golgi marker, suggesting
+the vesicles may arise from ER-to-Golgi membrane trafficking
+(Fig. 4c , left). We observed no overlap between the signal for
+plasma membrane or peroxisomes ( Fig. 4c , middle and right).Neither did structures labeled by the plasma membrane marker
+resembling endosomes overlap with the SbMSBP1-mEGFPsignal, in contrast with reports showing the endosome-derived
+vesicles formed by overexpression of Arabidopsis MSBP1 (
+Song
+et al. 2009 ). Attempts to express known vacuolar markers
+(Nelson et al. 2007 ,Han et al. 2022 ) in sorghum protoplasts
+were not successful. Truncation of the C-terminal disordered
+domain of SbMSBP1 did not attenuate vesicle formation
+(Fig. 4d , left panel). Since similar ER-derived structures have
+been shown to form by expression of the TM domains ofdifferent ER-localized proteins (
+Ferrero et al. 2015 ,Sandor
+6Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Membrane steroid binding protein 1 heme and ER dynamics
+et al. 2024 ), we also tested the ability of the N-terminal TM
+domain (residues 1–44) of SbMSBP1 to cause formation ofER-derived vesicles. We still observed some vesicle formation
+in protoplasts with just the TM domain, though it appeared
+less prevalent, while expression appeared more punctate thanvesicular in tobacco, suggesting the TM domain alone is
+not sufficient for the formation of large thick-walled vesicles
+observed (
+Fig. 4d , right). In addition to sorghum protoplasts,
+we also observed the formation of vesicle structures when
+expressing SbMSBP1 variants transiently in tobacco, though
+the structures were smaller and less prominent, suggestingspecies specific interactions with other cellular machinery may
+be involved (
+Supplementary Fig. S14 ). Together, these results
+suggest that SbMSBP1 plays a role in the formation of OSER
+structures, which is consistent with the correlation observed
+with vesicle trafficking processes in our proteomics data ( Fig. 3 ).
+Discussion
+MAPR phylogeny reveals clades distinct to the
+plant and animal lineages
+Sorghum encodes six MAPR proteins according to the Panther
+classification system ( Fig. 1a ). To our knowledge, this study
+is the first systematic investigation reported for plant MAPR
+subclasses. Although MAPR isoforms in sorghum appearsuperficially similar, more in-depth investigation reveals that
+only proteins in the MSBP clade are likely to possess TM
+anchors (
+Fig. 1b ). In contrast, proteins in the plant NEUFC
+clade appear instead to contain N-terminal signaling peptides,
+possibly directing these proteins for secretion as reported for
+animal NEUFCs ( Kimura et al. 2010b ). The phylogeny reported
+here suggests that the NEUFC family predates the split between
+animals and plants, but the relatively close clustering of the
+clades suggests that they remain under selective pressure.Though the Arabidopsis NEUFC has been found to be induced
+by auxin-like signals during nematode infection in Arabidopsis
+(
+Cabrera et al. 2014 ), there is very little known about the
+functions of these proteins in plants. The c-cup clade appears
+to be a plant-specific clade that comprises just a cytochrome
+b5-like domain ( Fig. 1a andb). The Arabidopsis member of this
+clade, AtMAPR2, has been structurally characterized by NMR
+to harbor a fold very similar to the cytochrome b5-like domains
+of other MAPR proteins ( Song et al. 2004 ). Though they lack
+TM domains, the AtMAPR2 was found to be associated with
+the membrane proteome in plants lacking key enzymes ofglucosinolate biosynthesis (
+Mostafa et al. 2017 ). Somewhat
+conflictingly, AtMAPR2 was also found in apoplast fractions of
+Arabidopsis plants subjected to pathogen stress ( Strehmel et al.
+2017 ), and just like the NEUFCs, the functions of MAPR proteins
+belonging to the c-cup clade are generally poorly understood.
+Dynamic heme dependent dimerization of
+sorghum MSBP1 and functional implications
+Here, we combine multiple biophysical methods to demon-
+strate that SbMSBP1 binds to ferric heme and that hemebinding results in dimerization ( Fig. 2 ,Supplementary Figs S1
+and S2). The functional consequence of the preference of
+SbMSBP1 for oxidized heme remains unclear; however, it fur-
+ther supports that SbMSBP1 is not involved in electron transfer
+processes. The heme binding ability seems to be a shared featureof the MAPR family, which may support the proposal that the
+protein plays a role in heme metabolism by functioning as a
+heme chaperone, as demonstrated for human PGRMC1 andPGRMC2 (
+Galmozzi et al. 2019 ). It is important to note that
+SbMSBP1 existed in an equilibrium between a heme bound
+and apo configuration during the expression and purificationinEscherichia coli (
+Supplementary Fig. S2a andb), although the
+heme precursor δ-ALA was supplied during protein production.
+This suggests that the heme-binding of MSBP may be reversible.
+The functional implications of heme-dependent dimerization
+remain elusive, as we cannot presently determine whether theprotein occurs as heme-bound dimer in vivo. Phosphorylation
+has been proposed to occur on heme-coordinating Y113 of
+human PGRMC1, though it remains to be experimentallyverified (
+Cahill et al. 2016 ). This would provide a mechanism
+to regulate heme-dependent dimerization and would suggest
+that heme-dependent dimerization serves a real biological role.
+Is SbMSBP1 a steroid-binding protein?
+Progesterone binding was originally associated with PGRMC1based on binding assays using partially purified fractions from
+porcine liver (
+Meyer et al. 1996 ), and later confirmed on purified
+proteins by UV–Vis and resonance Raman ( Kaluka et al. 2015 ).
+Likewise, A. thaliana MSBP1 was shown to bind progesterone
+as well as a number of plant-specific steroids, including BRs
+and stigmasterol ( Yang et al. 2005 ). In our study using puri-
+fied apo-SbMSBP1, we could not observe direct progesterone
+binding ( Supplementary Fig. S4 ). It is possible that the removal
+of the N-terminal TM anchor in our experiments preventedbinding, although previous data from PGRMC1 indicate the site
+of progesterone binding to be proximal to the heme-binding
+pocket (
+Kaluka et al. 2015 ). Alternatively, progesterone binding
+may be specific to the heme-bound protein, as shown to be
+the case for analogs of the steroid-like triterpene glycyrrhizin
+binding to PGRMC1 ( Kabe et al. 2021 ), although this contra-
+dicts available evidence for progesterone binding by PGRMC1
+(Kaluka et al. 2015 ). A third possibility is that SbMSBP1 may not
+bind progesterone but show strict substrate specificity toward
+plant sterols. Although this contradicts findings that AtMSBP1
+has the highest affinity toward progesterone ( Yang et al. 2005 ),
+we cannot currently exclude either explanation, and steroid
+binding for the sorghum protein needs to be further studied.
+SbMSBP1 may induce formation of organized
+smooth endoplasmic reticulum
+Here, we show by fluorescence-based confocal microscopy
+that SbMSBP1 localizes to the ER membrane, consistentwith previous reports on different MAPRs (
+Kuhn et al. 2010 ,
+McGuire et al. 2021 ), and that SbMSBP1 expression promotes
+the formation of ER-derived vesicles independently of the
+7Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Ratanasopa et al.
+Figure 4. Changes in ER membrane morphology upon expression of SbMSBP1 in sorghum protoplasts. Confocal microscopy showing sorghum
+protoplasts transiently transformed with SbMSBP1 constructs fused to mEGFP (GFP-channel), co-transformed organellar markers. (a) Expression
+of free mEGFP and SbMSBP1-mEGFP alone or in conjunction with the ER membrane marker AtCYP511–41-mRFP1 or the ER luminal marker
+SPamy8-mOrange2-SEKDEL. (b) expression of SbMSBP1-mEGFP under control of its native promoter (pMSBP1). (c) Expression of SbMSBP1-mEGFP
+in combination with markers for Golgi (GmMan11–49-mCherry), plasma membrane (mCherry-OsRac1), or peroxisomes (mCherry-PTS1). (d)
+Expression of truncated SbMSBP1 variants in combination with the ER membrane marker AtCYP1–41-mRFP1. SbMSBPΔC-mEGFP comprises the
+core protein without its unstructured C-terminal domain (residues 1–174). SbMSBP ™-mEGFP comprises the N-terminal transmembrane anchor
+domain (residues 1–44). Expression for all constructs was driven by the CaMV 35S promoter unless otherwise stated. Scale bars correspond to
+10μm in all images.
+8Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Membrane steroid binding protein 1 heme and ER dynamics
+C-terminal disordered domain ( Fig. 4 ). These results are
+consistent with our proteomics data, which implicate SbMSBP1in vesicular trafficking and re-location between membranous
+subcellular compartments under cellular adaptations to stress
+conditions (
+Fig. 3 ). In contrast, with the reported localization of
+Arabidopsis MSBP1 plasma membrane and endosomes ( Song
+et al. 2009 ), we could not observe co-localization of SbMSBP1
+with plasma membrane or associated endosomes ( Fig. 4c ),
+which suggests functional divergence even among proteins
+with relatively close evolutionary relationship. Despite this,
+our data are broadly in agreement with reports of MSBP1interactions with overexpressed SNARE protein in plasma
+membrane fractions of A. thaliana (
+Zhu et al. 2014 ),and are
+consistent with the finding that the barley MSBP1 homolog
+shows higher abundance in salt tolerant cultivars ( Witzel et al.
+2018 ). Several studies have shown that MAPR proteins stabilize
+enzymes of the cytochrome P450 family ( Rohe et al. 2009 ,
+McGuire et al. 2021 ) including the widespread sterol 14 α-
+demethylase (CYP51) that catalyzes a critical step in sterolbiosynthesis. At the same time, the implication of AtMSBP1
+as a negative regulator of BR signaling, possibly via a SNARE-
+dependent mechanism (
+Song et al. 2009 ,Zhuet al. 2014 ), may
+suggest a link between sterol biosynthesis and vesicle trafficking,
+including a functional role in sterol deposition to the plasma
+membrane in response to abiotic stresses such as salinity.
+Vesicles formed upon expression of GFP-tagged SbMSBP1
+variants showed a distinct, thick-walled morphology that was
+similar to that reported for a phenomenon known as OSER(
+Korkhov andZuber 2009 ,Agee et al. 2010 ,Sandor et al. 2021 ).
+Vacuolar bulbs with similar morphology were also reported in
+Arabidopsis and found to originate from vacuolar membranes
+(Saito et al. 2011 ,Segami et al. 2014 ). Although we were not able
+to find a functioning tonoplast marker, which means we cannotcompletely exclude vacuolar involvement in the structures
+observed, strong overlap with ER and Golgi membranes (
+Fig. 4a
+andc) suggest that OSER-like structures may be a more likely
+explanation. OSER has been primarily studied and implicated in
+ER stress responses in animal cells, though several plant proteins
+have been implicated in OSER formation as well ( Korkhov and
+Zuber 2009 ,Ferrero et al. 2015 ,Sandor et al. 2021 ,Sandor et al.
+2024 ). OSER is reported to occur both as crystalline membra-
+nous arrays, as well as multilamellar whorls based on electronmicroscopy (
+Ferrero et al. 2015 ); however, the vesicles observed
+in our study generally only resemble whorls ( Fig. 4 ), whose
+multilamellar organization may explain the apparent increasedmembrane thickness of these vesicles. Recently, proteins that
+induce OSER formation and its associated ER membrane
+proliferation have been proposed as a tool for metabolic engi-neering by compartmentalizing and scaffolding of biosynthetic
+enzymes (
+Sandor et al. 2021 ), and this idea is supported by
+studies showing that membrane anchoring facilitates assembly
+of dynamic metabolome complexes ( Laursen et al. 2021 ). In this
+context, and given reports of cytochrome P450 stabilizationby MSBP proteins (
+Rohe et al. 2009 ,McGuire et al. 2021 ),
+our data suggest that SbMSBP1 could serve as an addition
+to this particular metabolic engineering toolset, though itsapplicability in this context remains to be demonstrated.Conclusions
+Identification and characterization of key proteins involvedin stress resilience is critical for the development of our
+future crops. Here, we combine biochemical approaches with
+structural biology, proteomics, bioinformatics, and microscopyto provide a characterization of one of the key “mysterious”
+proteins involved in salt tolerance and plant metabolism.
+In accordance with its orthologue protein in human cells,
+PGRMC1, SbMSBP1 is capable of forming a homo-dimer in
+a heme-dependent manner. To our knowledge, the presentstudy is the first report on this ability of the MAPR family from
+plant species. In addition, the protein contains an extended
+flexible region at the C-terminus. In our studies, the C-terminalregion does not seem to be required to induce vesicle formation
+but may instead be involved in signaling or regulation of
+vesicle formation in a yet unknown capacity. The finding thatMSBP1 from sorghum is involved in ER-derived vesicle transport
+provides the foundation for future studies on plant engineering
+for improved salt tolerance, and may provide a useful tool for ERmembrane compartmentalization of engineered biosynthetic
+pathways.
+Materials and Methods
+Phylogenetic analysis
+All sequences belonging to the Panther family PTHR10281 (Membrane-
+Associated Progesterone Receptor Component-Related, 526 sequences) were
+downloaded from https: //pantherdb. org(Thomas et al. 2022 ). Sequences
+were aligned using MAFFT ( Lemoine et al. 2019 ). Alignments were manually
+inspected and subsequently trimmed using ClipKIT ( Steenwyk et al. 2020 ). Phy-
+logenetic trees were constructed using the IQ-TREE web server ( Trifinopoulos
+et al. 2016 ) with automatic substitution model prediction and 1000 iterations
+of ultrafast bootstrapping. Trees were annotated using Interactive Tree Of Life
+(accessed at itol.embl. de).
+Molecular cloning and plasmid constructions
+The cDNA encoding different S. bicolor MSBP constructs, SbMSBP1ΔN(a.a.45–
+223), SbMSBP1ΔN,C(a.a. 45–174) and SbMSBP1C(a.a.175–223), were prepared
+by PCR using the cDNA of full-length protein as a template and included an N-terminal TEV site just upstream of the first amino acid of each protein variant.
+All gene constructs were inserted into pET28c +using NdeI and XhoI sites to
+retain the N-terminal 6xHis-tag and thrombin site but omit the T7 tag encodedby the vector. A stop codon was included in the insert to avoid the 6xHis-tag
+encoded by the vector. All gene constructs were confirmed by DNA sequencing
+(Marcogen). For expression in protoplast, a pUC57 vector was constructedwith either a native SbMSBP1 promoter or the 35S constitutive promoter from
+Cauliflower mosaic virus (CaMV) and different SbMSBP1 variants, fused to
+mEGFP. For the native promoter construct, 1.6 kb upstream of the start oftranscription of SbMSBP1 was amplified from S. bicolor genomic DNA (isolated
+from leaf tissue of S. bicolor seedlings using the QIAGEN DNeasy Plant Kit).
+For expression in tobacco, the corresponding constructs were assembled in the
+vector pK2GW7 (
+Karimi et al. 2002 ). USER cloning was used to assemble the
+plasmids. Construction of the ER control comprising the N-terminal 41 residues
+ofA. thaliana CYP51 fused to mRFP was previously described ( Bassard et al.
+2012 ). An ER lumen control adapted from Wuet al. (2016 ) was made by fusing
+the N-terminal targeting sequence of rice α-amylase 8 sequence and the C-
+terminal ER retention signal to mOrange2 under the control of the maize ubiq-
+uitin promoter. Organellar markers for Golgi and peroxisomes from ( Nelson
+et al. 2007 ) were used as binary vector constructs. The rice plasma membrane
+9Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Ratanasopa et al.
+marker pUC19/mChe-PM ( Han et al. 2022 ) was a gift from Yao-Guang Liu
+and Qinlong Zhu (Addgene plasmid # 183168; http: //n2t. net/addgene: 183168;
+RRID:Addgene_183 168).
+Protein expression
+The pET28c +vector harboring genes encoding different protein constructs
+were transformed into E. coli strain NiCoBL21(DE3). A starter culture was grown
+overnight at 37◦C with a shaking of 220 rpm in lysogeny broth containing
+kanamycin (50 μgm L−1). The overnight culture was then transferred into
+a fresh terrific broth medium supplemented with kanamycin (50 μgm L−1)
+with a ratio of 1:10 and incubated at 37◦C at 180 rpm until an OD600 ∼1.5–
+2. The cells were induced by adding isopropyl 1-thio- β-D galactopyranoside
+to the final concentration of 250 μM. The heme precursor, δ-aminolevulinic
+acid, was also added to the final concentration of 0.5 mM during induction.The culture was then continued overnight at 25
+◦C at 180 rpm.15N-
+labeled protein was prepared as above but cells were grown in minimal
+M9 media prepared with15NH4Cl as N-source and containing kanamycin
+(50μgm L−1).
+Protein purification of TM truncated MSBP
+constructs
+Overnight cultures expressing labeled and unlabeled proteins were harvested
+and cells were disrupted using a benchtop cell disruptor (Constant Systems Ltd,Northants, UK). Crude extracts were centrifuged at 15 000 gfor 45 min at 4
+◦C.
+The supernatant was collected and filtered through a syringe filter with a pore
+size of 0.45 μm. TM truncated SbMSBP1 constructs were purified using two
+chromatographic steps. First, the crude extracts were passed through HisTrapHP prepacked column equilibrated with the binding buffer (1 ×PBS pH 7.4).
+The column was then washed 6 column volumes (CV) using 10% elution buffer
+(1×PBS pH 7.4 containing 500 mM imidazole). Bound proteins were eluted
+with a linear gradient (10%–100%) within 6 CV. In the second purification step,
+samples from the first step were first subjected to buffer exchange. The samples
+were loaded to Q-Sepharose High-Performance prepacked column equilibratedwith 20 mM sodium phosphate buffer pH 6.5. The bound protein was eluted
+with a linear gradient of 1%–70% within 10 CV and followed by a step gradient
+of 100% with elution buffer (20 mM sodium phosphate buffer pH 6.5 containing1 M NaCl). The purified fractions were collected, and the purity was judgedby SDS-PAGE. The fractions were pooled and kept on ice or at
+−70◦Cf o r
+further steps.
+HISx6 tag removal
+The Hisx6 tag in TM truncated SbMSBP1 constructs was removed using in-
+house TEV protease. The cleavage reaction was done in TEV protease buffer(50 mM Tris–HCl pH 8.0). A 25:1 ratio of purified protein:protease was used, and
+the reaction was done at 4
+◦C overnight. The non-tagged protein was separated
+using inversed IMAC. The flow-through was collected and concentrated beforeapplying it to SEC.
+Analytical size exclusion chromatography
+The protein–heme interaction was investigated using an apo SbMSBP1 fraction.The protein concentration was kept constant at 50
+μM. The mixture of differ-
+ent protein:hemin ratios were prepared (1:0.1, 1:0.5, 1:1, and 1:2). The effect ofheme binding was observed using analytical SEC connected to Shimadzu HPLC
+system coupled with a diode array detector. The 100
+μLs a m p l e sw e r ei n j e c t e d
+onto Superdex 200 Increase 10/300 GL column equilibrated with a runningbuffer of 50 mM sodium phosphate pH 7.0 containing 150 mM NaCl. The flow
+r a t ew a sk e p tc o n s t a n ta t0 . 5m Lm i n
+−1. The elution profiles of the heme-bound
+proteins were followed at 280 and 400 nm.NMR spectroscopy
+All samples were dialyzed into buffer containing 50 mM phosphate (pH 7.0) and150 mM NaCl containing 10% D
+2O and 250 μM 4,4 dimethyl-4-silapentane-
+1-sulfonic acid as internal standard. 2D1H-15N-HSQC spectra were recorded
+at 50 and 500 μM protein concentrations. A protein concentration of 50 μM
+was used for heme and progesterone interaction studies. All NMR experiments
+were conducted using a Bruker Ascend 800 MHz spectrometer available at
+cOpenNMR, Department of Biology, University of Copenhagen. Bruker TopSpin3.5 software was used to control the spectrometer and process the spectra.
+Further analysis and final figures are made using Collaborative Computational
+Project for NMR (CCPN) (
+Skinner et al. 2016 ).
+Small-angle X-ray scattering
+Prior to analysis by SAXS, apo- and heme-bound proteins were dialyzed againstthe buffer containing 50 mM sodium phosphate (pH 7.0) and 150 mM NaCl at4
+◦C overnight. For each protein, four different concentrations were prepared
+(1.25, 2.5, 5, and 10 mg mL−1). Samples were centrifuged at 15 000 rpm for
+20 min before being loaded on a sample plate kept at 10◦Cd u r i n gt h e
+experiment. SAXS studies were performed at the CPHSAXS Facility, University
+of Copenhagen, on a Xenocs© BioXolver L with a wavelength ( λ)o f1 . 3 4Å .T h e
+detector distance of 632.5 mm corresponding to the q range of 0.015–0.5 Å-1was used. Scattering data were collected at 25
+◦C for 40 frames with an exposure
+time of 60 s per frame for protein samples and the corresponding buffer. Buffer
+scattering was subtracted from averaged protein scattering profiles. Primarydata reduction and analysis were made in BioXTAS RAW (
+Hopkins et al. 2017 ).
+Ensemble optimization method
+A model was created from the SbMSBP1 amino acid sequence using AlphaFold2
+(Jumper et al. 2021 ) on the Google ColabFold server ( Mirdita et al. 2022 ). The
+amino acid cut-off for the core structure of SbMSBP1 was found by comparingit to the structure of human PGRMC1 (PDB id: 4X8Y). The model of SbMSBP1
+monomer was used to create a dimer in PyMOL (Version 2.1 Schrödinger, LLC)
+by superimposing the heme stacking dimer in a crystal structure of the humanPGRMC1. The selection of core structure and flexible segments obtained in thisstep were then used as inputs to RANCH using ATSAS 3.2.1 (
+Manalastas-Can-
+toset al. 2021 ). Briefly, a pool of PDB models of monomer (10 000 models)
+and dimer (10 000 models) was generated by RANCH. FFMAKER was run oncombined pools of monomers and dimers to calculate scattering intensities and
+R
+gof models. The genetic algorithm GAJOE was then applied for the optimal
+selection of structures resembling experimental scattering data.
+Plant material and protein extraction for global
+proteomics
+Seeds of S. bicolor (L.) Moench cvBTx623, washed in tap water, were pre-
+germinated in tap water for 16 h at 28◦C in the dark and grown on filter paper
+soaked with 20 mL tap water or 20 mL tap water containing 100 mM NaCl
+for 5 days at 28◦C in darkness. Five biological replicate pools of 20 seedlings
+were used per condition. Seedlings were divided into root, mesocotyl, and tip,
+frozen in liquid N 2and ground using a mortar and pestle cooled with liquid N 2.
+Protein extraction was done by adapting a modified TCA:acetone protocol ( Niu
+et al. 2018 ) as follows: Protein was extracted from 100 mg ground tissue with
+six volumes protein extraction buffer (4% SDS, 100 mM tris pH 8.2, 500 mM
+NaCl, 10 mM DTT) supplemented with complete EDTA-free protease inhibitors(Roche) with brief boiling (95
+◦C, 3 min) followed by centrifugation. The pellet
+was re-extracted with the same buffer and the clarified extracts combined.
+Protein was precipitated by adding an equal volume 20% TCA in acetone
+(supplemented with 5 mM DTT) and incubating 1 h at −20◦C. Precipitate was
+recovered by centrifugation (15 000 g, 3 min) and the resulting pellet washed
+once in 100% acetone and three times in 80% acetone (with 1 mM DTT). Protein
+pellets were resuspended in EasyPep Lysis buffer (Thermo Scientific) with 3 μL
+10Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Membrane steroid binding protein 1 heme and ER dynamics
+Universal Nuclease (25 kU) and homogenized using a BeatBox homogenizer
+(Preomics) at high setting for 10 min. Protein concentration was measured after
+centrifugation using BCA assay (Pierce) and 50 μg protein reduced with 5 mM
+tris(2-carboxyethyl)phosphine for 15 min at 55◦C before alkylation with 20 mM
+2-chloroacetamide for 30 min at RT. Protein was digested using 1:50 ( μg:μg)
+Trypsin/LysC (Promega) for 16 h at 37◦C. Peptide cleanup was performed using
+a Peptide Clean-Up Plate (Thermo Scientific).
+Global proteomics data acquisition
+Peptides (200 ng) were injected on an Aurora Gen2 C18 column (250 ×0.075
+mm, 1.6 μm, IonOpticks, Melbourne, Australia) using a Vanquish Neo UHPLC
+(Thermo Scientific). Peptides were separated using a 90 min gradient as follows:2%–17% B (0.1% formic acid in acetonitrile) over 56 min; 17%–25% B over 21;25%–35% B for 13 min. A flow rate of 400 nL min
+−1was used, and column
+temperature was kept at 50◦C. The column was connected via a CaptiveSpray
+source with a 20 μm emitter to a timsTOF Pro 2 mass spectrometer (Bruker,
+Bremen, Germany), which was operated in diaPASEF mode. MS data acquisition
+was performed over a 100–1700 m/z range with a PASEF cycle time of 1.8 s.
+Each acquisition cycle used 16 diaPASEF scans with two 25 Da windows perramp (100 ms accumulation and ramp time) over 400–1201 m/z mass range
+and 1.43–0.6 Vs cm
+−2mobility range. Collision energy was decreased linearly
+from 59 eV at 1.6 Vs cm−2to 20 eV at 0.61 Vs cm−2. Ion mobility calibration
+was performed using Agilent ESI-L Tuning Mix.
+Data processing
+Proteomics data were processed using DIA-NN v1.8.1 ( Demichev et al. 2020 ,
+Demichev et al. 2022 ) in library-free mode against the S. bicolor proteome
+from Uniprot (UP000000768) and the universal proteomics contaminants list
+(Frankenfield et al. 2022 ). Search settings were: Protease set to Trypsin/P, max-
+imum 1 missed cleavage, N-terminal Met excision and Cys carbamidomethy-lation enabled, Met oxidation as variable modification (max 3 variable modifi-
+cations allowed). Only peptides of 7–42 residues with a 1–4 charge state were
+considered, in a 300–1800 precursor m/z range and a 200–1800 m/z fragmention range. Precursor false discovery rate was set to 0.01. Match between runs wasenabled, with heuristic inference and no shared spectra enabled. Protein infer-
+ence was set at genes, and quantification done using robust LC (high precision)
+mode, with RT-dependent cross-run normalization and smart profiling librarygeneration. The mass spectrometry proteomics data have been deposited to the
+ProteomeXchange Consortium via the PRIDE (
+Perez-Riverol et al. 2022 )p a r t n e r
+repository with the dataset identifier PXD058939.
+Proteomics data analysis
+Label-free quantity (LFQ) and iBAQ were calculated in R using DIAgui ( Gerault
+et al. 2024 ). Subsequent analysis was performed in R using functions from the
+packages DEP ( Zhang et al. 2018 ), clusterprofiler ( Yuet al. 2012 ) and WGNCA
+(Langfelder andHorvath 2008 ), along with in-house scripts. For both LFQ and
+iBAQ, data were filtered to remove contaminants and proteins without at
+least four valid values in one group. Three samples were discarded due to lownumber of protein identifications. Data were normalized by variance stabilizing
+normalization and LFQ data imputed with mixed imputation (kNN for MAR
+and QRILC for MNAR). For iBAQ, data were used after normalization withoutimputation. Group comparisons was performed using DEPs implementation
+of limma (
+Ritchie et al. 2015 ), followed by Benjamini–Hochberg FDR correc-
+tion ( Benjamini andHochberg 1995 ). Weighted gene co-expression network
+analysis was performed using log-transformed LFQ values after normalizationand mixed imputation. A soft threshold βof 14, signed hybrid and biweight
+midcorrelation were used to calculate network adjacency, and generate signed
+topological overlap. Module identification was done using a minimum modulesize of 30, and modules with correlation greater than 0.9 were merged. GO
+enrichment was performed using Benjamini–Hochberg FDR correction and an
+adjusted P-value cut-off of 0.05.Protoplast isolation and transformation
+Sterilized seeds of S. bicolor (L.) Moench cvBTx623 were incubated in water
+for 1 h and placed in cell culture boxes containing 2.2 g L−1Murashige
+& Skoog medium including vitamins (Duchefa), and 8.5 g L−1Micro agar
+(Duchefa). Seedlings were grown in the dark for 6 days at 28◦C. Between
+1.5 and 2 g of etiolated hypocotyl tissue was cut into 1–2 mm thin pieces in
+10 mL of mannitol buffer (600 mM D-mannitol, 2 mM MES, pH 5.7). Mannitol
+buffer was subsequently replaced by 10 mL of digestion buffer (600 mM D-mannitol, 10 mM MES, 7.5 mM CaCl
+2, pH 5.7) containing 1.5% macerozyme
+R10 (Duchefa), 1.5% cellulase R10 (Duchefa), 0.1% bovine serum albumin (BSA),
+0.1% Polyvinylpyrrolidone (PVP40) and incubated for 3–4 h at 25–28◦Ci n
+darkness. Then, 10 mL of W5 buffer (154 mM NaCl, 125 mM CaCl 2,5m MK C l ,
+2 mM MES, pH 5.7) was added with gentle mixing and the mixture strained
+via a 40–70 μm cell strainer before diluting with equal volumes W5 buffer.
+Suspensions were centrifuged for 20 min at 100 gin a swing-out rotor centrifuge
+with the brake disengaged. The pellet was washed with 30 mL of W5 buffer and
+centrifuged for 10 min. Cell density was determined using a Fuchs-Rosenthal
+Counting Chamber with a cell-depth of 0.2 mm of pellets resuspended in 15 mLof W5 buffer. Finally, cells were pelleted and resuspended in MMG solution
+(400 mM D-mannitol, 100 mM MgCl
+2, 4 mM MES, 5 mM CaCl 2,pH 5.7) to a
+concentration of 2000 protoplasts μL−1. Protoplasts were incubated for 5 min
+at 45◦C and immediately placed on ice for 1 min before transforming by adding
+7.5μg of purified plasmid DNA for 200 μL protoplast suspension to each tube
+with gentle mixing. Next, 200 μL of PEG solution (40% w/v polyethylene glycol
+4000, 200 mM D-mannitol, 100 mM CaCl 2)w a sa d d e da n dg e n t l ym i x e db e f o r e
+incubating for 20 min in the dark. Afterward, 900 μL of W5 solution was added
+followed by centrifugation at 130 gfor 7 min. Pellets were resuspended in
+500μL of W5 solution and suspensions were incubated at 28◦C in the dark for
+15–24 h.
+Transient expression in tobacco
+Four-week-old N. benthamiana plants were used to infiltrate a combination of
+Agrobacterium GV3101 strains carrying (i) different variants of SbMSBP1 fused
+to mEGFP, (ii) an ER-membrane marker ( Bassard et al. 2012 ), comprising the
+N-terminal 41 residues of Arabidopsis CYP51G1 (Uniprot accession Q9SAA9),
+together with empty pEAQ-HT supplying the p19 suppressor of silencing gene.Agrobacterium strains were suspended in 10 mM MES, 10 mM MgCl
+2, 200μM
+acetosyringone to a final OD of 0.5 per strain before infiltrating in the abaxial
+side of the leaf using a needleless syringe. Plants were maintained under green-house conditions for 3 days before confocal microscopy.
+Confocal laser scanning microscopy
+Protoplasts were loaded on an 18-well μ-slide (ibidi) pre-treated with 0.1%
+w:v poly- L-lysine (Sigma-Aldrich) and left to deposit for a few minutes.
+Tobacco leaf discs were mounted in water on a standard microscopy slide.
+Then the samples were imaged on a STELLARIS 8 (Leica Microsystems) laser-scanning confocal microscope using a 40 ×glycerol-immersion objective
+(Leica Microsystems Type G Immersion Liquid). All fluorescent channels
+were acquired sequentially, (489 nm/499–538 nm excitation/emission for
+mEGFP,590 nm/600–649 nm ex./em. for mRFP1, 548 nm/558–598 nm ex./em.for mOrange2 and 587 nm/597–630 nm ex./em. for mCherry). The images were
+analyzed with Leica Application Suite X Office. The intensity of the signal for
+each channel was adjusted post-processing to compensate for difference insignal intensity between red and green channels.
+Acknowledgments
+We acknowledge the University of Copenhagen, Small angle X-
+ray facility, CPHSAXS, funded by the Novo Nordisk Founda-
+tion (grant no. NNF19OC0055857). NMR data were recorded
+at cOpenNMR an infrastructure facility funded by the Novo
+11Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Ratanasopa et al.
+Nordisk Foundation (NNF18OC0032996). The authors would
+like to thank the Biophysics Platform—Protein Structure andFunction Program from The Novo Nordisk Foundation Cen-
+ter for Protein Research, University of Copenhagen, for per-
+forming SECMALS measurements. Novo Nordisk FoundationCenter for Protein Research is supported financially by the
+Novo Nordisk Foundation (NNF14CC0001). Mass spectrometry
+analyses were performed by the Proteomics Research Infras-tructure (PRI) at the University of Copenhagen (UCPH), sup-
+ported by the Novo Nordisk Foundation (NNF) (grant agree-
+ment number NNF19SA0059305).
+Author contributions
+K.R. and S.B.M. conducted in vitro characterization of purified
+MSBP1 constructs. P.S.T. conducted SAXS experiments. P.S.T.
+and K.R. performed data analysis. S.B.M. and K.H. conducted
+proteomics analysis of sorghum seedlings. R.O.F. and V.T. con-ducted protoplast transformations and microscopy. K.R., S.B.M.,
+R.O.F., and T.L. wrote and edited the manuscript. All authors
+revised and approved the manuscript.
+Supplementary Data
+Supplementary Data is available at PCPonline.
+Conflict of Interest
+The authors declare no competing interests.
+Funding
+This work was supported by a Sapere Aude Starting Grant
+from the Independent Research Fund Denmark (7026-00041B)and a Novo Nordisk Foundation Emerging Investigator Grant
+(NNF19OC0055356) to T.L. R.O.F. has received funding from the
+European Union’s Horizon 2020 research and innovation pro-gramme under the Marie Sklodowska-Curie (grant agreement
+No 101066828).
+Data Availability
+Proteomics data are available from ProteomeXchange via
+the PRIDE partner repository with the dataset identifier
+PXD058939.
+References
+Agee, A.E. ,Surpin, M. ,Sohn, E.J. ,Girke, T. ,Rosado, A. ,Kram, B.W. ,e ta l .
+(2010) Modified vacuole phenotype1 is an Arabidopsis myrosinase -
+associated protein involved in endomembrane protein trafficking. Plant
+Physiol. 152: 120–132.
+Ahmed, I.S. ,Rohe, H.J. ,Twist, K.E. andCraven, R.J. (2010) Pgrmc1 (proges-
+terone receptor membrane component 1) associates with epidermal
+growth factor receptor and regulates Erlotinib sensitivity ∗.J. Biol. Chem.
+285: 24775–24782.Bassard, J.-E. andLaursen, T. (2019) Chapter one - molecular snapshots
+of dynamic membrane-bound metabolons. In Methods in Enzymology ,
+edited by Schmidt-Dannert, C. and Quin, M.B., pp. 1–27. Academic Press.
+Bassard, J.-E. ,Mutterer, J. ,Duval, F. andWerck-Reichhart, D. (2012) A novel
+method for monitoring the localization of cytochromes P450 andother endoplasmic reticulum membrane associated proteins: a tool for
+investigating the formation of metabolons. FEBS J. 279: 1576–1583.
+Benjamini, Y. andHochberg, Y. (1995) Controlling the false discovery rate:
+a practical and powerful approach to multiple testing. J. R. Stat. Soc. Ser.
+BM e t h o d o l . 57: 289–300.
+Berka, M. ,Luklová, M. ,Dufková, H. ,Berková, V. ,Novák, J. ,Saiz-Fernández,
+I., et al. (2020) Barley root proteome and metabolome in response to
+Cytokinin and abiotic stimuli. Front. Plant Sci. 11: 590337.
+Cabrera, J. ,Barcala, M. ,Fenoll, C. andEscobar, C. (2014) Transcriptomic
+signatures of transfer cells in early developing nematode feeding cellsof Arabidopsis focused on auxin and ethylene signaling. Front. Plant Sci.
+5: 107.
+Cahill, M.A. ,Jazayeri, J.A. ,Kovacevic, Z. and Richardson, D.R. (2016)
+PGRMC1 regulation by phosphorylation: potential new insights in con-
+trolling biological activity. Oncotarget 7: 50822–50827.
+Chen, Y.-J. ,Knupp, J. ,Arunagiri, A. ,Haataja, L. ,Arvan, P. andTsai, B. (2021)
+PGRMC1 acts as a size-selective cargo receptor to drive ER-phagic clear-
+ance of mutant prohormones. Nat. Commun. 12: 5991.
+Demichev, V. ,Messner, C.B. ,Vernardis, S.I. ,Lilley, K.S. andRalser, M. (2020)
+DIA-NN: neural networks and interference correction enable deep pro-
+teome coverage in high throughput. Nat. Methods 17: 41–44.
+Demichev, V. ,Szyrwiel, L. ,Yu, F. ,Teo, G.C. ,Rosenberger, G. ,Niewienda, A. ,
+et al. (2022) Dia-PASEF data analysis using FragPipe and DIA-NN fordeep proteomics of low sample amounts. Nat. Commun. 13: 3944.
+Ferrero, S. ,Grados-Torrez, R.E. ,Leivar, P. ,Antolin-Llovera, M. ,Lopez-Iglesias,
+C.,Cortadellas, N. , et al. (2015) Proliferation and morphogenesis of the
+endoplasmic reticulum driven by the membrane domain of 3-hydroxy-
+3-methylglutaryl coenzyme a reductase in plant cells. Plant Physiol. 168:
+899–914.
+Frankenfield, A.M. ,Ni, J.,Ahmed, M. andHao, L. (2022) Protein contami-
+nants matter: building universal protein contaminant libraries for DDA
+and DIA proteomics. J. Proteome Res. 21: 2104–2113.
+Galmozzi, A. ,Kok, B.P. ,Kim, A.S. ,Montenegro-Burke, J.R. ,Lee, J.Y. ,Spreafico,
+R., et al. (2019) PGRMC2 is an intracellular haem chaperone critical for
+adipocyte function. Nature 576: 138–142.
+Gerault, M.A. ,Camoin, L. andGranjeaud, S. (2024) DIAgui: a shiny applica-
+tion to process the output from DIA-NN. Bioinform Adv. 4: vbae001.
+Gou, M. ,Ran, X. ,Martin, D.W. andLiu, C.-J. (2018) The scaffold proteins of
+lignin biosynthetic cytochrome P450 enzymes. Nat. Plants 4: 299–310.
+Han, J. ,Ma, K. ,Li, H. ,Su, J.,Zhou, L. ,Tang, J. , et al. (2022) All-in-one: a robust
+fluorescent fusion protein vector toolbox for protein localization and
+BiFC analyses in plants. Plant Biotechnol. J. 20: 1098–1109.
+Hehenberger, E. ,Eitel, M. ,Fortunato, S.A.V. ,Miller, D.J. ,Keeling, P.J. and
+Cahill, M.A. (2020) Early eukaryotic origins and metazoan elaboration
+of MAPR family proteins. Mol. Phylogenet. Evol. 148: 106814.
+Hopkins, J.B. ,Gillilan, R.E. andSkou, S. (2017) BioXTAS RAW: improvements
+to a free open-source program for small-angle X-ray scattering data
+reduction and analysis. J. Appl. Crystallogr. 50: 1545–1553.
+Jumper, J. ,Evans, R. ,Pritzel, A. ,Green, T. ,Figurnov, M. ,Ronneberger, O. ,e ta l .
+(2021) Highly accurate protein structure prediction with AlphaFold.
+Nature 596: 583–589.
+Kabe, Y. ,Nakane, T. ,Koike, I. ,Yamamoto, T. ,Sugiura, Y. ,Harada, E. ,e ta l .
+(2016) Haem-dependent dimerization of PGRMC1/Sigma-2 receptor
+facilitates cancer proliferation and chemoresistance. Nat. Commun. 7:
+11030.
+Kabe, Y. ,Koike, I. ,Yamamoto, T. ,Hirai, M. ,Kanai, A. ,Furuhata, R. ,e ta l .
+(2021) Glycyrrhizin derivatives suppress cancer chemoresistance by
+inhibiting progesterone receptor membrane component 1. Cancers
+(Basel) 13: 3265.
+12Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Membrane steroid binding protein 1 heme and ER dynamics
+Kaluka, D. ,Batabyal, D. ,Chiang, B.-Y. ,Poulos, T.L. andYeh, S.-R. (2015) Spec-
+troscopic and mutagenesis studies of human PGRMC1. Biochemistry 54:
+1638–1647.
+Karimi, M. ,Inze, D. and Depicker, A. (2002) Gateway vectors for
+agrobacterium-mediated plant transformation. Trends Plant Sci. 7:
+193–195.
+Kikhney, A.G. andSvergun, D.I. (2015) A practical guide to small angle X-ray
+scattering (SAXS) of flexible and intrinsically disordered proteins. FEBS
+Lett.589: 2570–2577.
+Kimura, I. ,Yoshioka, M. ,Konishi, M. ,Miyake, A. and Itoh, N. (2005)
+Neudesin, a novel secreted protein with a unique primary structure andneurotrophic activity. J. Neurosci. Res. 79: 287–294.
+Kimura, I. ,Nakayama, Y. ,Konishi, M. ,Kobayashi, T. ,Mori, M. ,Ito, M. ,
+et al. (2010) Neuferricin, a novel extracellular heme-binding protein,promotes neurogenesis. J. Neurochem. 112: 1156–1167.
+Korkhov, V.M. andZuber, B. (2009) Direct observation of molecular arrays
+in the organized smooth endoplasmic reticulum. BMC Cell Biol. 10: 59.
+Kuhn, H. ,Küster, H. andRequena, N. (2010) Membrane steroid-binding
+protein 1 induced by a diffusible fungal signal is critical for mycorrhiza-
+tion in Medicago truncatula. New Phytol. 185: 716–733.
+Langfelder, P. andHorvath, S. (2008) WGCNA: an R package for weighted
+correlation network analysis. BMC Bioinformatics 9: 559.
+Laursen, T. ,Borch, J. ,Knudsen, C. ,Bavishi, K. ,Torta, F. ,Martens, H.J. ,e ta l .
+(2016) Characterization of a dynamic metabolon producing the defensecompound dhurrin in sorghum. Science 354: 890–893.
+Laursen, T. ,Lam, H.Y.M. ,S/orensen, K.K. ,Tian, P. ,Hansen, C.C. ,Groves,
+J.T., et al. (2021) Membrane anchoring facilitates colocalization of
+enzymes in plant cytochrome P450 redox systems. Commun. Biol.
+4: 1057.
+Lee, S.C. ,Knowles, T.J. ,Postis, V.L.G. ,Jamshad, M. ,Parslow, R.A. ,Lin, Y.-P. ,
+et al. (2016) A method for detergent-free isolation of membrane pro-teins in their local lipid environment. Nat. Protoc. 11: 1149–1162.
+Lee, S.K. ,Kweon, Y.C. ,Lee, A.R. ,Lee, Y.Y. andPark, C.Y. (2022) Metastasis
+enhancer PGRMC1 boosts store-operated Ca2 +entry by uncoiling
+Ca2+sensor STIM1 for focal adhesion turnover and actomyosin forma-
+tion. Cell Rep. 38: 110281.
+Lemoine, F. ,Correia, D. ,Lefort, V. ,Doppelt-Azeroual, O. ,Mareuil, F. ,
+Cohen-Boulakia, S. , et al. (2019) NGPhylogeny. fr: new generation phylo-
+genetic services for non-specialists. Nucleic Acids Res. 47: W260–W265.
+Manalastas-Cantos, K. ,Konarev, P.V. ,Hajizadeh, N.R. ,Kikhney, A.G. ,
+Petoukhov, M.V. ,Molodenskiy, D.S. , et al. (2021) ATSAS 3.0: expanded
+functionality and new tools for small-angle scattering data analysis. J.
+Appl. Crystallogr. 54: 343–355.
+McGuire, M.R. ,Mukhopadhyay, D. ,Myers, S.L. ,Mosher, E.P. ,Brookheart,
+R.T.,Kammers, K. , et al. (2021) Progesterone receptor membrane com-
+ponent 1 (PGRMC1) binds and stabilizes cytochromes P450 through a
+heme-independent mechanism. J. Biol. Chem. 297: 101316.
+Meyer, C. ,Schmid, R. ,Scriba, P.C. andWehling, M. (1996) Purification and
+partial sequencing of high-affinity progesterone-binding site(s) from
+porcine liver membranes. Eur. J. Biochem. 239: 726–731.
+Mirdita, M. ,Schütze, K. ,Moriwaki, Y. ,Heo, L. ,Ovchinnikov, S. andSteineg-
+ger, M. (2022) ColabFold: making protein folding accessible to all. Nat.
+Methods 19: 679–682.
+Mostafa, I. ,Yoo, M.J. ,Zhu, N. ,Geng, S. ,Dufresne, C. ,Abou-Hashem, M. ,e ta l .
+(2017) Membrane proteomics of Arabidopsis glucosinolate mutants
+cyp79B2/B3 and myb28/29. Front. Plant Sci. 8: 534.
+Nelson, B.K. ,Cai, X. andNebenfuhr, A. (2007) A multicolored set of in vivo
+organelle markers for co-localization studies in Arabidopsis and other
+plants. Plant J. 51: 1126–1136.
+Niu, L. ,Zhang, H. ,Wu, Z. ,Wang, Y. ,Liu, H. ,Wu, X. , et al. (2018) Modified
+TCA/acetone precipitation of plant proteins for proteomic analysis.
+PLoS One 13: e0202238.
+Perez-Riverol, Y. ,Bai, J. ,Bandla, C. ,Garcia-Seisdedos, D. ,Hewapathirana, S. ,
+Kamatchinathan, S. , et al. (2022) The pride database resources in 2022:a hub for mass spectrometry-based proteomics evidences. Nucleic Acids
+Res.50: D543–D552.
+Piel, R.B. III ,Shiferaw, M.T. ,Vashisht, A.A. ,Marcero, J.R. ,Praissman, J.L. ,
+Phillips, J.D. , et al. (2016) A novel role for progesterone receptor
+membrane component 1 (PGRMC1): a partner and regulator of fer-
+rochelatase. Biochemistry 55: 5204–5217.
+Ritchie, M.E. ,Phipson, B. ,Wu, D. ,Hu, Y. ,Law, C.W. ,Shi, W. , et al. (2015)
+Limma powers differential expression analyses for RNA-sequencing and
+microarray studies. Nucleic Acids Res. 43: e47.
+Rohe, H.J. ,Ahmed, I.S. ,Twist, K.E. andCraven, R.J. (2009) PGRMC1 (pro-
+gesterone receptor membrane component 1): a targetable protein with
+multiple functions in steroid signaling, P450 activation and drug binding.
+Pharmacol. Ther. 121: 14–19.
+Ryu, C.S. ,Klein, K. andZanger, U.M. (2017) Membrane associated pro-
+gesterone receptors: promiscuous proteins with pleiotropic functions -
+focus on interactions with cytochromes P450. Front. Pharmacol. 8:
+159–159.
+Saito, C. ,Uemura, T. ,Awai, C. ,Tominaga, M. ,Ebine, K. ,Ito, J. , et al. (2011)
+The occurrence of ’bulbs’, a complex configuration of the vacuolar mem-
+brane, is affected by mutations of vacuolar SNARE and phospholipase inArabidopsis. Plant J. 68: 64–73.
+Sandor, A. ,Fricker, M.D. ,Kriechbaumer, V. and Sweetlove, L.J. (2021)
+IntEResting structures: formation and applications of organized smoothendoplasmic reticulum in plant cells. Plant Physiol. 185: 550–561.
+Sandor, A. ,Samalova, M. ,Brandizzi, F. ,Kriechbaumer, V. ,Moore, I. ,Fricker,
+M.D., et al. (2024) Characterization of intracellular membrane structures
+derived from a massive expansion of endoplasmic reticulum (ER) mem-
+brane due to synthetic ER-membrane-resident polyproteins. J. Exp. Bot.
+75: 45–59.
+Schwanhausser, B. ,Busse, D. ,Li, N.,Dittmar, G. ,Schuchhardt, J. ,Wolf, J. ,e ta l .
+(2011) Global quantification of mammalian gene expression control.
+Nature 473: 337–342.
+Segami, S. ,Makino, S. ,Miyake, A. ,Asaoka, M. and Maeshima, M.
+(2014) Dynamics of vacuoles and H +-pyrophosphatase visualized by
+monomeric green fluorescent protein in Arabidopsis: artifactual bulbs
+and native intravacuolar spherical structures. Plant Cell 26: 3416–3434.
+Shi, Q.-M. ,Yang, X. ,Song, L. andXue, H.-W. (2011) Arabidopsis MSBP1 is
+activated by HY5 and HYH and is involved in Photomorphogenesis and
+Brassinosteroid sensitivity regulation. Mol. Plant 4: 1092–1104.
+von Sivers, L. ,Jaspar, H. ,Johst, B. ,Roese, M. ,Bitterlich, M. ,Franken, P. ,e ta l .
+(2019) Brassinosteroids affect the Symbiosis between the AM fungus
+Rhizoglomus irregularis and Solanaceous host plants. Front. Plant Sci. 10:
+571.
+Skinner, S.P. ,Fogh, R.H. ,Boucher, W. ,Ragan, T.J. ,Mureddu, L.G. andVuister,
+G.W. (2016) CcpNmr AnalysisAssign: a flexible platform for integrated
+NMR analysis. J. Biomol. NMR 66: 111–124.
+Smith, A.A.A. ,Autzen, H.E. ,Laursen, T. ,Wu, V. ,Yen, M. ,Hall, A. , et al. (2017)
+Controlling styrene maleic acid lipid particles through raft. Biomacro-
+molecules 18: 3706–3713.
+Song, J. ,Vinarov, D.A. ,Tyler, E.M. ,Shahan, M.N. ,Tyler, R.C. andMarkley,
+J.L.(2004) Letter to the editor: hypothetical protein At2g24940.1 from
+Arabidopsis thaliana has a cytochrome b5 like fold ∗.J. Biomol. NMR 30:
+215–218.
+Song, L. ,Shi, Q.-M. ,Yang, X.-H. ,Xu, Z.-H. andXue, H.-W. (2009) Mem-
+brane steroid-binding protein 1 (MSBP1) negatively regulates brassi-nosteroid signaling by enhancing the endocytosis of BAK1. Cell Res. 19:
+864–876.
+Steenwyk, J.L. ,Buida, T.J. 3rd ,Li, Y.,Shen, X.X. andRokas, A. (2020) ClipKIT:
+a multiple sequence alignment trimming software for accurate phyloge-nomic inference. PLoS Biol. 18: e3001007.
+Strehmel, N. ,Hoehenwarter, W. ,Monchgesang, S. ,Majovsky, P. ,Kruger, S. ,
+Scheel, D. , et al. (2017) Stress-related mitogen-activated protein kinases
+stimulate the accumulation of small molecules and proteins in Ara-
+bidopsis thaliana root exudates. Front. Plant Sci. 8: 1292.
+13Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
+
+Ratanasopa et al.
+Thomas, P.D. ,Ebert, D. ,Muruganujan, A. ,Mushayahama, T. ,Albou, L.P. and
+Mi, H. (2022) PANTHER: making genome-scale phylogenetics accessible
+to all. Protein Sci. 31: 8–22.
+Tria, G. ,Mertens, H.D.T. ,Kachala, M. andSvergun, D.I. (2015) Advanced
+ensemble modelling of flexible macromolecules using X-ray solution
+scattering. IUCrJ 2: 207–217.
+Trifinopoulos, J. ,Nguyen, L.T. ,von Haeseler, A. andMinh, B.Q. (2016) W-IQ-
+TREE: a fast online phylogenetic tool for maximum likelihood analysis.
+Nucleic Acids Res. 44: W232–W235.
+Witzel, K. ,Matros, A. ,M/oller, A.L.B. ,Ramireddy, E. ,Finnie, C. ,
+Peukert, M. , et al. (2018) Plasma membrane proteome analysis
+identifies a role of barley membrane steroid binding protein
+in root architecture response to salinity. Plant Cell Environ. 41:
+1311–1330.
+Wu, T.M. ,Lin, K.C. ,Liau, W.S. ,Chao, Y.Y. ,Yang, L.H. ,Chen, S.Y. , et al. (2016)
+A set of GFP-based organelle marker lines combined with DsRed-based
+gateway vectors for subcellular localization study in rice ( Oryza sativa
+L.).Plant Mol. Biol. 90: 107–115.Yang, X.-H. ,Xu, Z.-H. andXue, H.-W. (2005) Arabidopsis membrane steroid
+binding protein 1 is involved in inhibition of cell elongation. Plant Cell
+17: 116–131.
+Yang, X. ,Song, L. andXue, H.-W. (2008) Membrane steroid binding protein
+1 (MSBP1) stimulates tropism by regulating vesicle trafficking and auxinredistribution. Mol. Plant 1: 1077–1087.
+You, J.H. ,Lee, J. andRoh, J.-L. (2021) PGRMC1-dependent lipophagy pro-
+motes ferroptosis in paclitaxel-tolerant persister cancer cells. J. Exp. Clin.
+Cancer Res. 40: 350.
+Yu, G. ,Wang, L.G. ,Han, Y. andHe, Q.Y. (2012) clusterProfiler: an R pack-
+age for comparing biological themes among gene clusters. OMICS 16:
+284–287.
+Zhang, X. ,Smits, A.H. ,van Tilburg, G.B. ,Ovaa, H. ,Huber, W. andVermeulen,
+M.(2018) Proteome-wide identification of ubiquitin interactions using
+UbIA-MS. Nat. Protoc. 13: 530–550.
+Zhu, Z.X. ,Ye, H.B. ,Xuan, Y.H. andYao, D.N. (2014) Overexpression of a
+SNARE protein AtBS14b alters BR response in Arabidopsis. Bot. Stud.
+55: 55.
+© The Author(s) 2025. Published by Oxford University Press on behalf of the Japanese Society of Plant Physiologists. This is an Open Access article dis tributed under the terms of the Creative Commons Attribution-NonCommercial License ( https: //creativecommons. org/licenses /by-n c/4.0/), which permits non-commercial
+re-use, distribution, and reproduction in any medium, provided the original work is properly cited. For commercial re-use, please contact reprints @oup.com for reprints and translation rights for reprints. All other permissions can be obtained through our RightsLink service via the Permissions link on the article page on our
+site—for further information please contact journals.permissions@oup.com.
+Plant and Cell Physiology , 2026, 00(00),1–14. https://doi.org/10.1093/pcp/pcaf160
+Regular Paper
+14Downloaded from https://academic.oup.com/pcp/advance-article/doi/10.1093/pcp/pcaf160/8364979 by Cold Spring Harbor Laboratory user on 28 January 2026
