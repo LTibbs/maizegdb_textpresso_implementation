@@ -113,6 +113,31 @@ PMC2345678.pdf,FIELD_PHYSIOLOGY
 PMC3456789.pdf,OTHER
 ```
 
+
+## Sorghum Run: Example Data and Outputs
+
+### Labeled Data (labels.tsv)
+| doc_id | label | explanation |
+|--------|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1-s2.0-S0168945225005746-main | MOLECULAR_GENETICS | Genome-wide identification and functional characterization of SbHMA5, a Cu-transporting P1B-type ATPase, including yeast complementation, localization and interaction with metallochaperones. |
+| fpls-16-1682270 | MOLECULAR_GENETICS | GWAS on 245 sorghum accessions for salt tolerance at germination/seedling stage; maps 35 loci and 39 candidate genes controlling salt-response traits. |
+| s41598-025-29176-y | MOLECULAR_GENETICS | Genomic selection study for Fe and Zn biofortification using ST-GBLUP vs MT-GBLUP in sorghum minicore; focuses on GS models and genetic prediction of micronutrient traits. |
+| pcaf160 | MOLECULAR_GENETICS | Characterization of Sorghum bicolor membrane steroid binding protein 1 (SbMSBP1); phylogenetic analysis, heme binding, ER remodeling, and stress resilience functions. |
+| Plant Cell Environment - 2025 - Pilloni - Large Variations in the Transpiration of Sorghum Canopies Under High | FIELD_PHYSIOLOGY | Field study of 47 sorghum genotypes; analyzes canopy transpiration, water use efficiency, and genetic variability under high evaporative demand and VPD. |
+
+### Label Template (labels_template.tsv)
+This file provides a template for manual labeling of new documents:
+| doc_id | label |
+|--------|-------|
+| 1-s2.0-S0168945225005746-main |       |
+| Plant Cell Environment - 2025 - Pilloni - Large Variations in the Transpiration of Sorghum Canopies Under High |       |
+| fpls-16-1682270 |       |
+| pcaf160 |       |
+| s41598-025-29176-y |       |
+
+### Extracted Text Files
+Text files for each document are available in `tmp_txt/` and `txt/` subfolders. These contain the full text extracted from each PDF, ready for feature extraction and classification.
+
 ---
 
 ## Usage Guide
