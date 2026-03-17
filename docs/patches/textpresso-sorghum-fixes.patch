@@ -1,0 +1,2076 @@
+diff --git a/Dockerfile b/Dockerfile
+index 9a47126..999a0b3 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -43,7 +43,12 @@ RUN mkdir -p etc
+ COPY stopwords.postgres.tar.gz /usr/local/textpresso/etc/.
+ WORKDIR /
+ 
+-RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-py311_25.5.1-0-Linux-x86_64.sh && bash Miniconda3-py311_25.5.1-0-Linux-x86_64.sh -b && rm Miniconda3-py311_25.5.1-0-Linux-x86_64.sh
++RUN ARCH="$(dpkg --print-architecture)" \
++ && if [ "$ARCH" = "arm64" ]; then MC_ARCH="aarch64"; else MC_ARCH="x86_64"; fi \
++ && MC_SH="Miniconda3-py311_25.5.1-0-Linux-${MC_ARCH}.sh" \
++ && wget -q "https://repo.anaconda.com/miniconda/${MC_SH}" \
++ && bash "${MC_SH}" -b \
++ && rm "${MC_SH}"
+ ENV PATH="${PATH}:/root/miniconda3/bin"
+ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+ RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+diff --git a/libtpc/Dockerfile_18.04 b/libtpc/Dockerfile_18.04
+index 9197ab4..d2bf7ed 100644
+--- a/libtpc/Dockerfile_18.04
++++ b/libtpc/Dockerfile_18.04
+@@ -23,11 +23,20 @@ RUN apt-get -y install openjdk-11-jdk
+ # apply uima patches for CXX11-14
+ COPY ./patches/uimacpp-2.4.0/src/framework/uima/strtools.hpp /uimacpp-2.4.0/src/framework/uima/strtools.hpp
+ COPY ./patches/uimacpp-2.4.0/configure.ac /uimacpp-2.4.0/
++# refresh old GNU config helpers so configure can detect modern architectures
++RUN cp /usr/share/misc/config.guess /uimacpp-2.4.0/config/config.guess \
++ && cp /usr/share/misc/config.sub /uimacpp-2.4.0/config/config.sub
+ 
+ ## compile and install uima library
+-RUN cd uimacpp-2.4.0; autoconf -i; chmod +x configure; ./configure --without-activemq \
+---with-jdk="/usr/lib/jvm/java-11-openjdk-amd64/include -I/usr/lib/jvm/java-11-openjdk-amd64/include/linux" \
+---with-icu=/usr --enable-static --enable-shared --prefix=/usr/local && make -j8 && make install && rm -rf /uimacpp-2.4.0
++RUN export JAVA_HOME="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")" \
++&& cd uimacpp-2.4.0 \
++&& autoconf -i \
++&& chmod +x configure \
++&& ./configure --without-activemq \
++--with-jdk="${JAVA_HOME}/include -I${JAVA_HOME}/include/linux" \
++--with-icu=/usr --enable-static --enable-shared --prefix=/usr/local \
++&& make -j8 && make install \
++&& rm -rf /uimacpp-2.4.0
+ 
+ # compile and install wt - the version provided by ubuntu is bugged!
+ RUN wget https://github.com/emweb/wt/archive/3.3.7.tar.gz -O wt-3.3.7.tar.gz \
+diff --git a/libtpc/IndexManager.cpp b/libtpc/IndexManager.cpp
+index f5ea95c..f137348 100644
+--- a/libtpc/IndexManager.cpp
++++ b/libtpc/IndexManager.cpp
+@@ -48,6 +48,14 @@ using namespace boost::filesystem;
+ 
+ namespace {
+ 
++    string safe_decompress_to_utf8(const ByteArray& value) {
++        if (!value || value.size() == 0) {
++            return "";
++        }
++        String decompressed = CompressionTools::decompressString(value);
++        return string(decompressed.begin(), decompressed.end());
++    }
++
+     void printQuery(const tpc::index::Query& query) {
+ 
+         std::string type;
+@@ -280,13 +288,16 @@ Collection<IndexReaderPtr> IndexManager::get_subreaders(QueryType type, bool cas
+             string index_id(itr->path().string());
+             index_id.append("/");
+             index_id.append(index_type);
+-            if (readers_map.find(itr->path().string() + "/" + index_type) == readers_map.end()) {
++            if (readers_map.find(index_id) == readers_map.end()) {
+                 if (exists(path(index_id + "/segments.gen"))) {
+                     readers_map[index_id] = IndexReader::open(FSDirectory::open(String(index_id.begin(),
+                             index_id.end())), readonly);
+                 }
+             }
+-            subReaders.add(readers_map[index_id]);
++            auto reader_itr = readers_map.find(index_id);
++            if (reader_itr != readers_map.end() && reader_itr->second) {
++                subReaders.add(reader_itr->second);
++            }
+         }
+     }
+     return subReaders;
+@@ -533,42 +544,26 @@ void IndexManager::update_document_details(DocumentDetails &doc_details, String
+         String filepath = doc_ptr->get(StringUtils::toString("filepath"));
+         doc_details.filepath = string(filepath.begin(), filepath.end());
+     } else if (field == L"accession_compressed") {
+-        String accession = CompressionTools::decompressString(
+-                doc_ptr->getBinaryValue(StringUtils::toString("accession_compressed")));
+-        doc_details.accession = string(accession.begin(), accession.end());
++        doc_details.accession = "";
+     } else if (field == L"title_compressed") {
+-        String title = CompressionTools::decompressString(
+-                doc_ptr->getBinaryValue(StringUtils::toString("title_compressed")));
+-        doc_details.title = string(title.begin(), title.end());
++        doc_details.title = "";
+     } else if (field == L"author_compressed") {
+-        String author = CompressionTools::decompressString(
+-                doc_ptr->getBinaryValue(StringUtils::toString("author_compressed")));
+-        doc_details.author = string(author.begin(), author.end());
++        doc_details.author = "";
+     } else if (field == L"journal_compressed") {
+-        String journal = CompressionTools::decompressString(
+-                doc_ptr->getBinaryValue(StringUtils::toString("journal_compressed")));
+-        doc_details.journal = string(journal.begin(), journal.end());
++        doc_details.journal = "";
+     } else if (field == L"abstract_compressed") {
+-        String abstract = CompressionTools::decompressString(
+-                doc_ptr->getBinaryValue(StringUtils::toString("abstract_compressed")));
+-        doc_details.abstract = string(abstract.begin(), abstract.end());
++        doc_details.abstract = "";
+     } else if (field == L"corpus") {
+         String literature = doc_ptr->get(StringUtils::toString("corpus"));
+         string raw_lit = string(literature.begin(), literature.end());
+         raw_lit = raw_lit.substr(2, raw_lit.length() - 4);
+         boost::split_regex(doc_details.corpora, raw_lit, boost::regex("ED BG"));
+     } else if (field == L"fulltext_compressed") {
+-        String fulltext = CompressionTools::decompressString(
+-                doc_ptr->getBinaryValue(StringUtils::toString("fulltext_compressed")));
+-        doc_details.fulltext = string(fulltext.begin(), fulltext.end());
++        doc_details.fulltext = "";
+     } else if (field == L"type_compressed") {
+-        String type = CompressionTools::decompressString(
+-                doc_ptr->getBinaryValue(StringUtils::toString("type_compressed")));
+-        doc_details.type = string(type.begin(), type.end());
++        doc_details.type = "";
+     } else if (field == L"fulltext_cat_compressed") {
+-        String fulltext_cat = CompressionTools::decompressString(
+-                doc_ptr->getBinaryValue(StringUtils::toString("fulltext_cat_compressed")));
+-        doc_details.categories_string = string(fulltext_cat.begin(), fulltext_cat.end());
++        doc_details.categories_string = "";
+     }
+ }
+ 
+@@ -658,15 +653,13 @@ void IndexManager::update_match_sentences_details_for_document(const DocumentSum
+                     sentenceDetails.doc_position_end = StringUtils::toInt(sent_reader->document(
+                             sent.lucene_internal_id, fsel)->get(L"end"));
+                 } else if (f == L"sentence_compressed") {
+-                    String sentence = CompressionTools::decompressString(
++                    sentenceDetails.sentence_text = safe_decompress_to_utf8(
+                             sent_reader->document(sent.lucene_internal_id, fsel)->getBinaryValue(
+                             L"sentence_compressed"));
+-                    sentenceDetails.sentence_text = string(sentence.begin(), sentence.end());
+                 } else if (f == L"sentence_cat_compressed") {
+-                    String sentence_cat = CompressionTools::decompressString(
++                    sentenceDetails.categories_string = safe_decompress_to_utf8(
+                             sent_reader->document(sent.lucene_internal_id, fsel)->getBinaryValue(
+                             L"sentence_cat_compressed"));
+-                    sentenceDetails.categories_string = string(sentence_cat.begin(), sentence_cat.end());
+                 }
+             }
+             sentenceDetails.score = sent.score;
+@@ -710,13 +703,11 @@ void IndexManager::update_match_sentences_details_for_document(const DocumentSum
+                         sentenceDetails.doc_position_end = StringUtils::toInt(sentPtr->get(
+                                 StringUtils::toString("end")));
+                     } else if (f == L"sentence_compressed") {
+-                        String sentence = CompressionTools::decompressString(
++                        sentenceDetails.sentence_text = safe_decompress_to_utf8(
+                                 sentPtr->getBinaryValue(StringUtils::toString("sentence_compressed")));
+-                        sentenceDetails.sentence_text = string(sentence.begin(), sentence.end());
+                     } else if (f == L"sentence_cat_compressed") {
+-                        String sentence_cat = CompressionTools::decompressString(
++                        sentenceDetails.categories_string = safe_decompress_to_utf8(
+                                 sentPtr->getBinaryValue(StringUtils::toString("sentence_cat_compressed")));
+-                        sentenceDetails.categories_string = string(sentence_cat.begin(), sentence_cat.end());
+                     }
+                 }
+                 sentenceDetails.score = sentScoreMap[sentenceDetails.sentence_id];
+@@ -757,13 +748,11 @@ void IndexManager::update_all_sentences_details_for_document(DocumentDetails &do
+                 sentenceDetails.doc_position_end = StringUtils::toInt(sentPtr->get(
+                         StringUtils::toString("end")));
+             } else if (f == L"sentence_compressed") {
+-                String sentence = CompressionTools::decompressString(
++                sentenceDetails.sentence_text = safe_decompress_to_utf8(
+                         sentPtr->getBinaryValue(StringUtils::toString("sentence_compressed")));
+-                sentenceDetails.sentence_text = string(sentence.begin(), sentence.end());
+             } else if (f == L"sentence_cat_compressed") {
+-                String sentence_cat = CompressionTools::decompressString(
++                sentenceDetails.categories_string = safe_decompress_to_utf8(
+                         sentPtr->getBinaryValue(StringUtils::toString("sentence_cat_compressed")));
+-                sentenceDetails.categories_string = string(sentence_cat.begin(), sentence_cat.end());
+             }
+         }
+         doc_details.all_sentences_details.push_back(sentenceDetails);
+@@ -1274,6 +1263,9 @@ void IndexManager::update_corpus_counter() {
+ int IndexManager::get_num_docs_in_corpus_from_index(const string & corpus) {
+     Collection<ScoreDocPtr> matchesCollection;
+     Collection<IndexReaderPtr> subReaders = get_subreaders(QueryType::document, false);
++    if (subReaders.size() == 0) {
++        return 0;
++    }
+     MultiReaderPtr multireader = newLucene<MultiReader>(subReaders, false);
+     SearcherPtr searcher = newLucene<IndexSearcher>(multireader);
+     AnalyzerPtr analyzer = newLucene<StandardAnalyzer>(LuceneVersion::LUCENE_30);
+@@ -1302,12 +1294,14 @@ void IndexManager::save_all_doc_ids_for_sentences_to_db() {
+         typedef dbstl::db_map<int, string> HugeMap;
+         HugeMap huge_map(pdb, &env);
+         Collection<IndexReaderPtr> subReaders = get_subreaders(QueryType::sentence, false);
+-        MultiReaderPtr multireader = newLucene<MultiReader>(subReaders, false);
+-        FieldSelectorPtr fsel = newLucene<LazySelector>(set<String>({L"doc_id", L"sentence_id", L"year"}));
+-        for (int i = 0; i < multireader->maxDoc(); i++) {
+-            String doc_id = multireader->document(i, fsel)->get(L"doc_id");
+-            String year = multireader->document(i, fsel)->get(L"year");
+-            huge_map[i] = string(doc_id.begin(), doc_id.end()) + "|" + string(year.begin(), year.end());
++        if (subReaders.size() > 0) {
++            MultiReaderPtr multireader = newLucene<MultiReader>(subReaders, false);
++            FieldSelectorPtr fsel = newLucene<LazySelector>(set<String>({L"doc_id", L"sentence_id", L"year"}));
++            for (int i = 0; i < multireader->maxDoc(); i++) {
++                String doc_id = multireader->document(i, fsel)->get(L"doc_id");
++                String year = multireader->document(i, fsel)->get(L"year");
++                huge_map[i] = string(doc_id.begin(), doc_id.end()) + "|" + string(year.begin(), year.end());
++            }
+         }
+         if (pdb != NULL) {
+             pdb->close(0);
+@@ -1331,11 +1325,13 @@ void IndexManager::save_all_years_for_documents_to_db() {
+         typedef dbstl::db_map<int, string> HugeMap;
+         HugeMap huge_map(pdb, &env);
+         Collection<IndexReaderPtr> subReaders = get_subreaders(QueryType::document, false);
+-        MultiReaderPtr multireader = newLucene<MultiReader>(subReaders, false);
+-        FieldSelectorPtr fsel = newLucene<LazySelector>(set<String>({L"year"}));
+-        for (int i = 0; i < multireader->maxDoc(); i++) {
+-            String year = multireader->document(i, fsel)->get(L"year");
+-            huge_map[i] = string(year.begin(), year.end());
++        if (subReaders.size() > 0) {
++            MultiReaderPtr multireader = newLucene<MultiReader>(subReaders, false);
++            FieldSelectorPtr fsel = newLucene<LazySelector>(set<String>({L"year"}));
++            for (int i = 0; i < multireader->maxDoc(); i++) {
++                String year = multireader->document(i, fsel)->get(L"year");
++                huge_map[i] = string(year.begin(), year.end());
++            }
+         }
+         if (pdb != NULL) {
+             pdb->close(0);
+@@ -1378,4 +1374,3 @@ set<string> IndexManager::get_words_belonging_to_category_from_document_fulltext
+     }
+     return result;
+ }
+-
+diff --git a/libtpc/uima-annotators/TdTokenizer/TdTokenizer.cpp b/libtpc/uima-annotators/TdTokenizer/TdTokenizer.cpp
+index b7dfb29..4b07b40 100644
+--- a/libtpc/uima-annotators/TdTokenizer/TdTokenizer.cpp
++++ b/libtpc/uima-annotators/TdTokenizer/TdTokenizer.cpp
+@@ -207,8 +207,12 @@ std::string utf8Printable(const string & string) {
+ }
+ 
+ TdTokenizer::TdTokenizer() {
+-    dlsetToken_ = set<UnicodeString > (G_initT, G_initT + G_initT_No);
+-    dlsetSentence_ = set<UnicodeString > (G_initS, G_initS + G_initS_No);
++    dlsetToken_ = set<UnicodeString >(
++            tp_uima_globals::token_delimiters(),
++            tp_uima_globals::token_delimiters() + G_initT_No);
++    dlsetSentence_ = set<UnicodeString >(
++            tp_uima_globals::sentence_delimiters(),
++            tp_uima_globals::sentence_delimiters() + G_initS_No);
+     disqSentence_.push_back("[\\(>\\s][A-Z]\\.[<\\s]$");
+     const string part1 = "[\\(>\\s](Prof|Ph\\.D|Dr|[Ff]igs?|[Vv]ol|i\\.e|e\\.g";
+     const string part2 = "|[Nn]o|[Vv]s|[Ee]x|al|ca)\\.[<\\s]$";
+@@ -216,19 +220,18 @@ TdTokenizer::TdTokenizer() {
+     maxfrontdisqcharlength_ = 4; // sniplet length in front of sentence delimiter
+     maxbackdisqcharlength_ = 0; // sniplet length  following sentence delimiter.
+     dlsetSection_.clear();
+-    for (auto x : sectionArticleB) dlsetSection_.insert(x);
+-    for (auto x : sectionArticleE) dlsetSection_.insert(x);
+-    for (auto x : sectionAbstract) dlsetSection_.insert(x);
+-    for (auto x : sectionIntroduction) dlsetSection_.insert(x);
+-    for (auto x : sectionResult) dlsetSection_.insert(x);
+-    for (auto x : sectionDiscussion) dlsetSection_.insert(x);
+-    for (auto x : sectionConclusion) dlsetSection_.insert(x);
+-    for (auto x : sectionBackground) dlsetSection_.insert(x);
+-    for (auto x : sectionMaterialsMethods) dlsetSection_.insert(x);
+-    for (auto x : sectionDesign) dlsetSection_.insert(x);
+-    for (auto x : sectionAcknowledgments) dlsetSection_.insert(x);
+-
+-    for (auto x : sectionReferences) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionArticleB()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionArticleE()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionAbstract()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionIntroduction()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionResult()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionDiscussion()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionConclusion()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionBackground()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionMaterialsMethods()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionDesign()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionAcknowledgments()) dlsetSection_.insert(x);
++    for (auto x : tp_uima_globals::sectionReferences()) dlsetSection_.insert(x);
+ }
+ 
+ TdTokenizer::TdTokenizer(const TdTokenizer & orig) {
+@@ -428,14 +431,14 @@ TyErrorId TdTokenizer::process(CAS & tcas, ResultSpecification const & crResultS
+         aait.moveToNext();
+     }
+ 
+-    bool hasResult(hasSection(sectionResult, sections));
+-    bool hasIntroduction(hasSection(sectionIntroduction, sections));
+-    bool hasBackground(hasSection(sectionBackground, sections));
+-    bool hasDiscussion(hasSection(sectionDiscussion, sections));
+-    bool hasConclusion(hasSection(sectionConclusion, sections));
+-    bool hasMM(hasSection(sectionMaterialsMethods, sections));
+-    bool hasDesign(hasSection(sectionDesign, sections));
+-    bool hasReferences(hasSection(sectionReferences, sections));
++    bool hasResult(hasSection(tp_uima_globals::sectionResult(), sections));
++    bool hasIntroduction(hasSection(tp_uima_globals::sectionIntroduction(), sections));
++    bool hasBackground(hasSection(tp_uima_globals::sectionBackground(), sections));
++    bool hasDiscussion(hasSection(tp_uima_globals::sectionDiscussion(), sections));
++    bool hasConclusion(hasSection(tp_uima_globals::sectionConclusion(), sections));
++    bool hasMM(hasSection(tp_uima_globals::sectionMaterialsMethods(), sections));
++    bool hasDesign(hasSection(tp_uima_globals::sectionDesign(), sections));
++    bool hasReferences(hasSection(tp_uima_globals::sectionReferences(), sections));
+     int score(0);
+     if (hasIntroduction || hasBackground) score++;
+     if (hasDiscussion || hasConclusion) score++;
+@@ -443,29 +446,29 @@ TyErrorId TdTokenizer::process(CAS & tcas, ResultSpecification const & crResultS
+     if (hasMM || hasDesign) score++;
+     if (hasReferences) score++;
+     if (score > 3) {
+-        combineSectionAnnotations(tcas, sectionArticleB, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionArticleB(), sections,
+                 sectionsB, sectionsE, "beginning of article", ac);
+-        combineSectionAnnotations(tcas, sectionArticleE, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionArticleE(), sections,
+                 sectionsB, sectionsE, "end of article", ac);
+-        combineSectionAnnotations(tcas, sectionAbstract, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionAbstract(), sections,
+                 sectionsB, sectionsE, "abstract", ac);
+-        combineSectionAnnotations(tcas, sectionIntroduction, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionIntroduction(), sections,
+                 sectionsB, sectionsE, "introduction", ac);
+-        combineSectionAnnotations(tcas, sectionResult, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionResult(), sections,
+                 sectionsB, sectionsE, "result", ac);
+-        combineSectionAnnotations(tcas, sectionDiscussion, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionDiscussion(), sections,
+                 sectionsB, sectionsE, "discussion", ac);
+-        combineSectionAnnotations(tcas, sectionConclusion, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionConclusion(), sections,
+                 sectionsB, sectionsE, "conclusion", ac);
+-        combineSectionAnnotations(tcas, sectionBackground, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionBackground(), sections,
+                 sectionsB, sectionsE, "background", ac);
+-        combineSectionAnnotations(tcas, sectionMaterialsMethods, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionMaterialsMethods(), sections,
+                 sectionsB, sectionsE, "materials and methods", ac);
+-        combineSectionAnnotations(tcas, sectionDesign, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionDesign(), sections,
+                 sectionsB, sectionsE, "design", ac);
+-        combineSectionAnnotations(tcas, sectionAcknowledgments, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionAcknowledgments(), sections,
+                 sectionsB, sectionsE, "acknowledgments", ac);
+-        combineSectionAnnotations(tcas, sectionReferences, sections,
++        combineSectionAnnotations(tcas, tp_uima_globals::sectionReferences(), sections,
+                 sectionsB, sectionsE, "references", ac);
+     }
+     FSIndexRepository & indexRep = tcas.getIndexRepository();
+diff --git a/libtpc/uima-annotators/TpLexiconAnnotatorFromPg/TpLexiconAnnotatorFromPg.cpp b/libtpc/uima-annotators/TpLexiconAnnotatorFromPg/TpLexiconAnnotatorFromPg.cpp
+index 96c1f5c..4019e76 100644
+--- a/libtpc/uima-annotators/TpLexiconAnnotatorFromPg/TpLexiconAnnotatorFromPg.cpp
++++ b/libtpc/uima-annotators/TpLexiconAnnotatorFromPg/TpLexiconAnnotatorFromPg.cpp
+@@ -13,7 +13,7 @@
+ #include <pqxx/pqxx>
+ #include <boost/algorithm/string.hpp>
+ 
+-TpLexiconAnnotatorFromPg::TpLexiconAnnotatorFromPg(void) {
++TpLexiconAnnotatorFromPg::TpLexiconAnnotatorFromPg(void) : tcas_(nullptr), trie_(nullptr), s_(nullptr) {
+ }
+ 
+ TpLexiconAnnotatorFromPg::~TpLexiconAnnotatorFromPg(void) {
+@@ -111,6 +111,10 @@ uima::TyErrorId TpLexiconAnnotatorFromPg::typeSystemInit(uima::TypeSystem const
+ }
+ 
+ uima::TyErrorId TpLexiconAnnotatorFromPg::destroy() {
++    delete trie_;
++    trie_ = nullptr;
++    delete s_;
++    s_ = nullptr;
+     return (uima::TyErrorId) UIMA_ERR_NONE;
+ }
+ 
+diff --git a/libtpc/uima-annotators/TpLexiconAnnotatorFromPg/TpLexiconTrie.cpp b/libtpc/uima-annotators/TpLexiconAnnotatorFromPg/TpLexiconTrie.cpp
+index c9fde33..2db71ff 100644
+--- a/libtpc/uima-annotators/TpLexiconAnnotatorFromPg/TpLexiconTrie.cpp
++++ b/libtpc/uima-annotators/TpLexiconAnnotatorFromPg/TpLexiconTrie.cpp
+@@ -13,7 +13,9 @@ using namespace std;
+ TpLexiconTrie::TpLexiconTrie() {
+     idcounter_ = 0;
+     root = new TpLexiconNode();
+-    dlsetToken = set<UnicodeString>(G_initT, G_initT + G_initT_No);
++    dlsetToken = set<UnicodeString>(
++            tp_uima_globals::token_delimiters(),
++            tp_uima_globals::token_delimiters() + G_initT_No);
+     set<UnicodeString>::iterator it;
+     trieToken = new TpTrie();
+     for (it = dlsetToken.begin(); it != dlsetToken.end(); it++) {
+diff --git a/libtpc/uima-annotators/TpTokenizer/TpTokenizer.cpp b/libtpc/uima-annotators/TpTokenizer/TpTokenizer.cpp
+index 3ef9128..5616943 100644
+--- a/libtpc/uima-annotators/TpTokenizer/TpTokenizer.cpp
++++ b/libtpc/uima-annotators/TpTokenizer/TpTokenizer.cpp
+@@ -162,15 +162,21 @@ vector< pair<int32_t, int32_t> > RemoveDelimiters(const UnicodeStringRef usdocre
+ }
+ 
+ TpTokenizer::TpTokenizer() {
+-    dlsetToken = set<UnicodeString > (G_initT, G_initT + G_initT_No);
+-    dlsetSentence = set<UnicodeString > (G_initS, G_initS + G_initS_No);
++    dlsetToken = set<UnicodeString >(
++            tp_uima_globals::token_delimiters(),
++            tp_uima_globals::token_delimiters() + G_initT_No);
++    dlsetSentence = set<UnicodeString >(
++            tp_uima_globals::sentence_delimiters(),
++            tp_uima_globals::sentence_delimiters() + G_initS_No);
+     disqSentence.push_back("[\\(>\\s][A-Z]\\.[<\\s]$");
+     const string part1 = "[\\(>\\s](Prof|Ph\\.D|Dr|[Ff]igs?|[Vv]ol|i\\.e|e\\.g";
+     const string part2 = "|[Nn]o|[Vv]s|[Ee]x|al|ca)\\.[<\\s]$";
+     disqSentence.push_back(part1 + part2);
+     maxfrontdisqcharlength = 4; // sniplet length in front of sentence delimiter
+     maxbackdisqcharlength = 0; // sniplet length  following sentence delimiter.
+-    PdfTags = set<UnicodeString > (G_initP, G_initP + G_initP_No);
++    PdfTags = set<UnicodeString >(
++            tp_uima_globals::pdf_tags(),
++            tp_uima_globals::pdf_tags() + G_initP_No);
+ }
+ 
+ TpTokenizer::TpTokenizer(const TpTokenizer & orig) {
+diff --git a/libtpc/uima-annotators/TxTokenizer/TxTokenizer.cpp b/libtpc/uima-annotators/TxTokenizer/TxTokenizer.cpp
+index 36146da..fd38cfc 100644
+--- a/libtpc/uima-annotators/TxTokenizer/TxTokenizer.cpp
++++ b/libtpc/uima-annotators/TxTokenizer/TxTokenizer.cpp
+@@ -312,8 +312,12 @@ vector< pair<int32_t, int32_t> > RemoveDelimiters(const UnicodeStringRef usdocre
+ }
+ 
+ TxTokenizer::TxTokenizer() {
+-    dlsetToken = set<UnicodeString > (G_initT, G_initT + G_initT_No);
+-    dlsetSentence = set<UnicodeString > (G_initS, G_initS + G_initS_No);
++    dlsetToken = set<UnicodeString >(
++            tp_uima_globals::token_delimiters(),
++            tp_uima_globals::token_delimiters() + G_initT_No);
++    dlsetSentence = set<UnicodeString >(
++            tp_uima_globals::sentence_delimiters(),
++            tp_uima_globals::sentence_delimiters() + G_initS_No);
+     disqSentence.push_back("[\\(>\\s][A-Z]\\.[<\\s]$");
+     const string part1 = "[\\(>\\s](Prof|Ph\\.D|Dr|[Ff]igs?|[Vv]ol|i\\.e|e\\.g";
+     const string part2 = "|[Nn]o|[Vv]s|[Ee]x|al|ca)\\.[<\\s]$";
+diff --git a/libtpc/uima-annotators/uimaglobaldefinitions.h b/libtpc/uima-annotators/uimaglobaldefinitions.h
+index a5b0f02..7ea222e 100644
+--- a/libtpc/uima-annotators/uimaglobaldefinitions.h
++++ b/libtpc/uima-annotators/uimaglobaldefinitions.h
+@@ -4,171 +4,170 @@
+ #define UIMAGLOBALDEFINITIONS_H
+ 
+ #include <uima/api.hpp>
++#include <set>
++#include <string>
+ 
+ // If a composite delimiter exists, then there cannot be another delimiter
+ // that is a subset of that composite token delimiter. Decompose it accordingly.
+ // This applies to token and sentence delimiter
+-UnicodeString G_initT[] = {
+-    " ", "\n", "\t", "'", "\"",
+-    "/", "—", "(", ")", "[",
+-    "]", "{", "}", ":", ". ",
+-    "; ", ", ", "! ", "? "
+-};
+-const int G_initT_No = 19;
++namespace tp_uima_globals {
++
++inline const UnicodeString* token_delimiters() {
++    static const auto* values = new const UnicodeString[19]{
++        " ", "\n", "\t", "'", "\"",
++        "/", "—", "(", ")", "[",
++        "]", "{", "}", ":", ". ",
++        "; ", ", ", "! ", "? "
++    };
++    return values;
++}
++
++inline const UnicodeString* sentence_delimiters() {
++    static const auto* values = new const UnicodeString[12]{
++        ".\n", "!\n", "?\n", ". ", "! ", "? ",
++        ".\t", "!\t", "?\t", ".<", "!<", "?<"
++    };
++    return values;
++}
++
++inline const UnicodeString* pdf_tags() {
++    static const auto* values = new const UnicodeString[8]{
++        "<_pdf _image", "<_pdf _sbr", "<_pdf _hbr", "<_pdf _fsc",
++        "<_pdf _fnc", "<_pdf _ydiff", "<_pdf _cr", "<_pdf _page"
++    };
++    return values;
++}
++
++inline const std::set<UnicodeString>& sectionArticleB() {
++    static const auto* values = new std::set<UnicodeString>{"Beginning of Article\n"};
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionArticleE() {
++    static const auto* values = new std::set<UnicodeString>{"End of Article\n"};
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionAbstract() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Abstract\n", "A b s t r a c t\n", "ABSTRACT\n", "A B S T R A C T\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionIntroduction() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Introduction\n", "I n t r o d u c t i o n\n", "INTRODUCTION\n", "I N T R O D U C T I O N\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionResult() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Result\n", "R e s u l t\n", "RESULT\n", "R E S U L T\n",
++        "Results\n", "R e s u l t s\n", "RESULTS\n", "R E S U L T S\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionDiscussion() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Discussion\n", "D i s c u s s i o n\n", "DISCUSSION\n", "D I S C U S S I O N\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionConclusion() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Conclusion\n", "C o n c l u s i o n\n", "CONCLUSION\n", "C O N C L U S I O N\n",
++        "Conclusions\n", "C o n c l u s i o n s\n", "CONCLUSIONS\n", "C O N C L U S I O N S\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionBackground() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Background\n", "B a c k g r o u n d\n", "BACKGROUND\n", "B A C K G R O U N D\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionMaterialsMethods() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Material\n", "M a t e r i a l\n", "MATERIAL\n", "M A T E R I A L\n",
++        "Materials\n", "M a t e r i a l s\n", "MATERIALS\n", "M A T E R I A L S\n",
++        "Method\n", "M e t h o d\n", "METHOD\n", "M E T H O D\n",
++        "Methods\n", "M e t h o d s\n", "METHODS\n", "M E T H O D S\n",
++        "Material and Method\n", "M a t e r i a l   a n d   M e t h o d\n", "MATERIAL AND METHOD\n",
++        "M A T E R I A L   A N D   M E T H O D\n", "Material and Methods\n",
++        "M a t e r i a l   a n d   M e t h o d s\n", "MATERIAL AND METHODS\n",
++        "M A T E R I A L   A N D   M E T H O D S\n", "Materials and Method\n",
++        "M a t e r i a l s   a n d  M e t h o d\n", "MATERIALS AND METHOD\n",
++        "M A T E R I A L S   A N D   M E T H O D\n", "Materials and Methods\n",
++        "M a t e r i a l s   a n d   M e t h o d s\n", "MATERIALS AND METHODS\n",
++        "M A T E R I A L S   A N D   M E T H O D S\n", "Material And Method\n",
++        "M a t e r i a l   A n d   M e t h o d\n", "Material And Methods\n",
++        "M a t e r i a l   A n d   M e t h o d s\n", "Materials And Method\n",
++        "M a t e r i a l s   A n d   M e t h o d\n", "Materials And Methods\n",
++        "M a t e r i a l s   A n d   M e t h o d s", "Material and method\n",
++        "M a t e r i a l   a n d   m e t h o d\n", "Material and methods\n",
++        "M a t e r i a l   a n d   m e t h o d s\n", "Materials and method\n",
++        "M a t e r i a l s   a n d   m e t h o d\n", "Materials and methods\n",
++        "M a t e r i a l s   a n d   m e t h o d s\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionDesign() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Design\n", "D e s i g n\n", "DESIGN\n", "D E S I G N\n",
++        "Designs\n", "D e s i g n s\n", "DESIGNS\n", "D E S I G N S\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionAcknowledgments() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Acknowledgment\n", "A c k n o w l e d g m e n t\n", "ACKNOWLEDGMENT\n", "A C K N O W L E D G M E N T\n",
++        "Acknowledgments\n", "A c k n o w l e d g m e n t s\n", "ACKNOWLEDGMENTS\n", "A C K N O W L E D G M E N T S\n",
++        "Acknowledgement\n", "A c k n o w l e d g e m e n t\n", "ACKNOWLEDGEMENT\n", "A C K N O W L E D G E M E N T\n",
++        "Acknowledgements\n", "A c k n o w l e d g e m e n t s\n", "ACKNOWLEDGEMENTS\n", "A C K N O W L E D G E M E N T S\n"
++    };
++    return *values;
++}
++
++inline const std::set<UnicodeString>& sectionReferences() {
++    static const auto* values = new std::set<UnicodeString>{
++        "Reference\n", "R e f e r e n c e\n", "REFERENCE\n", "R E F E R E N C E\n",
++        "References\n", "R e f e r e n c e s\n", "REFERENCES\n", "R E F E R E N C E S\n"
++    };
++    return *values;
++}
++
++inline const std::string* server_names() {
++    static const auto* values = new const std::string[3]{
++        "http://goldturtle.caltech.edu/cgi-bin/ReceivePost.cgi",
++        "http://go-genkisugi.rhcloud.com/capella",
++        "http://localhost/cgi-bin/ReceivePost.cgi"
++    };
++    return values;
++}
++
++inline const UnicodeString& pdf_tag_start() {
++    static const auto* value = new UnicodeString("<_pdf ");
++    return *value;
++}
++
++inline const UnicodeString& pdf_tag_end() {
++    static const auto* value = new UnicodeString("/>");
++    return *value;
++}
++
++}  // namespace tp_uima_globals
+ 
+-UnicodeString G_initS[] = {
+-    ".\n", "!\n", "?\n", ". ", "! ", "? ",
+-    ".\t", "!\t", "?\t", ".<", "!<", "?<"
+-};
++const int G_initT_No = 19;
+ const int G_initS_No = 12;
+-
+-const set<UnicodeString> sectionArticleB{
+-    "Beginning of Article\n"};
+-
+-const set<UnicodeString> sectionArticleE{
+-    "End of Article\n"};
+-
+-const set<UnicodeString> sectionAbstract{
+-    "Abstract\n",
+-    "A b s t r a c t\n",
+-    "ABSTRACT\n",
+-    "A B S T R A C T\n"};
+-
+-const set<UnicodeString> sectionIntroduction{
+-    "Introduction\n",
+-    "I n t r o d u c t i o n\n",
+-    "INTRODUCTION\n",
+-    "I N T R O D U C T I O N\n"};
+-
+-const set<UnicodeString> sectionResult{
+-    "Result\n",
+-    "R e s u l t\n",
+-    "RESULT\n",
+-    "R E S U L T\n",
+-    "Results\n",
+-    "R e s u l t s\n",
+-    "RESULTS\n",
+-    "R E S U L T S\n"};
+-
+-const set<UnicodeString> sectionDiscussion{
+-    "Discussion\n",
+-    "D i s c u s s i o n\n",
+-    "DISCUSSION\n",
+-    "D I S C U S S I O N\n"};
+-
+-const set<UnicodeString> sectionConclusion{
+-    "Conclusion\n",
+-    "C o n c l u s i o n\n",
+-    "CONCLUSION\n",
+-    "C O N C L U S I O N\n",
+-    "Conclusions\n",
+-    "C o n c l u s i o n s\n",
+-    "CONCLUSIONS\n",
+-    "C O N C L U S I O N S\n"};
+-
+-const set<UnicodeString> sectionBackground{
+-    "Background\n",
+-    "B a c k g r o u n d\n",
+-    "BACKGROUND\n",
+-    "B A C K G R O U N D\n"};
+-
+-const set<UnicodeString> sectionMaterialsMethods{
+-    "Material\n",
+-    "M a t e r i a l\n",
+-    "MATERIAL\n",
+-    "M A T E R I A L\n",
+-    "Materials\n",
+-    "M a t e r i a l s\n",
+-    "MATERIALS\n",
+-    "M A T E R I A L S\n",
+-    "Method\n",
+-    "M e t h o d\n",
+-    "METHOD\n",
+-    "M E T H O D\n",
+-    "Methods\n",
+-    "M e t h o d s\n",
+-    "METHODS\n",
+-    "M E T H O D S\n",
+-    "Material and Method\n",
+-    "M a t e r i a l   a n d   M e t h o d\n",
+-    "MATERIAL AND METHOD\n",
+-    "M A T E R I A L   A N D   M E T H O D\n",
+-    "Material and Methods\n",
+-    "M a t e r i a l   a n d   M e t h o d s\n",
+-    "MATERIAL AND METHODS\n",
+-    "M A T E R I A L   A N D   M E T H O D S\n",
+-    "Materials and Method\n",
+-    "M a t e r i a l s   a n d  M e t h o d\n",
+-    "MATERIALS AND METHOD\n",
+-    "M A T E R I A L S   A N D   M E T H O D\n",
+-    "Materials and Methods\n",
+-    "M a t e r i a l s   a n d   M e t h o d s\n",
+-    "MATERIALS AND METHODS\n",
+-    "M A T E R I A L S   A N D   M E T H O D S\n",
+-    "Material And Method\n",
+-    "M a t e r i a l   A n d   M e t h o d\n",
+-    "Material And Methods\n",
+-    "M a t e r i a l   A n d   M e t h o d s\n",
+-    "Materials And Method\n",
+-    "M a t e r i a l s   A n d   M e t h o d\n",
+-    "Materials And Methods\n",
+-    "M a t e r i a l s   A n d   M e t h o d s",
+-    "Material and method\n",
+-    "M a t e r i a l   a n d   m e t h o d\n",
+-    "Material and methods\n",
+-    "M a t e r i a l   a n d   m e t h o d s\n",
+-    "Materials and method\n",
+-    "M a t e r i a l s   a n d   m e t h o d\n",
+-    "Materials and methods\n",
+-    "M a t e r i a l s   a n d   m e t h o d s\n"};
+-
+-const set<UnicodeString> sectionDesign{
+-    "Design\n",
+-    "D e s i g n\n",
+-    "DESIGN\n",
+-    "D E S I G N\n",
+-    "Designs\n",
+-    "D e s i g n s\n",
+-    "DESIGNS\n",
+-    "D E S I G N S\n"};
+-
+-const set<UnicodeString> sectionAcknowledgments{
+-    "Acknowledgment\n",
+-    "A c k n o w l e d g m e n t\n",
+-    "ACKNOWLEDGMENT\n",
+-    "A C K N O W L E D G M E N T\n",
+-    "Acknowledgments\n",
+-    "A c k n o w l e d g m e n t s\n",
+-    "ACKNOWLEDGMENTS\n",
+-    "A C K N O W L E D G M E N T S\n",
+-    "Acknowledgement\n",
+-    "A c k n o w l e d g e m e n t\n",
+-    "ACKNOWLEDGEMENT\n",
+-    "A C K N O W L E D G E M E N T\n",
+-    "Acknowledgements\n",
+-    "A c k n o w l e d g e m e n t s\n",
+-    "ACKNOWLEDGEMENTS\n",
+-    "A C K N O W L E D G E M E N T S\n"};
+-
+-const set<UnicodeString> sectionReferences{
+-    "Reference\n",
+-    "R e f e r e n c e\n",
+-    "REFERENCE\n",
+-    "R E F E R E N C E\n",
+-    "References\n",
+-    "R e f e r e n c e s\n",
+-    "REFERENCES\n",
+-    "R E F E R E N C E S\n"};
+-
+-UnicodeString G_initP[] = {"<_pdf _image", "<_pdf _sbr", "<_pdf _hbr",
+-    "<_pdf _fsc", "<_pdf _fnc", "<_pdf _ydiff", "<_pdf _cr", "<_pdf _page"};
+ const int G_initP_No = 8;
+-
+-const std::string ServerNames[] = {"http://goldturtle.caltech.edu/cgi-bin/ReceivePost.cgi",
+-    "http://go-genkisugi.rhcloud.com/capella", "http://localhost/cgi-bin/ReceivePost.cgi"};
+ const int ServerNames_No = 3;
+ 
+-const UnicodeString usG_pdftagstart("<_pdf ");
+-const UnicodeString usG_pdftagend("/>");
+-
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/textpressoapi/main.cpp b/textpressoapi/main.cpp
+index 77acd47..1f2b5e2 100644
+--- a/textpressoapi/main.cpp
++++ b/textpressoapi/main.cpp
+@@ -5,6 +5,7 @@
+ #include <textpresso/IndexManager.h>
+ #include <SQLiteCpp/SQLiteCpp.h>
+ #include <boost/program_options.hpp>
++#include <fstream>
+ 
+ using namespace tpc::index;
+ using namespace std;
+@@ -13,6 +14,76 @@ using namespace boost::filesystem;
+ 
+ namespace po = boost::program_options;
+ 
++namespace {
++
++struct BibMetadata {
++    string accession;
++    string title;
++    string author;
++    string journal;
++    string year;
++    string type;
++    string abstract_text;
++};
++
++string unwrap_marked_field(const string& value) {
++    static const string prefix = "BEGIN ";
++    static const string suffix = " END";
++    if (value.size() >= prefix.size() + suffix.size() &&
++            value.compare(0, prefix.size(), prefix) == 0 &&
++            value.compare(value.size() - suffix.size(), suffix.size(), suffix) == 0) {
++        return value.substr(prefix.size(), value.size() - prefix.size() - suffix.size());
++    }
++    return value;
++}
++
++string basename_without_suffix(const string& filepath, const string& suffix) {
++    auto slash = filepath.find_last_of('/');
++    string basename = slash == string::npos ? filepath : filepath.substr(slash + 1);
++    if (basename.size() >= suffix.size() &&
++            basename.compare(basename.size() - suffix.size(), suffix.size(), suffix) == 0) {
++        basename.resize(basename.size() - suffix.size());
++    }
++    return basename;
++}
++
++BibMetadata load_bib_metadata(const string& filepath) {
++    BibMetadata metadata;
++    path bib_path = path(CAS_ROOT_LOCATION) / path(filepath);
++    bib_path.replace_extension(".bib");
++    std::ifstream input(bib_path.string());
++    if (!input.good()) {
++        return metadata;
++    }
++    string line;
++    while (getline(input, line)) {
++        auto split = line.find('|');
++        if (split == string::npos) {
++            continue;
++        }
++        string key = line.substr(0, split);
++        string value = line.substr(split + 1);
++        if (key == "accession") {
++            metadata.accession = value;
++        } else if (key == "title") {
++            metadata.title = value;
++        } else if (key == "author") {
++            metadata.author = value;
++        } else if (key == "journal") {
++            metadata.journal = value;
++        } else if (key == "year") {
++            metadata.year = value;
++        } else if (key == "type") {
++            metadata.type = value;
++        } else if (key == "abstract") {
++            metadata.abstract_text = value;
++        }
++    }
++    return metadata;
++}
++
++}
++
+ bool is_token_valid(const string& db_path, const string& token) {
+     try {
+         SQLite::Database db(db_path);
+@@ -225,25 +296,56 @@ int main(int argc, const char* argv[]) {
+                 }
+                 auto doc_details = indexManager.get_documents_details(
+                         vector<tpc::index::DocumentSummary>(first_iter, last_iter), query.sort_by_year,
+-                        include_match_sentences, tpc::index::DOCUMENTS_FIELDS_DETAILED, include_match_sentence_fields,
++                        include_match_sentences, {"filepath", "year", "doc_id"}, include_match_sentence_fields,
+                         exclude_doc_fields,{}, include_all_sentences, include_all_sentence_fields,{}, true, true);
+                 // response
+                 crow::json::wvalue json_resp;
+                 for (int i = 0; i < doc_details.size(); ++i) {
++                    BibMetadata bib = load_bib_metadata(doc_details[i].filepath);
++                    string accession = doc_details[i].accession.empty() ?
++                            basename_without_suffix(doc_details[i].filepath, ".tpcas") :
++                            doc_details[i].accession;
++                    if (!bib.accession.empty()) {
++                        accession = bib.accession;
++                    }
++                    string title = unwrap_marked_field(doc_details[i].title);
++                    if (title.empty() && !bib.title.empty()) {
++                        title = bib.title;
++                    }
++                    if (title.empty()) {
++                        title = accession;
++                    }
++                    string author = unwrap_marked_field(doc_details[i].author);
++                    if (author.empty() && bib.author != "<not uploaded>") {
++                        author = bib.author;
++                    }
++                    string journal = unwrap_marked_field(doc_details[i].journal);
++                    if (journal.empty() && bib.journal != "<not uploaded>") {
++                        journal = bib.journal;
++                    }
++                    string doc_type = doc_details[i].type;
++                    if (doc_type.empty() && !bib.type.empty() && bib.type != "<not uploaded>") {
++                        doc_type = bib.type;
++                    }
++                    string year = doc_details[i].year;
++                    if (year.empty() && !bib.year.empty() && bib.year != "<not uploaded>") {
++                        year = bib.year;
++                    }
+                     json_resp[i]["identifier"] = doc_details[i].filepath;
+-                            json_resp[i]["score"] = doc_details[i].score;
+-                            json_resp[i]["title"] =
+-                            doc_details[i].title.substr(6, doc_details[i].title.length() - 10);
+-                            json_resp[i]["author"] =
+-                            doc_details[i].author.substr(6, doc_details[i].author.length() - 10);
+-                            json_resp[i]["accession"] = doc_details[i].accession;
+-                            json_resp[i]["journal"] =
+-                            doc_details[i].journal.substr(6, doc_details[i].journal.length() - 10);
+-                            json_resp[i]["doc_type"] = doc_details[i].type;
+-                            json_resp[i]["year"] = doc_details[i].year;
++                    json_resp[i]["score"] = doc_details[i].score;
++                    json_resp[i]["title"] = title;
++                    json_resp[i]["author"] = author;
++                    json_resp[i]["accession"] = accession;
++                    json_resp[i]["journal"] = journal;
++                    json_resp[i]["doc_type"] = doc_type;
++                    json_resp[i]["year"] = year;
+                     if (include_text) {
+                         json_resp[i]["fulltext"] = doc_details[i].fulltext;
+-                                json_resp[i]["abstract"] = doc_details[i].abstract;
++                        json_resp[i]["abstract"] = doc_details[i].abstract;
++                        if (doc_details[i].abstract.empty() && !bib.abstract_text.empty() &&
++                                bib.abstract_text != "<not uploaded>") {
++                            json_resp[i]["abstract"] = bib.abstract_text;
++                        }
+                     }
+                     if (include_match_sentences) {
+                         sort(doc_details[i].sentences_details.begin(),
+diff --git a/textpressocentral/TpC/Search.cpp b/textpressocentral/TpC/Search.cpp
+index 2c42bc4..2ffc209 100644
+--- a/textpressocentral/TpC/Search.cpp
++++ b/textpressocentral/TpC/Search.cpp
+@@ -27,6 +27,7 @@
+ #include <string>
+ #include <vector>
+ #include <unordered_map>
++#include <fstream>
+ 
+ #include <lucene++/LuceneHeaders.h>
+ #include <lucene++/CompressionTools.h>
+@@ -44,6 +45,16 @@ using namespace tpc::index;
+ 
+ namespace {
+ 
++    struct BibMetadata {
++        std::string accession;
++        std::string title;
++        std::string author;
++        std::string journal;
++        std::string year;
++        std::string type;
++        std::string abstract_text;
++    };
++
+     bool is_number(const std::wstring& s) {
+         std::wstring::const_iterator it = s.begin();
+         while (it != s.end() && std::isdigit(*it)) it++;
+@@ -73,6 +84,61 @@ namespace {
+         return Wt::WString(lstring.c_str());
+     }
+ 
++    std::string unwrap_marked_field(const std::string& value) {
++        if (value.size() >= 10 && value.rfind("[[VAL[", 0) == 0 &&
++                value.compare(value.size() - 4, 4, "]]]") == 0) {
++            return value.substr(6, value.size() - 10);
++        }
++        return value;
++    }
++
++    std::string basename_without_suffix(const std::string& path, const std::string& suffix) {
++        boost::filesystem::path filepath(path);
++        std::string base = filepath.filename().string();
++        if (base.size() >= suffix.size() &&
++                base.compare(base.size() - suffix.size(), suffix.size(), suffix) == 0) {
++            base.erase(base.size() - suffix.size());
++        }
++        return base;
++    }
++
++    BibMetadata load_bib_metadata(const std::string& filepath) {
++        BibMetadata metadata;
++        boost::filesystem::path bib_path = boost::filesystem::path(CAS_ROOT_LOCATION) /
++                boost::filesystem::path(filepath);
++        bib_path.replace_extension(".bib");
++        if (!boost::filesystem::exists(bib_path)) {
++            return metadata;
++        }
++
++        std::ifstream input(bib_path.string());
++        std::string line;
++        while (std::getline(input, line)) {
++            auto split = line.find('|');
++            if (split == std::string::npos) {
++                continue;
++            }
++            std::string key = line.substr(0, split);
++            std::string value = line.substr(split + 1);
++            if (key == "accession") {
++                metadata.accession = value;
++            } else if (key == "title") {
++                metadata.title = value;
++            } else if (key == "author") {
++                metadata.author = value;
++            } else if (key == "journal") {
++                metadata.journal = value;
++            } else if (key == "year") {
++                metadata.year = value;
++            } else if (key == "type") {
++                metadata.type = value;
++            } else if (key == "abstract") {
++                metadata.abstract_text = value;
++            }
++        }
++        return metadata;
++    }
++
+     vector<pair<int, int> > searchregex(string regex, string text) {
+         vector<pair<int, int> > matches;
+         boost::regex regex_to_match(regex.c_str(), boost::regex::icase);
+@@ -1523,7 +1589,7 @@ void Search::getAllResults(std::vector< std::vector < std::wstring> >& contents)
+         //
+         vector<DocumentDetails> docsDetails = indexManager_.get_documents_details(
+                 searchResults_.hit_documents, cb_year_->isChecked(), false,
+-                DOCUMENTS_FIELDS_DETAILED, SENTENCE_FIELDS_DETAILED, {
++                {"filepath", "year", "doc_id"}, SENTENCE_FIELDS_DETAILED, {
+                     "fulltext_compressed", "fulltext_cat_compressed"
+                 },
+         {
+@@ -1552,30 +1618,50 @@ void Search::getAllResults(std::vector< std::vector < std::wstring> >& contents)
+             std::vector<std::wstring> row;
+             std::wstring serial = boost::lexical_cast<std::wstring > (i + 1);
+             row.push_back(serial);
+-            row.push_back(LString2WtString(String(docDetails.accession.begin(), docDetails.accession.end())));
++            BibMetadata bib = load_bib_metadata(docDetails.filepath);
++            string accession = docDetails.accession.empty() ?
++                    basename_without_suffix(docDetails.filepath, ".tpcas") :
++                    docDetails.accession;
++            if (!bib.accession.empty()) {
++                accession = bib.accession;
++            }
++            row.push_back(LString2WtString(String(accession.begin(), accession.end())));
+             string corpora = boost::join(docDetails.corpora, ", ");
+             row.push_back(LString2WtString(String(corpora.begin(), corpora.end())));
+-            row.push_back(LString2WtString(String(docDetails.type.begin(), docDetails.type.end())));
+-            if (!docDetails.title.empty()) {
+-                string cleanTitle = docDetails.title.substr(6, docDetails.title.size() - 10);
+-                row.push_back(LString2WtString(String(cleanTitle.begin(), cleanTitle.end())));
+-            } else {
+-                row.push_back(L"");
++            string doc_type = docDetails.type;
++            if (doc_type.empty() && !bib.type.empty() && bib.type != "<not uploaded>") {
++                doc_type = bib.type;
+             }
+-            if (!docDetails.author.empty()) {
+-                string cleanAuthor = docDetails.author.substr(6, docDetails.author.size() - 10);
+-                row.push_back(LString2WtString(String(cleanAuthor.begin(), cleanAuthor.end())));
+-            } else {
+-                row.push_back(L"");
++            row.push_back(LString2WtString(String(doc_type.begin(), doc_type.end())));
++            string title = unwrap_marked_field(docDetails.title);
++            if (title.empty() && !bib.title.empty()) {
++                title = bib.title;
+             }
+-            if (!docDetails.journal.empty()) {
+-                string cleanJournal = docDetails.journal.substr(6, docDetails.journal.size() - 10);
+-                row.push_back(LString2WtString(String(cleanJournal.begin(), cleanJournal.end())));
+-            } else {
+-                row.push_back(L"");
++            if (title.empty()) {
++                title = accession;
++            }
++            row.push_back(LString2WtString(String(title.begin(), title.end())));
++            string author = unwrap_marked_field(docDetails.author);
++            if (author.empty() && bib.author != "<not uploaded>") {
++                author = bib.author;
+             }
+-            row.push_back(LString2WtString(String(docDetails.year.begin(), docDetails.year.end())));
+-            row.push_back(LString2WtString(String(docDetails.abstract.begin(), docDetails.abstract.end())));
++            row.push_back(LString2WtString(String(author.begin(), author.end())));
++            string journal = unwrap_marked_field(docDetails.journal);
++            if (journal.empty() && bib.journal != "<not uploaded>") {
++                journal = bib.journal;
++            }
++            row.push_back(LString2WtString(String(journal.begin(), journal.end())));
++            string year = docDetails.year;
++            if (year.empty() && !bib.year.empty() && bib.year != "<not uploaded>") {
++                year = bib.year;
++            }
++            row.push_back(LString2WtString(String(year.begin(), year.end())));
++            string abstract_text = docDetails.abstract;
++            if (abstract_text.empty() && !bib.abstract_text.empty() &&
++                    bib.abstract_text != "<not uploaded>") {
++                abstract_text = bib.abstract_text;
++            }
++            row.push_back(LString2WtString(String(abstract_text.begin(), abstract_text.end())));
+             row.push_back(w_score);
+             string filepath = docDetails.filepath;
+             boost::replace_regex(filepath, boost::regex("^PMCOA [^\\/]*\\/"), string("PMCOA\\/"));
+@@ -1660,7 +1746,7 @@ void Search::displayTable(int start, int end, int direction) {
+     set<string> fields_to_exclude;
+     vector<DocumentDetails> docsDetails = indexManager_.get_documents_details(
+             doc_summaries, cb_year_->isChecked(), false,
+-            DOCUMENTS_FIELDS_DETAILED, SENTENCE_FIELDS_DETAILED, {
++            {"filepath", "year", "doc_id"}, SENTENCE_FIELDS_DETAILED, {
+                 "fulltext_compressed", "fulltext_cat_compressed"
+             },
+     {
+@@ -1695,30 +1781,50 @@ void Search::displayTable(int start, int end, int direction) {
+         std::vector<std::wstring> row;
+         std::wstring serial = boost::lexical_cast<std::wstring > (i + 1);
+         row.push_back(serial);
+-        row.push_back(LString2WtString(String(docDetails.accession.begin(), docDetails.accession.end())));
++        BibMetadata bib = load_bib_metadata(docDetails.filepath);
++        string accession = docDetails.accession.empty() ?
++                basename_without_suffix(docDetails.filepath, ".tpcas") :
++                docDetails.accession;
++        if (!bib.accession.empty()) {
++            accession = bib.accession;
++        }
++        row.push_back(LString2WtString(String(accession.begin(), accession.end())));
+         string corpora = boost::join(docDetails.corpora, ", ");
+         row.push_back(LString2WtString(String(corpora.begin(), corpora.end())));
+-        row.push_back(LString2WtString(String(docDetails.type.begin(), docDetails.type.end())));
+-        if (!docDetails.title.empty()) {
+-            string cleanTitle = docDetails.title.substr(6, docDetails.title.size() - 10);
+-            row.push_back(LString2WtString(String(cleanTitle.begin(), cleanTitle.end())));
+-        } else {
+-            row.push_back(L"");
++        string doc_type = docDetails.type;
++        if (doc_type.empty() && !bib.type.empty() && bib.type != "<not uploaded>") {
++            doc_type = bib.type;
+         }
+-        if (!docDetails.author.empty()) {
+-            string cleanAuthor = docDetails.author.substr(6, docDetails.author.size() - 10);
+-            row.push_back(LString2WtString(String(cleanAuthor.begin(), cleanAuthor.end())));
+-        } else {
+-            row.push_back(L"");
++        row.push_back(LString2WtString(String(doc_type.begin(), doc_type.end())));
++        string title = unwrap_marked_field(docDetails.title);
++        if (title.empty() && !bib.title.empty()) {
++            title = bib.title;
+         }
+-        if (!docDetails.journal.empty()) {
+-            string cleanJournal = docDetails.journal.substr(6, docDetails.journal.size() - 10);
+-            row.push_back(LString2WtString(String(cleanJournal.begin(), cleanJournal.end())));
+-        } else {
+-            row.push_back(L"");
++        if (title.empty()) {
++            title = accession;
++        }
++        row.push_back(LString2WtString(String(title.begin(), title.end())));
++        string author = unwrap_marked_field(docDetails.author);
++        if (author.empty() && bib.author != "<not uploaded>") {
++            author = bib.author;
++        }
++        row.push_back(LString2WtString(String(author.begin(), author.end())));
++        string journal = unwrap_marked_field(docDetails.journal);
++        if (journal.empty() && bib.journal != "<not uploaded>") {
++            journal = bib.journal;
++        }
++        row.push_back(LString2WtString(String(journal.begin(), journal.end())));
++        string year = docDetails.year;
++        if (year.empty() && !bib.year.empty() && bib.year != "<not uploaded>") {
++            year = bib.year;
++        }
++        row.push_back(LString2WtString(String(year.begin(), year.end())));
++        string abstract_text = docDetails.abstract;
++        if (abstract_text.empty() && !bib.abstract_text.empty() &&
++                bib.abstract_text != "<not uploaded>") {
++            abstract_text = bib.abstract_text;
+         }
+-        row.push_back(LString2WtString(String(docDetails.year.begin(), docDetails.year.end())));
+-        row.push_back(LString2WtString(String(docDetails.abstract.begin(), docDetails.abstract.end())));
++        row.push_back(LString2WtString(String(abstract_text.begin(), abstract_text.end())));
+         row.push_back(w_score);
+         string filepath = docDetails.filepath;
+         boost::replace_regex(filepath, boost::regex("^PMCOA [^\\/]*\\/"), string("PMCOA\\/"));
+diff --git a/tpctools/CMakeLists.txt b/tpctools/CMakeLists.txt
+index b004206..1095cd3 100644
+--- a/tpctools/CMakeLists.txt
++++ b/tpctools/CMakeLists.txt
+@@ -45,14 +45,15 @@ add_executable(ppm2jpg ppm2jpg/main.cpp)
+ target_link_libraries(ppm2jpg boost_system boost_filesystem boost_program_options pthread ${CImg_SYSTEM_LIBS})
+ 
+ add_executable(cas2index cas2index/cas2index.cpp)
+-target_link_libraries(cas2index ${Textpresso_LIBRARY} boost_filesystem boost_system boost_program_options lucene++)
++target_link_libraries(cas2index ${Textpresso_LIBRARY} boost_filesystem boost_system boost_program_options lucene++
++        pthread)
+ 
+ add_executable(updatecorpuscounter cas2index/update_corpus_counter.cpp)
+ target_link_libraries(updatecorpuscounter ${Textpresso_LIBRARY} boost_filesystem boost_system boost_program_options
+-        lucene++)
++        lucene++ pthread)
+ 
+ add_executable(indexmerger cas2index/index_merger.cpp lucene/CaseSensitiveAnalyzer.cpp)
+-target_link_libraries(indexmerger uima boost_filesystem boost_system lucene++)
++target_link_libraries(indexmerger uima boost_filesystem boost_system lucene++ pthread)
+ 
+ add_executable(articles2cas articles2cas/articles2cas.cpp articles2cas/Utils.h articles2cas/Utils.cpp)
+ target_link_libraries(articles2cas ${Textpresso_LIBRARY} boost_filesystem boost_system boost_program_options boost_iostreams)
+@@ -63,22 +64,23 @@ target_link_libraries(downloadpdf xerces-c boost_program_options boost_filesyste
+ add_executable(getbib getbib/getbib.cpp getbib/getbibUtils.h getbib/getbibUtils.cpp
+         TextpressoCentralGlobalDefinitions.h TextpressoCentralGlobals.h)
+ target_link_libraries(getbib lucene++ xerces-c icuuc boost_system uima boost_filesystem boost_iostreams)
++target_link_libraries(getbib pthread)
+ 
+ add_executable(getbib4nxml getbib/getbib4nxml.cpp getbib/getbib4nxmlUtils.h getbib/getbib4nxmlUtils.cpp
+         TextpressoCentralGlobalDefinitions.h TextpressoCentralGlobals.h)
+ target_link_libraries(getbib4nxml lucene++ xerces-c icuuc boost_system uima boost_filesystem boost_iostreams
+-        boost_program_options)
++        boost_program_options pthread)
+ 
+ add_executable(saveidstodb cas2index/saveidstodb.cpp)
+ target_link_libraries(saveidstodb lucene++ boost_filesystem boost_system boost_program_options ${Textpresso_LIBRARY}
+-        db_cxx db_stl)
++        db_cxx db_stl pthread)
+ 
+ add_executable(cmykinverter CMYKInverter/CMYKModifier.h CMYKInverter/CMYKModifier.cpp CMYKInverter/main.cpp)
+ target_link_libraries(cmykinverter ${ImageMagick_LIBRARIES} boost_system boost_filesystem)
+ 
+ add_executable(curationtasks curationtasks/main.cpp)
+ target_link_libraries(curationtasks lucene++ boost_filesystem boost_system boost_regex boost_program_options
+-        ${Textpresso_LIBRARY})
++        ${Textpresso_LIBRARY} pthread)
+ 
+ add_executable(diffhtml diffhtml/main.cpp diffhtml/cmdline.h)
+ 
+diff --git a/tpctools/cas2index/create_single_index.sh b/tpctools/cas2index/create_single_index.sh
+index bb1950a..513f474 100755
+--- a/tpctools/cas2index/create_single_index.sh
++++ b/tpctools/cas2index/create_single_index.sh
+@@ -88,6 +88,13 @@ do
+ done
+ rm -rf ${INDEX_OUT_DIR}/tmpindex*
+ rm -rf ${tempdir}
+-mkdir "${INDEX_OUT_DIR}/db"
+-updatecorpuscounter -i ${INDEX_OUT_DIR} -c ${CAS_ROOT_DIR}
++if [[ -L "${INDEX_OUT_DIR}/db" || ( -e "${INDEX_OUT_DIR}/db" && ! -d "${INDEX_OUT_DIR}/db" ) ]]
++then
++    rm -rf "${INDEX_OUT_DIR}/db"
++fi
++mkdir -p "${INDEX_OUT_DIR}/db"
++if ! updatecorpuscounter -i ${INDEX_OUT_DIR} -c ${CAS_ROOT_DIR}
++then
++    echo "WARNING: updatecorpuscounter failed; continuing with index output" >&2
++fi
+ exit 0
+diff --git a/tpctools/cas2index/saveidstodb.cpp b/tpctools/cas2index/saveidstodb.cpp
+index 2ad6b14..4f3d918 100644
+--- a/tpctools/cas2index/saveidstodb.cpp
++++ b/tpctools/cas2index/saveidstodb.cpp
+@@ -48,4 +48,5 @@ int main(int argc, const char* argv[]) {
+     tpc::index::IndexManager indexManager(inputDir, "", false, false);
+     indexManager.save_all_doc_ids_for_sentences_to_db();
+     indexManager.save_all_years_for_documents_to_db();
++    return EXIT_SUCCESS;
+ }
+diff --git a/tpctools/cas2index/update_corpus_counter.cpp b/tpctools/cas2index/update_corpus_counter.cpp
+index 74ff33c..eb7ab03 100644
+--- a/tpctools/cas2index/update_corpus_counter.cpp
++++ b/tpctools/cas2index/update_corpus_counter.cpp
+@@ -50,4 +50,5 @@ int main(int argc, const char* argv[]) {
+     }
+     tpc::index::IndexManager indexManager(inputDir, casDir, false, false);
+     indexManager.calculate_and_save_corpus_counter();
++    return EXIT_SUCCESS;
+ }
+diff --git a/tpctools/run_tpc_pipeline_incremental.sh b/tpctools/run_tpc_pipeline_incremental.sh
+index 73200fb..85ecdff 100755
+--- a/tpctools/run_tpc_pipeline_incremental.sh
++++ b/tpctools/run_tpc_pipeline_incremental.sh
+@@ -37,6 +37,73 @@ function array_contains {
+     echo ${found}
+ }
+ 
++function ensure_pdf_bib_files() {
++    local cas2_root="$1"
++    local metadata_dir="${TPC_METADATA_DIR:-/data/textpresso/imports/metadata}"
++    local script_dir
++    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
++    local helper_path="${TPC_GENERATE_PDF_BIB:-${script_dir}/generate_pdf_bib.py}"
++    if [[ ! -f "${helper_path}" ]]
++    then
++        helper_path="/usr/local/bin/generate_pdf_bib.py"
++    fi
++    find "${cas2_root}" -mindepth 3 -maxdepth 3 -type f -name "*.tpcas.gz" | while read -r tpcas_file
++    do
++        local bib_file="${tpcas_file%.tpcas.gz}.bib"
++        if [[ -e "${bib_file}" ]]
++        then
++            if ! grep -q "<not uploaded>" "${bib_file}"
++            then
++                continue
++            fi
++        fi
++        local paper_id
++        paper_id=$(basename "${tpcas_file}" .tpcas.gz)
++        local relative_tpcas
++        relative_tpcas="${tpcas_file#${cas2_root}/}"
++        local corpus_name
++        corpus_name="${relative_tpcas%%/*}"
++        local pdf_file="${PDF_DIR}/${corpus_name}/${paper_id}/${paper_id}.pdf"
++        if [[ -x "${helper_path}" || -f "${helper_path}" ]]
++        then
++            python3 "${helper_path}" \
++                --pdf "${pdf_file}" \
++                --bib "${bib_file}" \
++                --accession "${paper_id}" \
++                --metadata-dir "${metadata_dir}"
++        else
++            cat > "${bib_file}" <<EOF
++author|<not uploaded>
++accession|${paper_id}
++type|Journal_article
++title|${paper_id}
++journal|<not uploaded>
++citation|<not uploaded>
++year|<not uploaded>
++abstract|<not uploaded>
++EOF
++        fi
++    done
++}
++
++function restart_textpresso_api() {
++    local api_log="/data/textpresso/textpressoapi_data/api.log"
++    local token_db="/data/textpresso/textpressoapi_data/tokens.db"
++    if [[ "${TPC_RESTART_API_AFTER_INDEX:-1}" == "0" ]]
++    then
++        return 0
++    fi
++    if ! command -v textpressoapi >/dev/null 2>&1
++    then
++        echo "Skipping API restart: textpressoapi not found" >&2
++        return 0
++    fi
++    pkill textpressoapi >/dev/null 2>&1 || true
++    nohup textpressoapi -d "${token_db}" > "${api_log}" 2>&1 &
++    # Give the API a short window to reopen the rebuilt Lucene index.
++    sleep 2
++}
++
+ PDF_DIR="/data/textpresso/raw_files/pdf"
+ XML_DIR="/data/textpresso/raw_files/xml"
+ CAS2_DIR="/data/textpresso/tpcas-2"
+@@ -247,6 +314,9 @@ fi
+ if [[ $(array_contains "${EXCLUDE_STEPS[@]}" "cas2") == "0" ]]
+ then
+     echo "Generating CAS2 files ..."
++    # Always start from a clean tmp CAS workspace to avoid stale .tpcas/.tpcas.gz
++    # pairs from previous runs that can crash downstream tools.
++    rm -rf "${TMP_DIR}/tpcas-1" "${TMP_DIR}/tpcas-2"
+     # 3.1 COPY FILES TO TMP DIR
+ 
+     # 3.1.1 xml - subdirs are processed in parallel
+@@ -264,7 +334,7 @@ then
+             mkdir -p ${TMP_DIR}/tpcas-1/xml/subdir_${subdir_idx}
+         fi
+         dirname=$(echo ${line} | awk 'BEGIN{FS="/"}{print $NF}')
+-        find -L "${CAS1_DIR}/PMCOA/${dirname}" -name *.tpcas.gz | xargs -I {} cp "{}" "${TMP_DIR}/tpcas-1/xml/subdir_${subdir_idx}/${dirname}.tpcas.gz"
++        find -L "${CAS1_DIR}/PMCOA/${dirname}" -name "*.tpcas.gz" -print0 | xargs -0 -r -I {} cp "{}" "${TMP_DIR}/tpcas-1/xml/subdir_${subdir_idx}/${dirname}.tpcas.gz"
+         i=$((i+1))
+     done
+ 
+@@ -294,66 +364,136 @@ then
+     done
+ 
+     # decompress all tpcas files in tmp dir before processing them
+-    find -L ${TMP_DIR}/tpcas-1 -name "*.tpcas.gz" -print0 | xargs -0 -n 1 -P ${N_PROC} gunzip
++    find -L ${TMP_DIR}/tpcas-1 -name "*.tpcas.gz" -print0 | xargs -0 -r -n 1 -P ${N_PROC} gunzip -f
+ 
+     # remove old versions
+     awk -F"/" '{print $NF}' ${newxml_local_list} | xargs -I {} rm -rf "${CAS2_DIR}/PMCOA/{}"
+ 
+-    # prepare pcrelations table in postgres
+-    echo "drop table pcrelations" | psql www-data
+-    TABLELIST=$(echo "select tablename from pg_tables" | psql www-data | grep pcrelations)
+-    FIRSTTABLE=$(echo $TABLELIST | cut -f 1 -d " ");
+-    echo "create table pcrelations as (select * from $FIRSTTABLE) with no data" | psql www-data
+-    for j in $TABLELIST
+-    do
+-	echo Inserting $j
+-	echo "insert into pcrelations select * from $j" | psql www-data
+-    done
++    # Prepare pcrelations/tpontology tables in postgres.
++    # Some deployments only have base tables (pcrelations/tpontology), while
++    # others only have the temp lexica tables populated by CreateLexica.bash.
++    # Materialize the base tables when only temp tables are present so
++    # TpLexiconAnnotatorFromPg can start successfully.
++    PCTEMP_CREATED=0
++    if [[ $(psql -At -d www-data -c "select count(*) from pg_tables where schemaname='public' and tablename='pcrelations'") == "0" \
++       && $(psql -At -d www-data -c "select count(*) from pg_tables where schemaname='public' and tablename='tmppcrelations'") != "0" ]]
++    then
++        echo "create table pcrelations as (select * from tmppcrelations)" | psql www-data
++    fi
++    PC_TABLELIST=$(psql -At -d www-data -c "select tablename from pg_tables where schemaname='public' and tablename like 'pcrelations%'")
++    PC_NONBASE_TABLELIST=$(echo "${PC_TABLELIST}" | grep -v '^pcrelations$' || true)
++    if [[ "${PC_NONBASE_TABLELIST}" != "" ]]
++    then
++        echo "drop table if exists pcrelations" | psql www-data
++        FIRSTTABLE=$(echo "${PC_NONBASE_TABLELIST}" | head -n 1)
++        echo "create table pcrelations as (select * from ${FIRSTTABLE}) with no data" | psql www-data
++        for j in ${PC_NONBASE_TABLELIST}
++        do
++            echo Inserting $j
++            echo "insert into pcrelations select * from $j" | psql www-data
++        done
++        PCTEMP_CREATED=1
++    elif [[ $(echo "${PC_TABLELIST}" | grep -c '^pcrelations$') -gt 0 ]]
++    then
++        echo "Using existing pcrelations table"
++    else
++        echo "No pcrelations source table found in www-data" >&2
++    fi
++
++    TPTEMP_CREATED=0
++    if [[ $(psql -At -d www-data -c "select count(*) from pg_tables where schemaname='public' and tablename='tpontology'") == "0" \
++       && $(psql -At -d www-data -c "select count(*) from pg_tables where schemaname='public' and tablename='tmptpontology'") != "0" ]]
++    then
++        echo "create table tpontology as (select * from tmptpontology)" | psql www-data
++    fi
++    TP_TABLELIST=$(psql -At -d www-data -c "select tablename from pg_tables where schemaname='public' and tablename like 'tpontology%'")
++    TP_NONBASE_TABLELIST=$(echo "${TP_TABLELIST}" | grep -v '^tpontology$' || true)
++    if [[ "${TP_NONBASE_TABLELIST}" != "" ]]
++    then
++        echo "drop table if exists tpontology" | psql www-data
++        FIRSTTABLE=$(echo "${TP_NONBASE_TABLELIST}" | head -n 1)
++        TABLEARRAY=(${TP_NONBASE_TABLELIST})
++        echo "create table tpontology as (select * from ${FIRSTTABLE}) with no data" | psql www-data
++        TPTEMP_CREATED=1
++    elif [[ $(echo "${TP_TABLELIST}" | grep -c '^tpontology$') -gt 0 ]]
++    then
++        echo "Using existing tpontology table"
++        TABLEARRAY=("tpontology")
++    else
++        echo "No tpontology source table found in www-data" >&2
++        TABLEARRAY=()
++    fi
+ 
+-    # prepare tpontology table in postgres
+-    echo "drop table tpontology" | psql www-data
+-    TABLELIST=$(echo "select tablename from pg_tables" | psql www-data | grep tpontology)
+-    FIRSTTABLE=$(echo $TABLELIST | cut -f 1 -d " ");
+-    TABLEARRAY=($TABLELIST)
+-    echo "create table tpontology as (select * from $FIRSTTABLE) with no data" | psql www-data
+     FIRSTTIME=1
++    RUNAECPP_LOG="/tmp/runAECpp.$$.log"
++    : > "${RUNAECPP_LOG}"
+     i=0
+     while (( i < ${#TABLEARRAY[@]}))
+     do
+-	echo "delete from tpontology" | psql www-data
+-	while
+-	    if [[ ${TABLEARRAY[$i]} != "" ]]
+-	    then
+-		echo Inserting ${TABLEARRAY[$i]}
+-		echo "insert into tpontology select * from ${TABLEARRAY[$i]}" | psql www-data
+-	    fi
+-	    i=$[i+1]
+-	    s=$(echo "select count(*) from tpontology" | psql www-data )
+-	    j=$(echo $s | cut -f 3 -d " ")
+-   	    (( j < 5000000)) && (( i < ${#TABLEARRAY[@]}))
+-	do true; done
++        if [[ ${TPTEMP_CREATED} -eq 0 && ${TABLEARRAY[$i]} == "tpontology" ]]
++        then
++            # Base tpontology is already the active table; do not truncate/reload it.
++            i=$((i+1))
++        else
++	    echo "delete from tpontology" | psql www-data
++	    while
++	        if [[ ${TABLEARRAY[$i]} != "" ]]
++	        then
++		    echo Inserting ${TABLEARRAY[$i]}
++		    echo "insert into tpontology select * from ${TABLEARRAY[$i]}" | psql www-data
++	        fi
++	        i=$[i+1]
++	        s=$(echo "select count(*) from tpontology" | psql www-data )
++	        j=$(echo $s | cut -f 3 -d " ")
++   	        (( j < 5000000)) && (( i < ${#TABLEARRAY[@]}))
++	    do true; done
++        fi
+         # UIMA analysis for nxml files
+         for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
+         do
++            XML_INPUT_DIR="${TMP_DIR}/tpcas-1/xml/${subdir}"
++            XML_NEXT_INPUT_DIR="${TMP_DIR}/tpcas-2/xml/1.${subdir}"
+             if (( $FIRSTTIME > 0 ))
+             then
+-                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-1/xml/${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir} &
++                xml_file_count=$(find "${XML_INPUT_DIR}" -maxdepth 1 -name "*.tpcas" | wc -l)
+             else
+-                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi ${TMP_DIR}/tpcas-2/xml/1.${subdir} ${TMP_DIR}/tpcas-2/xml/${subdir} &
++                xml_file_count=$(find "${XML_NEXT_INPUT_DIR}" -maxdepth 1 -name "*.tpcas" | wc -l)
++            fi
++            if [[ "${xml_file_count}" == "0" ]]
++            then
++                continue
++            fi
++            if (( $FIRSTTIME > 0 ))
++            then
++                sh -c 'LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}" runAECpp "$1" -xmi "$2" "$3" || true' _ /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml "${XML_INPUT_DIR}" "${TMP_DIR}/tpcas-2/xml/${subdir}" >> "${RUNAECPP_LOG}" 2>&1 &
++            else
++                sh -c 'LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}" runAECpp "$1" -xmi "$2" "$3" || true' _ /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml "${XML_NEXT_INPUT_DIR}" "${TMP_DIR}/tpcas-2/xml/${subdir}" >> "${RUNAECPP_LOG}" 2>&1 &
+             fi
+         done
+ 	wait
+         # UIMA analysis for pdf files
+         for folder in */ ; do
++            PDF_INPUT_DIR="${TMP_DIR}/tpcas-1/${folder}"
++            PDF_NEXT_INPUT_DIR="${TMP_DIR}/tpcas-2/1.${folder}"
+             if (( $FIRSTTIME > 0 ))
+             then
+-                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-1/${folder}" "${TMP_DIR}/tpcas-2/${folder}" &
++                pdf_file_count=$(find "${PDF_INPUT_DIR}" -maxdepth 1 -name "*.tpcas" | wc -l)
+             else
+-                runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi "${TMP_DIR}/tpcas-2/1.${folder}" "${TMP_DIR}/tpcas-2/${folder}" &
++                pdf_file_count=$(find "${PDF_NEXT_INPUT_DIR}" -maxdepth 1 -name "*.tpcas" | wc -l)
++            fi
++            if [[ "${pdf_file_count}" == "0" ]]
++            then
++                continue
++            fi
++            if (( $FIRSTTIME > 0 ))
++            then
++                sh -c 'LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}" runAECpp "$1" -xmi "$2" "$3" || true' _ /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml "${PDF_INPUT_DIR}" "${TMP_DIR}/tpcas-2/${folder}" >> "${RUNAECPP_LOG}" 2>&1 &
++            else
++                sh -c 'LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}" runAECpp "$1" -xmi "$2" "$3" || true' _ /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml "${PDF_NEXT_INPUT_DIR}" "${TMP_DIR}/tpcas-2/${folder}" >> "${RUNAECPP_LOG}" 2>&1 &
+             fi
+         done
+ 	wait
+-	FIRSTTIME=0
++		FIRSTTIME=0
+         for subdir in $(ls ${TMP_DIR}/tpcas-1/xml)
+         do
+ 	    find ${TMP_DIR}/tpcas-2/xml/${subdir} -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/xml/1.${subdir}/.
+@@ -372,11 +512,17 @@ then
+ 	find ${TMP_DIR}/tpcas-2/1."${folder}" -name "*tpcas" | xargs -I {} -n 1 -P ${N_PROC} mv {} ${TMP_DIR}/tpcas-2/"${folder}"/.
+     done
+     rmdir ${TMP_DIR}/tpcas-2/xml/*/
+-    echo "drop table tpontology" | psql www-data
+-    echo "drop table pcrelations" | psql www-data
++    if [[ ${TPTEMP_CREATED} -gt 0 ]]
++    then
++        echo "drop table if exists tpontology" | psql www-data
++    fi
++    if [[ ${PCTEMP_CREATED} -gt 0 ]]
++    then
++        echo "drop table if exists pcrelations" | psql www-data
++    fi
+ 
+     # 3.3 COMPRESS THE RESULTS
+-    find -L ${TMP_DIR}/tpcas-2 -name *.tpcas -print0 | xargs -0 -n 1 -P ${N_PROC} gzip
++    find -L ${TMP_DIR}/tpcas-2 -name "*.tpcas" -print0 | xargs -0 -r -n 1 -P ${N_PROC} gzip -f
+ 
+     # 3.4 COPY TPCAS1 to TPCAS2 DIRS AND REPLACE FILES WITH NEW ONES
+     mkdir -p "${CAS2_DIR}/PMCOA"
+@@ -408,6 +554,10 @@ then
+         corpus_name=$(echo ${line} | awk -F"/" '{print $(NF-1)}')
+         tpcas_file=$(echo "${CAS1_DIR}/${line}/${dir_name}.tpcas.gz")
+         mkdir -p "${CAS2_DIR}/${corpus_name}/"${dir_name}
++        if [[ -e "${CAS2_DIR}/${corpus_name}/${dir_name}/images" ]]
++        then
++            rm -rf "${CAS2_DIR}/${corpus_name}/${dir_name}/images"
++        fi
+         ln -s "${CAS1_DIR}/${corpus_name}/${dir_name}/images" "${CAS2_DIR}/${corpus_name}/${dir_name}/images"
+         cp "${TMP_DIR}/tpcas-2/${line}.tpcas.gz" "${CAS2_DIR}/${line}/${dir_name}.tpcas.gz"
+     done
+@@ -456,6 +606,10 @@ then
+     make_bib.py --tpcas2_dir /data/textpresso/tpcas-2/xenbase/
+ fi
+ 
++# Create minimal bib files for PDF corpora when bibliography download is skipped
++# or unavailable, otherwise cas2index drops the documents completely.
++ensure_pdf_bib_files "${CAS2_DIR}"
++
+ #################################################################################
+ #####                     5. INVERT IMAGES                                  #####
+ #################################################################################
+@@ -484,8 +638,20 @@ then
+     then
+         INDEX_DIR_CUR="${INDEX_DIR}_new"
+     fi
++    if [[ "${INDEX_DIR_CUR}" == "${INDEX_DIR}_new" && -d "${INDEX_DIR_CUR}" ]]
++    then
++        rm -rf "${INDEX_DIR_CUR}"
++    fi
++    if [[ -L "${INDEX_DIR_CUR}/db" || ( -e "${INDEX_DIR_CUR}/db" && ! -d "${INDEX_DIR_CUR}/db" ) ]]
++    then
++        rm -rf "${INDEX_DIR_CUR}/db"
++    fi
+     mkdir -p "${INDEX_DIR_CUR}/db"
+-    create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR_CUR}
++    if ! create_single_index.sh -m 100000 ${CAS2_DIR} ${INDEX_DIR_CUR}
++    then
++        echo "ERROR: create_single_index.sh failed" >&2
++        exit 1
++    fi
+     cd "${INDEX_DIR_CUR}"
+     num_subidx_step=$(echo "${PAPERS_PER_SUBINDEX}/100000" | bc)
+     first_idx_in_master=0
+@@ -513,18 +679,29 @@ then
+         last_idx_in_master=$((last_idx_in_master + num_subidx_step))
+         final_counter=$((final_counter + 1))
+     done
+-    saveidstodb -i ${INDEX_DIR_CUR}
+-    chmod -R 777 "${INDEX_DIR_CUR}/db"
+-    rm -rf /data/textpresso/db.bk
+-    mv /data/textpresso/db /data/textpresso/db.bk
+-    mv "${INDEX_DIR_CUR}/db" /data/textpresso/db
+-    ln -s /data/textpresso/db "${INDEX_DIR_CUR}/db"
++    if saveidstodb -i ${INDEX_DIR_CUR}
++    then
++        chmod -R 777 "${INDEX_DIR_CUR}/db"
++        rm -rf /data/textpresso/db.bk
++        if [[ -e /data/textpresso/db ]]
++        then
++            mv /data/textpresso/db /data/textpresso/db.bk
++        fi
++        if [[ -d "${INDEX_DIR_CUR}/db" ]]
++        then
++            mv "${INDEX_DIR_CUR}/db" /data/textpresso/db
++            ln -s /data/textpresso/db "${INDEX_DIR_CUR}/db"
++        fi
++    else
++        echo "WARNING: saveidstodb failed; continuing without db symlink update" >&2
++    fi
+     if [[ -d "${INDEX_DIR}_new" ]]
+     then
+         rm -rf "${INDEX_DIR}.bk"
+         mv "${INDEX_DIR}" "${INDEX_DIR}.bk"
+         mv ${INDEX_DIR_CUR} ${INDEX_DIR}
+     fi
++    restart_textpresso_api
+ fi
+ 
+ #################################################################################
+diff --git a/Users/kchougul/development/codex_projects/Textpresso/tpctools/generate_pdf_bib.py b/Users/kchougul/development/codex_projects/Textpresso/tpctools/generate_pdf_bib.py
+new file mode 100644
+index 0000000..9c0f9b2
+--- /dev/null
++++ b/Users/kchougul/development/codex_projects/Textpresso/tpctools/generate_pdf_bib.py
+@@ -0,0 +1,341 @@
++#!/usr/bin/env python3
++
++import argparse
++import csv
++import html
++import re
++import shutil
++import subprocess
++from pathlib import Path
++
++
++def normalize_accession(value: str) -> str:
++    value = (value or "").strip()
++    if not value:
++        return ""
++    if "/" in value:
++        return value
++    parts = value.split("_", 1)
++    if len(parts) == 2 and parts[0].startswith("10."):
++        return parts[0] + "/" + parts[1]
++    return value
++
++
++def load_csv_metadata(metadata_dir: Path, accession: str):
++    if not metadata_dir.is_dir():
++        return {}
++    normalized = normalize_accession(accession)
++    for csv_path in sorted(metadata_dir.glob("*.csv")):
++        with csv_path.open(newline="") as handle:
++            reader = csv.DictReader(handle)
++            for row in reader:
++                doi = normalize_accession(row.get("doi", ""))
++                if doi == normalized:
++                    return {
++                        "author": html.unescape((row.get("authors") or "").strip()),
++                        "title": html.unescape((row.get("title") or "").strip()),
++                        "journal": html.unescape((row.get("journal") or "").strip()),
++                        "year": html.unescape((row.get("year") or "").strip()),
++                        "abstract": html.unescape((row.get("abstract") or "").strip()),
++                        "pubmed_id": html.unescape((row.get("pubmed_id") or "").strip()),
++                    }
++    return {}
++
++
++def run_text_command(command):
++    if not shutil.which(command[0]):
++        return ""
++    proc = subprocess.run(
++        command,
++        stdout=subprocess.PIPE,
++        stderr=subprocess.PIPE,
++        universal_newlines=True,
++        check=False,
++    )
++    if proc.returncode != 0:
++        return ""
++    return proc.stdout
++
++
++def pdf_first_page_text(pdf_path: Path) -> str:
++    return run_text_command(["pdftotext", "-f", "1", "-l", "1", str(pdf_path), "-"])
++
++
++def pdf_info(pdf_path: Path) -> str:
++    return run_text_command(["pdfinfo", str(pdf_path)])
++
++
++def parse_pdf_info(info_text: str):
++    metadata = {}
++    for line in info_text.splitlines():
++        if ":" not in line:
++            continue
++        key, value = line.split(":", 1)
++        metadata[key.strip().lower()] = value.strip()
++    return metadata
++
++
++def parse_lines(text: str):
++    return [line.strip() for line in text.splitlines() if line.strip()]
++
++
++def is_noise_line(line: str) -> bool:
++    lower = line.lower().strip()
++    prefixes = (
++        "abstract",
++        "chapter ",
++        "keywords",
++        "introduction",
++        "citation:",
++        "editor:",
++        "edited by:",
++        "reviewed by:",
++        "received:",
++        "accepted:",
++        "published:",
++        "copyright",
++        "open access",
++        "specialty section:",
++        "funding:",
++        "data availability",
++        "supplementary information",
++        "doi:",
++    )
++    if lower.startswith(prefixes):
++        return True
++    if lower in {"1 introduction", "introduction"}:
++        return True
++    if "creativecommons" in lower or "front. plant sci." in lower or "plos one |" in lower:
++        return True
++    return False
++
++
++def looks_like_affiliation_line(line: str) -> bool:
++    lower = line.lower()
++    if not line:
++        return False
++    if re.match(r"^\d+\s", line):
++        return True
++    affiliation_terms = (
++        "department",
++        "university",
++        "institute",
++        "school",
++        "college",
++        "laboratory",
++        "centre",
++        "center",
++        "academy",
++        "research service",
++        "addis ababa",
++        "united states",
++        "ethiopia",
++    )
++    return any(term in lower for term in affiliation_terms)
++
++
++def clean_author_line(line: str) -> str:
++    if not line:
++        return ""
++    cleaned = html.unescape(line)
++    cleaned = re.sub(r"\s*\*.*$", "", cleaned)
++    cleaned = re.sub(r"\b(?:orcid|https?://\S+)\b", "", cleaned, flags=re.I)
++    cleaned = re.sub(r"(?<=\D)\d+(?=[,*†‡§]?(?:\s|$))", "", cleaned)
++    cleaned = cleaned.replace("·", ", ")
++    cleaned = re.sub(r"\s+", " ", cleaned)
++    cleaned = re.sub(r"\s+,", ",", cleaned)
++    cleaned = cleaned.strip(" ,.;")
++    if is_noise_line(cleaned) or looks_like_affiliation_line(cleaned):
++        return ""
++    if len(re.findall(r"\b[A-Z][A-Za-z'`.-]+(?:\s+[A-Z][A-Za-z'`.-]+)+\b", cleaned)) < 1:
++        return ""
++    return cleaned
++
++
++def looks_like_author_line(line: str) -> bool:
++    if not line or len(line) > 200:
++        return False
++    if is_noise_line(line):
++        return False
++    if re.search(r"\bhttps?://", line, re.I):
++        return False
++    if "@" in line:
++        return False
++    if looks_like_affiliation_line(line):
++        return False
++    if not re.search(r"[A-Za-z]", line):
++        return False
++    if len(re.findall(r"\b[A-Z][a-z]+(?:[-'][A-Z][a-z]+)?\b", line)) < 2:
++        return False
++    if any(token in line for token in [",", " and ", " et al", "·"]):
++        return True
++    words = line.split()
++    return 2 <= len(words) <= 12
++
++
++def collect_author_block(lines, start_idx: int) -> str:
++    parts = []
++    for candidate in lines[start_idx:start_idx + 4]:
++        if is_noise_line(candidate) or looks_like_affiliation_line(candidate):
++            break
++        if candidate.startswith("*") or "@" in candidate:
++            break
++        if looks_like_author_line(candidate):
++            parts.append(candidate)
++            if not candidate.endswith(","):
++                break
++        elif parts:
++            break
++    return clean_author_line(" ".join(parts))
++
++
++def extract_author_from_pdf(text: str, known_title: str) -> str:
++    lines = parse_lines(text)
++    if not lines:
++        return ""
++    if known_title:
++        normalized_title = re.sub(r"\s+", " ", known_title).strip().lower()
++        for idx in range(len(lines)):
++            combined = lines[idx]
++            for end in range(idx, min(idx + 4, len(lines))):
++                combined = " ".join(lines[idx:end + 1])
++                normalized_combined = re.sub(r"\s+", " ", combined).strip().lower()
++                if normalized_combined == normalized_title or normalized_title in normalized_combined:
++                    author_block = collect_author_block(lines, end + 1)
++                    if author_block:
++                        return author_block
++    for idx, line in enumerate(lines[:12]):
++        if line.lower() == "abstract":
++            for candidate in reversed(lines[max(0, idx - 3):idx]):
++                cleaned = clean_author_line(candidate)
++                if cleaned and looks_like_author_line(candidate):
++                    return cleaned
++    for idx, line in enumerate(lines[:20]):
++        if looks_like_author_line(line):
++            cleaned = collect_author_block(lines, idx)
++            if cleaned:
++                return cleaned
++    return ""
++
++
++def extract_year_from_pdf(text: str, info_text: str) -> str:
++    year_patterns = [
++        r"©[^0-9]*((?:19|20)\d{2})",
++        r"copyright[^0-9]*((?:19|20)\d{2})",
++        r"springer nature\s+((?:19|20)\d{2})",
++        r"\b((?:19|20)\d{2})\b",
++    ]
++    for pattern in year_patterns:
++        match = re.search(pattern, text, re.I)
++        if match:
++            return match.group(1)
++    info = parse_pdf_info(info_text)
++    for key in ("creationdate", "moddate"):
++        value = info.get(key, "")
++        match = re.search(r"\b((?:19|20)\d{2})\b", value)
++        if match:
++            return match.group(1)
++    match = re.search(r"(?:CreationDate|ModDate):.*\b((?:19|20)\d{2})\b", info_text)
++    if match:
++        return match.group(1)
++    return ""
++
++
++def extract_title_from_pdf(text: str) -> str:
++    lines = parse_lines(text)
++    title_lines = []
++    for line in lines:
++        lower = line.lower()
++        if lower.startswith("chapter "):
++            continue
++        if lower in {"abstract", "keywords"} or lower.startswith("1 introduction"):
++            break
++        if looks_like_author_line(line) and title_lines:
++            break
++        title_lines.append(line)
++        if len(title_lines) >= 4:
++            break
++    return " ".join(title_lines).strip()
++
++
++def extract_journal_from_pdf(text: str) -> str:
++    for line in parse_lines(text):
++        if "methods in molecular biology" in line.lower():
++            return line.split(",", 1)[0].strip()
++    return ""
++
++
++def extract_author_from_pdfinfo(info_text: str) -> str:
++    author = parse_pdf_info(info_text).get("author", "")
++    return clean_author_line(author)
++
++
++def extract_title_from_pdfinfo(info_text: str) -> str:
++    return parse_pdf_info(info_text).get("title", "").strip()
++
++
++def write_bib(path: Path, fields):
++    path.write_text(
++        "\n".join(
++            [
++                f"author|{fields['author']}",
++                f"accession|{fields['accession']}",
++                f"type|{fields['type']}",
++                f"title|{fields['title']}",
++                f"journal|{fields['journal']}",
++                f"citation|{fields['citation']}",
++                f"year|{fields['year']}",
++                f"abstract|{fields['abstract']}",
++            ]
++        )
++        + "\n"
++    )
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--pdf", required=True)
++    parser.add_argument("--bib", required=True)
++    parser.add_argument("--accession", required=True)
++    parser.add_argument("--metadata-dir", required=True)
++    args = parser.parse_args()
++
++    pdf_path = Path(args.pdf)
++    bib_path = Path(args.bib)
++    metadata_dir = Path(args.metadata_dir)
++    accession = args.accession
++
++    metadata = load_csv_metadata(metadata_dir, accession)
++    text = pdf_first_page_text(pdf_path) if pdf_path.is_file() else ""
++    info_text = pdf_info(pdf_path) if pdf_path.is_file() else ""
++
++    author = (
++        metadata.get("author")
++        or extract_author_from_pdfinfo(info_text)
++        or extract_author_from_pdf(text, metadata.get("title", ""))
++    )
++    title = metadata.get("title") or extract_title_from_pdfinfo(info_text) or extract_title_from_pdf(text) or accession
++    journal = metadata.get("journal") or extract_journal_from_pdf(text) or "<not uploaded>"
++    year = metadata.get("year") or extract_year_from_pdf(text, info_text) or "<not uploaded>"
++    abstract = metadata.get("abstract") or "<not uploaded>"
++
++    citation = "<not uploaded>"
++    if metadata.get("pubmed_id"):
++        citation = f"PMID: {metadata['pubmed_id']}"
++
++    fields = {
++        "author": author or "<not uploaded>",
++        "accession": accession,
++        "type": "Journal_article",
++        "title": title,
++        "journal": journal,
++        "citation": citation,
++        "year": year,
++        "abstract": abstract,
++    }
++    bib_path.parent.mkdir(parents=True, exist_ok=True)
++    write_bib(bib_path, fields)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/Users/kchougul/development/codex_projects/Textpresso/tpctools/smoke_test_pipeline.sh b/Users/kchougul/development/codex_projects/Textpresso/tpctools/smoke_test_pipeline.sh
+new file mode 100755
+index 0000000..8cf1ed9
+--- /dev/null
++++ b/Users/kchougul/development/codex_projects/Textpresso/tpctools/smoke_test_pipeline.sh
+@@ -0,0 +1,79 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
++DATA_DIR="${ROOT_DIR}/.data"
++CONTAINER_NAME="${CONTAINER_NAME:-agr-textpresso-textpresso-1}"
++CORPUS_NAME="${CORPUS_NAME:-PipelineSmoke}"
++SOURCE_PDF="${SOURCE_PDF:-${ROOT_DIR}/libtpc/tests/data/pdf/C. elegans/WBPaper00000011/WBPaper00000011.pdf}"
++DOC_ID="${DOC_ID:-$(basename "${SOURCE_PDF}" .pdf)}"
++API_URL="${API_URL:-http://localhost:18080}"
++
++if [[ ! -f "${SOURCE_PDF}" ]]
++then
++    echo "Missing source PDF: ${SOURCE_PDF}" >&2
++    exit 1
++fi
++
++mkdir -p "${DATA_DIR}/raw_files/pdf/${CORPUS_NAME}/${DOC_ID}"
++cp "${SOURCE_PDF}" "${DATA_DIR}/raw_files/pdf/${CORPUS_NAME}/${DOC_ID}/${DOC_ID}.pdf"
++rm -rf "${DATA_DIR}/tpcas-1/${CORPUS_NAME}" "${DATA_DIR}/tpcas-2/${CORPUS_NAME}"
++
++PIPELINE_LOG=$(mktemp)
++trap 'rm -f "${PIPELINE_LOG}"' EXIT
++
++docker cp "${ROOT_DIR}/tpctools/run_tpc_pipeline_incremental.sh" \
++    "${CONTAINER_NAME}:/tmp/run_tpc_pipeline_incremental.sh"
++docker exec "${CONTAINER_NAME}" sh -lc \
++    "chmod +x /tmp/run_tpc_pipeline_incremental.sh && /tmp/run_tpc_pipeline_incremental.sh -P 1 -e download_pdf,download_xml,bib,invert_img,remove_invalidated" \
++    | tee "${PIPELINE_LOG}"
++
++if grep -q "Segmentation fault" "${PIPELINE_LOG}"
++then
++    echo "Smoke test failed: pipeline log contains a segmentation fault." >&2
++    exit 1
++fi
++
++RESULT_COUNT=$(
++docker exec -i "${CONTAINER_NAME}" python3 - <<PY
++import json
++import urllib.request
++
++payload = {
++    "query": {
++        "accession": "${DOC_ID}",
++        "type": "document",
++        "case_sensitive": False,
++        "sort_by_year": False,
++        "count": 10,
++        "corpora": ["${CORPUS_NAME}"],
++    }
++}
++request = urllib.request.Request(
++    "${API_URL}/v1/textpresso/api/get_documents_count",
++    data=json.dumps(payload).encode(),
++    headers={"Content-Type": "application/json"},
++)
++with urllib.request.urlopen(request, timeout=20) as response:
++    print(response.read().decode().strip())
++PY
++)
++RESULT_COUNT=$(printf '%s\n' "${RESULT_COUNT}" | tr -d '\r' | tail -n 1)
++
++if [[ ! "${RESULT_COUNT}" =~ ^[0-9]+$ ]]
++then
++    echo "Smoke test failed: API returned a non-numeric document count '${RESULT_COUNT}'." >&2
++    exit 1
++fi
++
++if [[ "${RESULT_COUNT}" == "0" ]]
++then
++    echo "Smoke test failed: accession '${DOC_ID}' returned zero results for corpus '${CORPUS_NAME}'." >&2
++    exit 1
++fi
++
++echo "Smoke test passed."
++echo "corpus=${CORPUS_NAME}"
++echo "doc=${DOC_ID}"
++echo "accession=${DOC_ID}"
++echo "results=${RESULT_COUNT}"

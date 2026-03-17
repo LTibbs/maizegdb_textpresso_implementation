@@ -11,6 +11,8 @@ Textpresso deployment. It includes:
 
 - [docs/TEXTPRESSO_SORGHUM_RUNBOOK.md](docs/TEXTPRESSO_SORGHUM_RUNBOOK.md): end-to-end Docker setup, corpus staging,
   ingest, metadata refresh, and troubleshooting
+- [docs/TEXTPRESSO_PATCHSET_GUIDE.md](docs/TEXTPRESSO_PATCHSET_GUIDE.md): curated Textpresso patch set for applying
+  the Sorghum integration fixes onto a clean Textpresso checkout
 - [sorghumbase_textpresso_implementation/CLASSIFICATION_WORKFLOW.md](sorghumbase_textpresso_implementation/CLASSIFICATION_WORKFLOW.md):
   classifier-specific workflow notes
 
