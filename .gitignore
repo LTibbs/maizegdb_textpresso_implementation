@@ -5,3 +5,8 @@ textpresso_classifiers.egg-info
 docs/_build/*
 .coverage
 .coveragerc
+.venv/
+sorghum_run/pdfs/
+sorghum_run/txt/
+sorghum_run/*.log
+sorghum_run/*.tmp

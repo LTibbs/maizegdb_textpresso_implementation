@@ -1,36 +1,56 @@
-[![Build Status](https://travis-ci.org/WormBase/textpresso_classifiers.svg?branch=master)](https://travis-ci.org/WormBase/textpresso_classifiers) [![Coverage Status](https://coveralls.io/repos/github/WormBase/textpresso_classifiers/badge.svg?branch=master&service=github)](https://coveralls.io/github/WormBase/textpresso_classifiers?branch=master&service=github) [![Codacy Badge](https://api.codacy.com/project/badge/Grade/0a31d077a94e42b184be05c55b4e390d)](https://www.codacy.com/app/valearna/textpresso_classifiers?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=WormBase/textpresso_classifiers&amp;utm_campaign=Badge_Grade) [![Documentation Status](https://readthedocs.org/projects/textpresso-classifiers/badge/?version=latest)](http://textpresso-classifiers.readthedocs.io/en/latest/?badge=latest)
+# SorghumBase Textpresso Implementation
 
-## Introduction
+This repository contains the SorghumBase-specific utilities and classifier workflows used alongside a local
+Textpresso deployment. It includes:
 
-Tpclassifier is a Python library that contains functions to train and apply classifiers for textual documents. It is
-based on Python scikit-learn library, and it provides an easy interface to train and use its classifiers. In addition,
-tpclassifier includes functions to transform documents from pdf and Textpresso CAS files (both generated from pdf or xml
-files) into text and simplify the way they are imported in the library and used by the classifiers for training,
-testing, and prediction.
+- PDF harvesting and metadata files for Sorghum literature
+- scripts for PDF-to-text/classification workflows
+- a reproducible runbook for loading the Sorghum corpus into the Dockerized Textpresso stack
 
-## Installing tpclassifier library
+## What To Read First
 
-To install tpclassifier, run the following command from the root directory of the project:
+- [docs/TEXTPRESSO_SORGHUM_RUNBOOK.md](docs/TEXTPRESSO_SORGHUM_RUNBOOK.md): end-to-end Docker setup, corpus staging,
+  ingest, metadata refresh, and troubleshooting
+- [sorghumbase_textpresso_implementation/CLASSIFICATION_WORKFLOW.md](sorghumbase_textpresso_implementation/CLASSIFICATION_WORKFLOW.md):
+  classifier-specific workflow notes
 
-pip3 install .
+## Repository Layout
 
-The installation requires Python3 and pip3 to be installed in the system.
+- `sorghum_run/`: local runtime inputs and outputs for Sorghum corpus work
+- `sorghumbase_textpresso_implementation/`: Python utilities and metadata files
+- `textpresso_classifiers/`: classifier library code
+- `bin/`: CLI entry points
+- `tests/`: test coverage for the classifier utilities
 
-## Using the library from Python
+## Python Package Install
 
-The library can be imported as a regular Python package:
-```python
-from tpclassifier import TextpressoDocumentClassifier
+From the repository root:
 
-classifier = TextpressoDocumentClassifier()
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -U pip
+pip install -r requirements.txt
+pip install -e .
 ```
 
-The complete documentation of the classes and functions provided by the library can be found
-[here](http://tpclassifier.readthedocs.io/en/latest/).
+## Textpresso Docker Workflow
 
-## Using the executable scripts provided by the library
+This repository does not build the full Textpresso service by itself. For the running Sorghum search system, use the
+Dockerized Textpresso stack described in:
 
-tpclassifier comes with a set of executable programs that use the library as a backend to provide an easy interface
-to train, test, and apply classifiers for pdf or CAS documents. Go to the project
-[wiki](https://github.com/valearna/tpclassifer/wiki) to see the complete documentation of these programs and for some
-example use cases.
+- [docs/TEXTPRESSO_SORGHUM_RUNBOOK.md](docs/TEXTPRESSO_SORGHUM_RUNBOOK.md)
+
+That document covers:
+
+- Docker build prerequisites
+- environment variables and data mount layout
+- loading the Sorghum PDFs into the Textpresso data volume
+- running a small test corpus
+- running the full `SorghumBase` ingest
+- fixing CAS2, metadata, and search-result issues
+
+## Notes
+
+- This repository is intended to be used together with a local clone of the Textpresso Docker stack.
+- Large runtime outputs such as harvested PDFs should stay out of git.
