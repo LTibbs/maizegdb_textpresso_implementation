@@ -55,6 +55,34 @@ That document covers:
 - running the full `SorghumBase` ingest
 - fixing CAS2, metadata, and search-result issues
 
+## Workflow Summary
+
+The workflow is organized into these operational stages:
+
+1. Prepare the Textpresso and SorghumBase repositories plus `.env`.
+2. Build and start the Dockerized Textpresso stack.
+3. Stage Sorghum PDFs and metadata into the mounted data directory.
+4. Create and ingest a small `SorghumTest` corpus first.
+5. Validate CAS, indexing, API, and UI search.
+6. Ingest the full `SorghumBase` corpus.
+7. Refresh `.bib` metadata from CSV, `pdfinfo`, and PDF text.
+8. Re-verify API and UI search results.
+9. Publish the runbook, patch set, handoff note, and workflow diagram.
+
+Each stage’s inputs and outputs are documented in:
+
+- [docs/TEXTPRESSO_SORGHUM_FLOWCHART.md](docs/TEXTPRESSO_SORGHUM_FLOWCHART.md)
+
+Quick input/output summary:
+
+| Stage | Input | Output |
+|---|---|---|
+| Docker startup | `.env`, Docker files | running UI/API services |
+| Corpus staging | local PDFs, metadata CSV | `raw_files/pdf/SorghumBase`, `imports/metadata` |
+| Test ingest | `SorghumTest` PDFs | test CAS/index/search artifacts |
+| Full ingest | full Sorghum corpus | searchable `SorghumBase` corpus |
+| Metadata refresh | CSV + PDF metadata | `.bib` sidecars with cleaner title/journal/year/author values |
+
 ## Notes
 
 - This repository is intended to be used together with a local clone of the Textpresso Docker stack.
