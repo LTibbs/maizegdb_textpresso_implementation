@@ -13,6 +13,7 @@ Textpresso deployment. It includes:
   ingest, metadata refresh, and troubleshooting
 - [docs/TEXTPRESSO_PATCHSET_GUIDE.md](docs/TEXTPRESSO_PATCHSET_GUIDE.md): curated Textpresso patch set for applying
   the Sorghum integration fixes onto a clean Textpresso checkout
+- [docs/COLLABORATOR_HANDOFF.md](docs/COLLABORATOR_HANDOFF.md): short collaborator email/PR description text
 - [sorghumbase_textpresso_implementation/CLASSIFICATION_WORKFLOW.md](sorghumbase_textpresso_implementation/CLASSIFICATION_WORKFLOW.md):
   classifier-specific workflow notes
 
