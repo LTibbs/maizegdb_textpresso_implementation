@@ -99,6 +99,85 @@ The Textpresso stack transforms those inputs in stages:
 If a document is visible in `raw_files/pdf` but not searchable, the failure is typically in CAS2 generation, bib
 generation, indexing, or search-service refresh.
 
+## Core Concepts In Simple Terms
+
+### CAS1
+
+CAS1 is the first machine-readable version of a paper.
+
+- input: raw PDF
+- output: extracted document text in Textpresso's internal CAS format
+- why it exists: PDFs are difficult to search and process directly
+
+Simple idea:
+- PDF = original paper
+- CAS1 = the paper converted into structured extracted text
+
+### CAS2
+
+CAS2 is the second, richer version of the same paper.
+
+- input: CAS1
+- output: annotated CAS with more structure and processing applied
+- why it exists: indexing and downstream Textpresso tools expect a normalized annotated document
+
+Simple idea:
+- CAS1 = extracted text
+- CAS2 = extracted text plus annotation and structure
+
+### Lucene Index
+
+The Lucene index is the fast search layer.
+
+- input: processed document data from CAS2 and metadata
+- output: search-optimized index files
+- why it exists: without an index, the system would have to scan files one by one for every search
+
+Simple idea:
+- Lucene is the search engine's lookup structure
+- it is built so keyword and sentence searches return quickly
+
+### API
+
+The API is the service that answers search requests.
+
+- input: user or UI query
+- output: JSON search results, counts, sentences, and corpus lists
+- why it exists: it gives the UI and scripts a standard way to ask Textpresso for results
+
+Simple idea:
+- the API is the layer between the search engine and the UI
+
+## Mini Diagram
+
+```mermaid
+flowchart LR
+    PDF["Raw PDF
+    Original paper file"] --> CAS1["CAS1
+    Extracted machine-readable text"]
+    CAS1 --> CAS2["CAS2
+    Annotated and normalized document"]
+    CAS2 --> IDX["Lucene Index
+    Fast search structures"]
+    CAS2 --> BIB[".bib Sidecar
+    Title, author, journal, year"]
+    IDX --> API["API
+    Search/count/doc endpoints"]
+    BIB --> API
+    API --> UI["UI
+    /tpc/search results page"]
+```
+
+## How They Connect
+
+1. A PDF is staged in the Textpresso data mount.
+2. Textpresso converts the PDF into CAS1.
+3. Textpresso enriches CAS1 into CAS2.
+4. CAS2 is used to build the Lucene search index.
+5. Metadata is stored in `.bib` sidecars.
+6. The API reads from the index and metadata layer.
+7. The UI calls the API and shows results to the user.
+
 ## Step 0: Prerequisites
 
 ### Host prerequisites
