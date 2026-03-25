@@ -1,10 +1,11 @@
 import requests
 import csv
+from pathlib import Path
 
 API_URL = "https://content.sorghumbase.org/wordpress/index.php/wp-json/wp/v2/scientific_paper"
 PER_PAGE = 100
 TOTAL_PAGES = 17  # Update if more pages are added in the future
-OUTPUT_CSV = "sorghumbase_papers.csv"
+OUTPUT_CSV = Path(__file__).resolve().parent.parent / "metadata" / "sorghumbase_papers.csv"
 
 def extract_field(item, field):
     return item.get(field, "")
@@ -35,6 +36,7 @@ def main():
             })
         print(f"Fetched page {page}/{TOTAL_PAGES}")
 
+    OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     with open(OUTPUT_CSV, "w", newline='', encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["doi", "pubmed_id", "title", "abstract", "authors", "journal", "year"])
         writer.writeheader()

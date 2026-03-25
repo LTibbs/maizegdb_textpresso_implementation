@@ -1,7 +1,14 @@
 # SorghumBase Textpresso Implementation
 
-This repository contains the SorghumBase-specific utilities and classifier workflows used alongside a local
-Textpresso deployment. It includes:
+This repository now has two clearly separated layers:
+
+- reusable classifier/package code at the repository root
+- SorghumBase project material under `sorghumbase_textpresso_implementation/`
+
+The SorghumBase project area contains the Sorghum-specific scripts, metadata, reports, runbooks, and collaborator
+handoff documents used alongside a local Textpresso deployment.
+
+It includes:
 
 - PDF harvesting and metadata files for Sorghum literature
 - scripts for PDF-to-text/classification workflows
@@ -9,23 +16,30 @@ Textpresso deployment. It includes:
 
 ## What To Read First
 
-- [docs/TEXTPRESSO_SORGHUM_RUNBOOK.md](docs/TEXTPRESSO_SORGHUM_RUNBOOK.md): end-to-end Docker setup, corpus staging,
+- [sorghumbase_textpresso_implementation/README.md](sorghumbase_textpresso_implementation/README.md): Sorghum project
+  index and folder guide
+- [sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_RUNBOOK.md](sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_RUNBOOK.md): end-to-end Docker setup, corpus staging,
   ingest, metadata refresh, and troubleshooting
-- [docs/TEXTPRESSO_PATCHSET_GUIDE.md](docs/TEXTPRESSO_PATCHSET_GUIDE.md): curated Textpresso patch set for applying
+- [sorghumbase_textpresso_implementation/docs/TEXTPRESSO_PATCHSET_GUIDE.md](sorghumbase_textpresso_implementation/docs/TEXTPRESSO_PATCHSET_GUIDE.md): curated Textpresso patch set for applying
   the Sorghum integration fixes onto a clean Textpresso checkout
-- [docs/TEXTPRESSO_SORGHUM_FLOWCHART.md](docs/TEXTPRESSO_SORGHUM_FLOWCHART.md): Mermaid workflow diagram for the
+- [sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_FLOWCHART.md](sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_FLOWCHART.md): Mermaid workflow diagram for the
   SorghumBase Textpresso process
-- [docs/COLLABORATOR_HANDOFF.md](docs/COLLABORATOR_HANDOFF.md): short collaborator email/PR description text
-- [sorghumbase_textpresso_implementation/CLASSIFICATION_WORKFLOW.md](sorghumbase_textpresso_implementation/CLASSIFICATION_WORKFLOW.md):
+- [sorghumbase_textpresso_implementation/docs/COLLABORATOR_HANDOFF.md](sorghumbase_textpresso_implementation/docs/COLLABORATOR_HANDOFF.md): short collaborator email/PR description text
+- [sorghumbase_textpresso_implementation/docs/CLASSIFICATION_WORKFLOW.md](sorghumbase_textpresso_implementation/docs/CLASSIFICATION_WORKFLOW.md):
   classifier-specific workflow notes
 
 ## Repository Layout
 
+- `sorghumbase_textpresso_implementation/`: SorghumBase project subtree
+- `sorghumbase_textpresso_implementation/docs/`: Sorghum-specific runbooks, flowchart, patch guide, and handoff docs
+- `sorghumbase_textpresso_implementation/scripts/`: Sorghum harvesting, conversion, training, and prediction scripts
+- `sorghumbase_textpresso_implementation/metadata/`: Sorghum metadata files such as `sorghumbase_papers.csv`
+- `sorghumbase_textpresso_implementation/reports/`: generated Sorghum reports
 - `sorghum_run/`: local runtime inputs and outputs for Sorghum corpus work
-- `sorghumbase_textpresso_implementation/`: Python utilities and metadata files
 - `textpresso_classifiers/`: classifier library code
 - `bin/`: CLI entry points
 - `tests/`: test coverage for the classifier utilities
+- `docs/`: package/API documentation for the reusable classifier code
 
 ## Python Package Install
 
@@ -66,7 +80,7 @@ docker run --rm -it sorghumbase-textpresso-implementation /bin/bash
 This repository does not build the full Textpresso service by itself. For the running Sorghum search system, use the
 Dockerized Textpresso stack described in:
 
-- [docs/TEXTPRESSO_SORGHUM_RUNBOOK.md](docs/TEXTPRESSO_SORGHUM_RUNBOOK.md)
+- [sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_RUNBOOK.md](sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_RUNBOOK.md)
 
 That document covers:
 
@@ -93,7 +107,7 @@ The workflow is organized into these operational stages:
 
 Each stage’s inputs and outputs are documented in:
 
-- [docs/TEXTPRESSO_SORGHUM_FLOWCHART.md](docs/TEXTPRESSO_SORGHUM_FLOWCHART.md)
+- [sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_FLOWCHART.md](sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_FLOWCHART.md)
 
 Quick input/output summary:
 

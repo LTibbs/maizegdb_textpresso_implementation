@@ -41,20 +41,20 @@ This project provides an end-to-end workflow for harvesting, labeling, training,
 ## Workflow Steps
 
 ### 1. Harvesting PDFs
-- **Script:** `sorghum_pdf_harvester.py`
+- **Script:** `scripts/sorghum_pdf_harvester.py`
 - **Purpose:** Downloads PDFs for sorghum literature using PubMed IDs and PMCIDs.
 - **Example Usage:**
   ```bash
-  python sorghum_pdf_harvester.py --query "sorghum" --max-papers 50 --output-dir harvested_pdfs
+  python sorghumbase_textpresso_implementation/scripts/sorghum_pdf_harvester.py --query "sorghum" --max-papers 50 --output-dir harvested_pdfs
   ```
 - **Result:** PDFs are saved in the specified output directory.
 
 ### 2. Converting PDFs to Text & Creating Labels Template
-- **Script:** `pdf_to_text_and_labels.py`
+- **Script:** `scripts/pdf_to_text_and_labels.py`
 - **Purpose:** Converts harvested PDFs to plain text and generates a CSV template for manual labeling.
 - **Example Usage:**
   ```bash
-  python pdf_to_text_and_labels.py --pdf-dir harvested_pdfs --output-csv training_data.csv
+  python sorghumbase_textpresso_implementation/scripts/pdf_to_text_and_labels.py --pdf-dir harvested_pdfs --output-csv training_data.csv
   ```
 - **Result:**
   - Extracted text files for each PDF.
@@ -69,22 +69,22 @@ This project provides an end-to-end workflow for harvesting, labeling, training,
   - OTHER
 
 ### 4. Training the Classifier
-- **Script:** `train_and_eval_classifier.py`
+- **Script:** `scripts/train_and_eval_classifier.py`
 - **Purpose:** Trains a document classifier using the labeled CSV and evaluates its performance.
 - **Example Usage:**
   ```bash
-  python train_and_eval_classifier.py --input-csv training_data.csv --model-out classifier.joblib
+  python sorghumbase_textpresso_implementation/scripts/train_and_eval_classifier.py --input-csv training_data.csv --model-out classifier.joblib
   ```
 - **Result:**
   - Trained model saved as `classifier.joblib`.
   - Evaluation metrics (accuracy, confusion matrix) printed to console.
 
 ### 5. Predicting on New PDFs
-- **Script:** `predict_new_pdfs.py`
+- **Script:** `scripts/predict_new_pdfs.py`
 - **Purpose:** Converts new PDFs to text and predicts their categories using the trained model.
 - **Example Usage:**
   ```bash
-  python predict_new_pdfs.py --pdf-dir new_pdfs --model classifier.joblib --output-csv predictions.csv
+  python sorghumbase_textpresso_implementation/scripts/predict_new_pdfs.py --pdf-dir new_pdfs --model classifier.joblib --output-csv predictions.csv
   ```
 - **Result:**
   - `predictions.csv` with columns: `filename`, `predicted_label`.
@@ -140,20 +140,20 @@ Text files for each document are available in `tmp_txt/` and `txt/` subfolders. 
 
 
 ### Model File: sorghum_classifier.pkl
-The `sorghum_classifier.pkl` file is a serialized (pickled) machine learning model generated during **Step 4: Training the Classifier**. This file is created by the `train_and_eval_classifier.py` script using scikit-learn's joblib or pickle. It contains the trained classifier, including its learned parameters and feature mappings, allowing you to load and use the model for prediction on new data without retraining. This enables reproducible and efficient classification workflows.
+The `sorghum_classifier.pkl` file is a serialized (pickled) machine learning model generated during **Step 4: Training the Classifier**. This file is created by the `scripts/train_and_eval_classifier.py` script using scikit-learn's joblib or pickle. It contains the trained classifier, including its learned parameters and feature mappings, allowing you to load and use the model for prediction on new data without retraining. This enables reproducible and efficient classification workflows.
 
 **Generation Step:**
   - Step 4: Training the Classifier
-  - Script: `train_and_eval_classifier.py`
+  - Script: `scripts/train_and_eval_classifier.py`
   - Command Example:
     ```bash
-    python train_and_eval_classifier.py --input-csv training_data.csv --model-out sorghum_classifier.pkl
+    python sorghumbase_textpresso_implementation/scripts/train_and_eval_classifier.py --input-csv training_data.csv --model-out sorghum_classifier.pkl
     ```
   - Output: `sorghum_classifier.pkl` (saved model)
 
 **Usage:**
   - Step 5: Predicting on New PDFs
-  - Script: `predict_new_pdfs.py`
+  - Script: `scripts/predict_new_pdfs.py`
   - The model is loaded for making predictions on new documents.
 
 ---

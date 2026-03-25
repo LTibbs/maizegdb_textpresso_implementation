@@ -15,9 +15,9 @@ Relevant commits in `warelab/sorghumbase_textpresso_implementation`:
 
 Please start with:
 
-- `docs/TEXTPRESSO_SORGHUM_RUNBOOK.md`
-- `docs/TEXTPRESSO_PATCHSET_GUIDE.md`
-- `docs/patches/textpresso-sorghum-fixes.patch`
+- `sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_RUNBOOK.md`
+- `sorghumbase_textpresso_implementation/docs/TEXTPRESSO_PATCHSET_GUIDE.md`
+- `sorghumbase_textpresso_implementation/docs/patches/textpresso-sorghum-fixes.patch`
 
 Recommended apply flow:
 
@@ -26,7 +26,7 @@ cd /path/to/Textpresso
 git status
 git checkout -b codex/sorghum-textpresso-fixes
 git apply --reject --whitespace=fix \
-  /path/to/sorghumbase_textpresso_implementation/docs/patches/textpresso-sorghum-fixes.patch
+  /path/to/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/patches/textpresso-sorghum-fixes.patch
 git add .
 git commit -m "Apply Sorghum Textpresso integration fixes"
 ```
@@ -64,12 +64,11 @@ Apply flow for collaborators:
 cd /path/to/Textpresso
 git checkout -b codex/sorghum-textpresso-fixes
 git apply --reject --whitespace=fix \
-  /path/to/sorghumbase_textpresso_implementation/docs/patches/textpresso-sorghum-fixes.patch
+  /path/to/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/patches/textpresso-sorghum-fixes.patch
 git add .
 git commit -m "Apply Sorghum Textpresso integration fixes"
 ```
 
 Operational steps after patching are documented in:
 
-- `docs/TEXTPRESSO_SORGHUM_RUNBOOK.md`
-
+- `sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_RUNBOOK.md`
