@@ -16,6 +16,12 @@ Instead, this repository contains a curated patch set with only the Textpresso c
 - `tpc/search` UI stability fixes
 - sidecar `.bib` metadata display in API and UI
 
+Important distinction:
+
+- this patch set targets the separate `Textpresso` repository
+- the standalone Dockerfile in this repository validates only the Sorghum-side Python code and tests
+- the patch set is what makes the full searchable Textpresso instance reproducible for Sorghum ingestion
+
 ## Patch File
 
 - [patches/textpresso-sorghum-fixes.patch](patches/textpresso-sorghum-fixes.patch)
@@ -41,7 +47,7 @@ Apply the patch:
 
 ```bash
 git apply --reject --whitespace=fix \
-  /path/to/sorghumbase_textpresso_implementation/docs/patches/textpresso-sorghum-fixes.patch
+  /path/to/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/patches/textpresso-sorghum-fixes.patch
 ```
 
 Review the result:
@@ -92,7 +98,9 @@ Use the runbook here for the operational steps:
 
 That document covers:
 
+- repository roles and architecture
 - Docker build and startup
+- standalone Docker validation for this repo
 - staging the Sorghum corpus
 - test-corpus ingest
 - full-corpus ingest

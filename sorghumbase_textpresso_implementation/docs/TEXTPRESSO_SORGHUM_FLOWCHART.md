@@ -2,6 +2,11 @@
 
 This document shows the polished operational workflow for loading SorghumBase literature into Textpresso and making it searchable from both the API and UI.
 
+Important distinction:
+
+- the standalone Dockerfile in this repository validates the Sorghum-side classifier code
+- the full searchable Textpresso instance is built and run from the separate `Textpresso` repository using Docker Compose
+
 ## Workflow Diagram
 
 ```mermaid
@@ -105,6 +110,7 @@ flowchart TD
 |---|---|---|---|
 | 1. Prepare repositories and environment | Make the local workspace reproducible | `Textpresso` repo, `sorghumbase_textpresso_implementation` repo, `.env` values | a configured local workspace with known paths and ports |
 | 2. Build and start Docker services | Bring up Textpresso locally | `Dockerfile`, `docker-compose.yml`, `.env` | running container, UI on `localhost:8080`, API on `localhost:18080` |
+| 2a. Validate this repo Dockerfile | Verify the Sorghum helper code in isolation | repository `Dockerfile`, Python package, tests | passing containerized unit tests for this repo |
 | 3. Stage corpus inputs | Place literature and metadata into the mounted data directory | Sorghum PDFs, `sorghumbase_papers.csv` | `raw_files/pdf/SorghumBase`, `imports/metadata/sorghumbase_papers.csv` |
 | 4. Create small validation corpus | Test the pipeline on a small subset first | 3 representative Sorghum PDFs | `raw_files/pdf/SorghumTest` |
 | 5. Run incremental ingest pipeline | Convert PDFs into searchable Textpresso artifacts | staged PDFs, `run_tpc_pipeline_incremental.sh` | `tpcas-1`, `tpcas-2`, `.bib` files, Lucene index, db files |
@@ -124,6 +130,13 @@ flowchart TD
 - `.bib` sidecars: metadata files used by the API and UI to display title, journal, year, author, and abstract
 - Lucene index: document and sentence search index used by Textpresso search
 - db files: auxiliary document/year lookup files used by the search stack
+
+## Architecture Notes
+
+- This repository documents and supports the Sorghum integration effort.
+- The `Textpresso` repository runs the actual search services and ingest pipeline.
+- The Sorghum metadata CSV improves `.bib` generation, which in turn improves what users see in API and UI search results.
+- The searchable path is: raw PDFs -> CAS1 -> CAS2 -> `.bib` + Lucene index + db files -> API/UI search.
 
 ## Related Documents
 

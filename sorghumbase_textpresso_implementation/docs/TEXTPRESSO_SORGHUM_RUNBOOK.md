@@ -2,58 +2,195 @@
 
 ## Purpose
 
-This document describes the reproducible steps used to run Sorghum literature in the Dockerized Textpresso stack, from
-local PDF staging through searchable UI results.
+This document is the reproducible operator guide for loading Sorghum literature into a local Textpresso instance and
+making it searchable from both the API and UI.
 
-It is written for collaborators who need to:
+It is written for a collaborator who needs to:
 
-- build and start the local Textpresso Docker environment
-- stage the Sorghum PDF corpus into the mounted data directory
-- run a small test corpus first
-- run the full `SorghumBase` ingest
-- verify search from the UI and API
-- understand the fixes that were needed for CAS2, indexing, metadata, and UI stability
+- understand the overall Textpresso architecture
+- know which repository does what
+- bring up the Dockerized Textpresso stack
+- stage Sorghum PDFs and metadata
+- validate the pipeline on a small corpus first
+- ingest the full `SorghumBase` corpus
+- verify API and UI search
+- understand the implementation fixes that make the workflow reliable
 
-## Repositories Used
+## What This Repository Does And Does Not Do
 
-Two local repositories were involved:
+This repository contains two different things that are easy to confuse:
 
-1. `Textpresso`
-   Path used during this work:
-   `/Users/kchougul/development/codex_projects/Textpresso`
+1. Sorghum-specific project materials
+   These live under `sorghumbase_textpresso_implementation/` and include:
+   - Sorghum metadata
+   - Sorghum helper scripts
+   - runbooks
+   - patch set and collaborator docs
 
-2. `sorghumbase_textpresso_implementation`
-   Path used during this work:
-   `/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation`
+2. A standalone Dockerfile for the classifier code in this repository
+   This Dockerfile is useful for testing the Python classifier package in isolation.
+   It does **not** run the full Textpresso search stack.
 
-The Sorghum PDFs were already downloaded locally under:
+To run the actual searchable Textpresso instance, you still need the separate `Textpresso` repository and its Docker
+Compose stack.
 
-`/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation/sorghum_run/pdfs`
+## Repositories And Responsibilities
 
-## Host Prerequisites
+### 1. `Textpresso`
+
+Role:
+- runs the real search system
+- contains the Docker Compose stack
+- contains the ingest pipeline
+- contains the API and Wt UI
+
+Path used during this work:
+- `/Users/kchougul/development/codex_projects/Textpresso`
+
+### 2. `sorghumbase_textpresso_implementation`
+
+Role:
+- holds Sorghum-specific inputs and collaborator documentation
+- holds the Sorghum metadata CSV
+- holds the curated Textpresso patch set
+- holds Sorghum-specific helper scripts and reports
+
+Path used during this work:
+- `/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation`
+
+## Architecture Overview
+
+The workflow has two layers.
+
+### Layer A: Source Inputs
+
+These are the materials you start with:
+
+- local Sorghum PDFs
+- Sorghum metadata CSV
+- Textpresso code
+- Sorghum project docs and patch set
+
+### Layer B: Textpresso Processing Pipeline
+
+The Textpresso stack transforms those inputs in stages:
+
+1. Raw PDFs
+   Stored under `raw_files/pdf/<corpus>/<accession>/<accession>.pdf`
+
+2. CAS1
+   First-stage extracted document representation
+   Output directory: `tpcas-1`
+
+3. CAS2
+   Second-stage annotated document representation
+   Output directory: `tpcas-2`
+
+4. `.bib` sidecars
+   Metadata files attached to documents for title, journal, year, author, and related display fields
+
+5. Lucene index and db files
+   Searchable structures used by the API and UI
+
+6. API and UI
+   - API serves corpora, counts, documents, and sentences
+   - Wt UI at `/tpc/search` provides the interactive search interface
+
+If a document is visible in `raw_files/pdf` but not searchable, the failure is typically in CAS2 generation, bib
+generation, indexing, or search-service refresh.
+
+## Step 0: Prerequisites
+
+### Host prerequisites
 
 - macOS or Linux
 - Docker Desktop or Docker Engine
 - Docker Compose
 - git
-- enough local disk for:
-  - Docker image build artifacts
+- `python3`
+- enough disk space for:
+  - Docker images
   - mounted Textpresso data
-  - the Sorghum PDF corpus
+  - Sorghum PDFs
+  - CAS and Lucene outputs
 
 Optional but useful:
 
 - `curl`
-- `python3`
+- `pdfinfo`
 
-## Textpresso Docker Prerequisites
+### Required local checkouts
+
+You need both repositories side by side:
+
+```text
+/path/to/Textpresso
+/path/to/Textpresso/sorghumbase_textpresso_implementation
+```
+
+### Recommended docs to keep open
+
+- [TEXTPRESSO_SORGHUM_FLOWCHART.md](/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_FLOWCHART.md)
+- [TEXTPRESSO_PATCHSET_GUIDE.md](/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/TEXTPRESSO_PATCHSET_GUIDE.md)
+
+## Step 1: Prepare The Textpresso Repository
+
+### What this step does
+
+This step prepares the repository that actually runs the Textpresso services and ingest pipeline.
+
+### Why it matters
+
+If this repository is missing the Sorghum integration fixes, the later stages can fail in several ways:
+
+- CAS2 generation can fail
+- new PDF corpora can be skipped during indexing
+- metadata can be blank
+- API or UI document search can crash
+
+### Procedure
+
+Start in the `Textpresso` repo:
+
+```bash
+cd /path/to/Textpresso
+git status
+```
+
+If you are starting from a clean upstream checkout, apply the curated patch set from this repository:
+
+```bash
+git checkout -b codex/sorghum-textpresso-fixes
+git apply --reject --whitespace=fix \
+  /path/to/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/patches/textpresso-sorghum-fixes.patch
+git add .
+git commit -m "Apply Sorghum Textpresso integration fixes"
+```
+
+### Output of this step
+
+- a patched `Textpresso` checkout that contains the Sorghum-related pipeline, search, and metadata fixes
+
+## Step 2: Configure The Docker Environment
+
+### What this step does
+
+This step sets ports and tells the Docker stack where the persistent Textpresso data directory will live on the host.
+
+### Why it matters
+
+Textpresso writes all important runtime artifacts into the mounted data directory. If this is not configured correctly,
+your ingest outputs will be lost or the services will not see the same files.
+
+### Procedure
 
 From the `Textpresso` repository:
 
-1. Copy `.env_example` to `.env` if needed.
-2. Set the main ports and the data mount.
+```bash
+cp .env_example .env
+```
 
-Example variables used by the Docker stack:
+Edit `.env` and set at minimum:
 
 ```bash
 TPC_UI_PORT=8080
@@ -61,20 +198,41 @@ TPC_API_PORT=18080
 TEXTPRESSO_DATA_DIR=/absolute/path/to/Textpresso/.data
 ```
 
-The Docker stack maps the mounted data root to:
+### Important mount concept
 
-`/data/textpresso`
+Inside the container, the mounted data root appears at:
 
-Inside the container, the important directories are:
+```text
+/data/textpresso
+```
+
+Important container-side subdirectories:
 
 - `/data/textpresso/raw_files/pdf`
+- `/data/textpresso/raw_files/xml`
 - `/data/textpresso/tpcas-1`
 - `/data/textpresso/tpcas-2`
+- `/data/textpresso/tmp`
 - `/data/textpresso/luceneindex`
 - `/data/textpresso/db`
 - `/data/textpresso/imports/metadata`
 
-## Build And Start Textpresso
+### Output of this step
+
+- a configured `.env`
+- a known persistent data mount location
+
+## Step 3: Build And Start The Textpresso Services
+
+### What this step does
+
+This step builds the Textpresso Docker images and starts the searchable services locally.
+
+### Why it matters
+
+Nothing downstream works until the UI and API services are running against the same mounted data directory.
+
+### Procedure
 
 From the `Textpresso` repository root:
 
@@ -84,59 +242,145 @@ docker compose up -d
 docker compose ps
 ```
 
-Expected ports:
+### Expected outputs
 
-- UI: `http://localhost:8080/tpc/search`
-- API: `http://localhost:18080/v1/textpresso/api/available_corpora`
+- UI: [http://localhost:8080/tpc/search](http://localhost:8080/tpc/search)
+- API corpora endpoint: [http://localhost:18080/v1/textpresso/api/available_corpora](http://localhost:18080/v1/textpresso/api/available_corpora)
 
-## Stage Sorghum PDFs Into The Data Mount
+### Verification
 
-The local PDF source used here was:
+```bash
+curl -s http://localhost:18080/v1/textpresso/api/available_corpora
+```
 
-`sorghumbase_textpresso_implementation/sorghum_run/pdfs`
+Expected result:
+- a JSON array of currently known corpora
 
-The full PDF corpus was staged into the Textpresso data mount under:
+## Step 4: Validate This Repo’s Standalone Dockerfile
 
-`Textpresso/.data/raw_files/pdf/SorghumBase/<accession>/<accession>.pdf`
+### What this step does
 
-This layout is required by the incremental ingest pipeline.
+This step validates the standalone Dockerfile in this repository.
 
-Each paper should look like:
+### Why it matters
+
+It verifies the Sorghum-side classifier package in isolation, but it does **not** create the searchable Textpresso UI.
+This is a code-quality and reproducibility check for this repo itself.
+
+### Procedure
+
+From this repository root:
+
+```bash
+cd /path/to/sorghumbase_textpresso_implementation
+docker build -t sorghumbase-textpresso-implementation .
+docker run --rm sorghumbase-textpresso-implementation
+```
+
+### Expected output
+
+- the unit tests pass inside the container
+
+### Architectural relation
+
+This step validates the Sorghum helper codebase. It is separate from the main Textpresso deployment in Steps 1 to 3.
+
+## Step 5: Stage Sorghum Inputs Into The Textpresso Data Mount
+
+### What this step does
+
+This step places the Sorghum PDFs and metadata into the host directory mounted into the Textpresso container.
+
+### Why it matters
+
+The incremental ingest pipeline reads only from the mounted data layout. If the files are not placed in the correct
+directories, the pipeline will not discover them.
+
+### Input locations used in this work
+
+Local PDFs:
+
+```text
+/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation/sorghum_run/pdfs
+```
+
+Metadata CSV:
+
+```text
+/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/metadata/sorghumbase_papers.csv
+```
+
+### Required target layout
+
+The full corpus should be staged as:
+
+```text
+Textpresso/.data/raw_files/pdf/SorghumBase/<accession>/<accession>.pdf
+```
+
+Example:
 
 ```text
 .data/raw_files/pdf/SorghumBase/10.1007_s00425-022-03866-7/10.1007_s00425-022-03866-7.pdf
 ```
 
-## Stage Sorghum Metadata
+The metadata CSV should be staged as:
 
-The metadata CSV used by the improved bib generator was staged at:
+```text
+Textpresso/.data/imports/metadata/sorghumbase_papers.csv
+```
 
-`Textpresso/.data/imports/metadata/sorghumbase_papers.csv`
+### Output of this step
 
-This file is used to fill:
+- raw PDF corpus under `raw_files/pdf/SorghumBase`
+- metadata CSV under `imports/metadata`
 
-- title
-- journal
-- abstract
-- PMID citation
-- year when present
-- authors when present
+## Step 6: Create A Small Validation Corpus
 
-## Run A Small Test Corpus First
+### What this step does
 
-Before loading all PDFs, create a minimal test corpus:
+This step creates a small subset corpus named `SorghumTest`.
 
-`Textpresso/.data/raw_files/pdf/SorghumTest`
+### Why it matters
 
-In this work, a 3-paper test set was used.
+Always validate the pipeline on a small representative corpus before running the full ingest. It reduces debugging
+time and makes failures cheaper to isolate.
 
-Example papers:
+### Example 3-paper validation set used in this work
 
 - `10.1007_978-1-0716-1816-5_12`
 - `10.1007_978-1-0716-2067-0_5`
 - `10.1007_978-1-0716-2537-8_17`
 
-Run the incremental pipeline in the container:
+These should be staged under:
+
+```text
+Textpresso/.data/raw_files/pdf/SorghumTest/<accession>/<accession>.pdf
+```
+
+### Output of this step
+
+- a small corpus suitable for quick ingest and debugging
+
+## Step 7: Run The Incremental Ingest Pipeline
+
+### What this step does
+
+This step converts staged PDFs into Textpresso search artifacts.
+
+### Why it matters
+
+This is the core transformation step that builds:
+
+- CAS1
+- CAS2
+- `.bib` sidecars
+- Lucene index
+- db files
+
+### Procedure
+
+From the host:
 
 ```bash
 docker exec agr-textpresso-textpresso-1 sh -lc \
@@ -150,38 +394,185 @@ docker exec agr-textpresso-textpresso-1 sh -lc \
    -P 4"
 ```
 
-## Smoke Test
+### Meaning of the pipeline outputs
 
-A smoke test script was added to the `Textpresso` repo:
+- `tpcas-1`: extracted text representation of each document
+- `tpcas-2`: enriched representation after annotation
+- `.bib`: metadata used by search results and detail display
+- Lucene index: document and sentence retrieval structures
+- db files: search support tables and lookup files
 
-`tpctools/smoke_test_pipeline.sh`
+### Output of this step
 
-Run it from the `Textpresso` root:
+- a searchable or nearly-searchable corpus depending on whether all downstream stages completed successfully
+
+## Step 8: Run The Smoke Test
+
+### What this step does
+
+This runs the automated end-to-end smoke test added in the `Textpresso` repo.
+
+### Why it matters
+
+It verifies the full ingest/search chain instead of relying on manual spot checks only.
+
+### Procedure
+
+From the `Textpresso` root:
 
 ```bash
 ./tpctools/smoke_test_pipeline.sh
 ```
 
-This validates:
+### What it validates
 
 - PDF ingest
 - CAS1 generation
 - CAS2 generation
+- bib generation
 - index rebuild
 - API searchability
 
-## Full SorghumBase Ingest
+### Output of this step
 
-After `SorghumTest` passed, the full corpus was staged as `SorghumBase` and ingested with the same pipeline.
+- pass/fail signal for the current ingest pipeline and API path
 
-Validation points after the full run:
+## Step 9: Verify The Small Test Corpus
+
+### What this step does
+
+This step confirms that `SorghumTest` is really searchable.
+
+### Why it matters
+
+A corpus being present on disk is not enough. A corpus being listed by the API is also not enough. Search itself must
+work before the full corpus is ingested.
+
+### API verification examples
+
+Check corpora:
+
+```bash
+curl -s http://localhost:18080/v1/textpresso/api/available_corpora
+```
+
+Check a keyword count:
+
+```bash
+curl -s -X POST http://localhost:18080/v1/textpresso/api/get_documents_count \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"sorghum","corpora":["SorghumTest"]}'
+```
+
+### UI verification
+
+Open:
+
+- [http://localhost:8080/tpc/search](http://localhost:8080/tpc/search)
+
+Then:
+
+1. choose corpus `SorghumTest`
+2. search for `sorghum`
+3. inspect that results show documents
+4. inspect that metadata fields are present for at least some results
+
+### Output of this step
+
+- confirmation that the test corpus is genuinely searchable from both API and UI
+
+## Step 10: Ingest The Full `SorghumBase` Corpus
+
+### What this step does
+
+This step repeats the same process on the full Sorghum corpus.
+
+### Why it matters
+
+Once `SorghumTest` is stable, the full corpus can be ingested with much less risk.
+
+### Procedure
+
+- ensure the entire corpus is staged under `raw_files/pdf/SorghumBase`
+- rerun the same incremental pipeline command from Step 7
+
+### Validation targets after the full run
 
 1. `SorghumBase` appears in `available_corpora`
-2. `get_documents_count` for `sorghum` in `SorghumBase` returns a nonzero result
-3. `search_documents` returns results
-4. the UI at `http://localhost:8080/tpc/search` shows rows for `SorghumBase`
+2. keyword counts are nonzero for known terms such as `sorghum`
+3. `search_documents` returns rows
+4. the UI shows `SorghumBase` results
 
-## Problems Encountered And Fixes Applied
+### Output of this step
+
+- full corpus CAS output, metadata, index, and live searchability
+
+## Step 11: Refresh Metadata
+
+### What this step does
+
+This step improves `.bib` sidecar metadata for the ingested PDFs.
+
+### Why it matters
+
+Without this step, search results can show placeholder or incomplete values for:
+
+- author
+- journal
+- year
+- title
+
+### Metadata sources used by the improved workflow
+
+In priority order:
+
+1. mounted CSV metadata
+2. `pdfinfo` document metadata
+3. PDF first-page text heuristics
+4. placeholder fallback values only if all of the above fail
+
+### Architectural relation
+
+The API and Wt UI can read sidecar `.bib` files when indexed metadata is missing or unsafe to decompress. That makes
+the `.bib` refresh step directly relevant to what users see in search results.
+
+### Output of this step
+
+- rewritten `.bib` sidecars with cleaner title, journal, year, and author values
+
+## Step 12: Final Verification
+
+### What this step does
+
+This step confirms that the live user-facing system is healthy.
+
+### Procedure
+
+API checks:
+
+```bash
+curl -s http://localhost:18080/v1/textpresso/api/available_corpora
+```
+
+```bash
+curl -s -X POST http://localhost:18080/v1/textpresso/api/get_documents_count \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"sorghum","corpora":["SorghumBase"]}'
+```
+
+UI checks:
+
+1. open [http://localhost:8080/tpc/search](http://localhost:8080/tpc/search)
+2. hard refresh if the page was open before the latest restart
+3. choose `SorghumBase`
+4. search `sorghum`
+5. inspect document rows and metadata fields
+
+### Output of this step
+
+- a confirmed working local Textpresso search system for SorghumBase
+
+## Problems Encountered And Why The Fixes Matter
 
 ### 1. CAS2 generation failed
 
@@ -190,6 +581,11 @@ Symptoms:
 - no usable `tpcas-2` output for new PDF corpora
 - logs showed missing `pcrelations` and `tpontology`
 - `runAECpp` output was not copied correctly
+
+Why this matters architecturally:
+
+- CAS2 is the annotated stage used before indexing
+- without usable CAS2 outputs, the corpus cannot progress to stable search artifacts
 
 Fixes applied in the `Textpresso` repo:
 
@@ -208,6 +604,11 @@ Symptoms:
 - corpus visible but keyword search returned zero results
 - `cas2index` silently skipped records without valid `.bib` files
 
+Why this matters architecturally:
+
+- indexing depends on document metadata and CAS2-side outputs
+- if `.bib` generation fails, the searchable layer can silently miss documents even when earlier stages succeeded
+
 Fixes:
 
 - auto-generate fallback `.bib` files for PDF-derived CAS output
@@ -225,6 +626,10 @@ Relevant files:
 Symptoms:
 
 - CAS2 output was written, then the process crashed
+
+Why this matters architecturally:
+
+- a write-then-crash pattern can make the pipeline appear flaky and can hide real partial-output conditions
 
 Fix:
 
@@ -247,166 +652,57 @@ Root cause:
 
 - Lucene compressed-field decompression crashed in document detail loading
 
+Why this matters architecturally:
+
+- the system could ingest and index correctly but still fail at the final user-facing retrieval layer
+
 Fix:
 
-- stop requesting detailed compressed metadata fields in the API search route
-- use only safe fields for search hits
-- derive safe fallback accession/title values from the filepath
+- stop requesting dangerous compressed metadata fields in the API search route
+- use safe fields for search hits
 - read title/journal/type/year/author from `.bib` sidecars instead
 
 Relevant file:
 
 - `textpressoapi/main.cpp`
 
-### 5. `tpc/search` UI still crashed after API was fixed
+### 5. The Wt UI crashed separately from the API
 
 Symptoms:
 
-- backend API was healthy
-- the Wt CGI app behind `/tpc/search` still segfaulted
+- API behavior improved, but `/tpc/search` still failed on result rendering
+
+Why this matters architecturally:
+
+- Textpresso has two presentation/search surfaces
+- fixing one path is not sufficient if the second binary still exercises the old crash path
 
 Fix:
 
-- patch the Wt search result builders to stop requesting `DOCUMENTS_FIELDS_DETAILED`
-- use safe fields and `.bib` sidecar metadata instead
-- rebuild and redeploy the `tpc` CGI binary
+- patch the Wt search UI to avoid the same dangerous detailed-field retrieval path
+- add `.bib` sidecar fallback for the UI result display
 
 Relevant file:
 
 - `textpressocentral/TpC/Search.cpp`
 
-### 6. Author metadata was noisy
+## Reproducibility Checklist
 
-Symptoms:
+Before calling the setup complete, verify all of the following:
 
-- author lines looked like:
-  - editor names
-  - citation lines
-  - license strings
+- the `Textpresso` repo is patched or otherwise contains the required Sorghum fixes
+- Docker Compose services are running
+- the mounted data directory is persistent and correctly configured
+- Sorghum PDFs are staged under `raw_files/pdf/SorghumBase`
+- Sorghum metadata CSV is staged under `imports/metadata/sorghumbase_papers.csv`
+- `SorghumTest` ingests successfully
+- the smoke test passes
+- `SorghumBase` appears in `available_corpora`
+- a query like `sorghum` returns nonzero counts for `SorghumBase`
+- the UI shows search rows and metadata
 
-Fix:
+## Related Documents
 
-- improve `generate_pdf_bib.py`
-- prefer clean `pdfinfo` metadata for author/title/year
-- use tighter PDF first-page heuristics only as fallback
-- refresh all `SorghumBase` `.bib` files in place
-
-Relevant file:
-
-- `tpctools/generate_pdf_bib.py`
-
-## Reproducible Commands
-
-### Start services
-
-```bash
-cd /path/to/Textpresso
-docker compose build
-docker compose up -d
-docker compose ps
-```
-
-### Check corpora
-
-```bash
-curl -s http://localhost:18080/v1/textpresso/api/available_corpora
-```
-
-### Check document count
-
-```bash
-python3 - <<'PY'
-import json, urllib.request
-payload = {
-    "query": {
-        "keywords": "sorghum",
-        "type": "document",
-        "case_sensitive": False,
-        "sort_by_year": False,
-        "count": 5,
-        "corpora": ["SorghumBase"],
-    }
-}
-req = urllib.request.Request(
-    "http://localhost:18080/v1/textpresso/api/get_documents_count",
-    data=json.dumps(payload).encode(),
-    headers={"Content-Type": "application/json"},
-)
-print(urllib.request.urlopen(req).read().decode())
-PY
-```
-
-### Search documents
-
-```bash
-python3 - <<'PY'
-import json, urllib.request
-payload = {
-    "query": {
-        "keywords": "sorghum",
-        "type": "document",
-        "case_sensitive": False,
-        "sort_by_year": False,
-        "count": 5,
-        "corpora": ["SorghumBase"],
-    }
-}
-req = urllib.request.Request(
-    "http://localhost:18080/v1/textpresso/api/search_documents",
-    data=json.dumps(payload).encode(),
-    headers={"Content-Type": "application/json"},
-)
-print(urllib.request.urlopen(req).read().decode())
-PY
-```
-
-### Open the UI
-
-Go to:
-
-`http://localhost:8080/tpc/search`
-
-Use:
-
-- corpus: `SorghumBase`
-- keyword: `sorghum`
-
-If the page was already open during a rebuild, open a new tab or hard refresh.
-
-## Refresh Sorghum `.bib` Files
-
-After changing `generate_pdf_bib.py`, refresh the Sorghum metadata in the running container:
-
-```bash
-docker cp tpctools/generate_pdf_bib.py agr-textpresso-textpresso-1:/tmp/generate_pdf_bib.py
-
-docker exec agr-textpresso-textpresso-1 sh -lc '
-find /data/textpresso/tpcas-2/SorghumBase -mindepth 2 -maxdepth 2 -name "*.bib" | while read -r bib; do
-  base=$(basename "$bib" .bib)
-  pdf="/data/textpresso/raw_files/pdf/SorghumBase/$base/$base.pdf"
-  if [ -f "$pdf" ]; then
-    python3 /tmp/generate_pdf_bib.py \
-      --pdf "$pdf" \
-      --bib "$bib" \
-      --accession "$base" \
-      --metadata-dir /data/textpresso/imports/metadata >/dev/null 2>&1
-  fi
-done
-'
-```
-
-The API and Wt UI read `.bib` sidecars at request time, so a metadata refresh does not require a reingest.
-
-## Current Expected State
-
-At the end of the successful run:
-
-- `SorghumBase` is searchable from the UI
-- `search_documents` returns nonzero `sorghum` results
-- title, journal, type, year, and many author fields are populated from `.bib` metadata
-
-## Remaining Known Limitations
-
-- some PDFs only expose a single clean author in `pdfinfo`, so a subset of records may show first author only
-- semantic ontology annotation quality still depends on the ontology assets present in the mounted data directory
-- the main `Textpresso` repo contains additional local fixes not committed here; this document references them for reproducibility
+- [TEXTPRESSO_SORGHUM_FLOWCHART.md](/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_FLOWCHART.md)
+- [TEXTPRESSO_PATCHSET_GUIDE.md](/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/TEXTPRESSO_PATCHSET_GUIDE.md)
+- [COLLABORATOR_HANDOFF.md](/Users/kchougul/development/codex_projects/Textpresso/sorghumbase_textpresso_implementation/sorghumbase_textpresso_implementation/docs/COLLABORATOR_HANDOFF.md)
