@@ -24,8 +24,8 @@ class TestTextpressoDocumentClassifier(unittest.TestCase):
                                                             file_type="cas_xml", category=2)
         self.tpDocClassifier.add_classified_docs_to_dataset(os.path.join(self.training_dir_path, "pdf"),
                                                             file_type="pdf", category=2, recursive=True)
-        self.assertTrue(len(self.tpDocClassifier.dataset.data) == 12)
-        self.assertTrue(len(self.tpDocClassifier.dataset.target) == 12)
+        self.assertTrue(len(self.tpDocClassifier.dataset.data) == 13)
+        self.assertTrue(len(self.tpDocClassifier.dataset.target) == 13)
 
     def test_generate_training_and_test_sets(self):
         self.tpDocClassifier.add_classified_docs_to_dataset(os.path.join(self.training_dir_path, "cas", "c_elegans"),
@@ -134,7 +134,7 @@ class TestTextpressoDocumentClassifier(unittest.TestCase):
         prediction = self.tpDocClassifier.predict_file(file_path=os.path.join(self.training_dir_path, "pdf",
                                                                               "c_elegans", "WBPaper00004781.pdf"),
                                                        file_type="pdf")
-        self.assertIsNone(prediction)
+        self.assertIsNotNone(prediction)
         prediction = self.tpDocClassifier.predict_file(file_path=os.path.join(self.training_dir_path, "cas",
                                                                               "c_elegans", "WBPaper00035071.tpcas.gz"),
                                                        file_type="cas_pdf")
@@ -161,7 +161,7 @@ class TestTextpressoDocumentClassifier(unittest.TestCase):
         self.tpDocClassifier.train_classifier(model=model)
         predictions = self.tpDocClassifier.predict_files(dir_path=os.path.join(self.training_dir_path, "pdf",
                                                                                "c_elegans"), file_type="pdf")
-        self.assertFalse(all(predictions[1]))
+        self.assertTrue(all(predictions[1]))
         predictions = self.tpDocClassifier.predict_files(dir_path=os.path.join(self.training_dir_path, "cas",
                                                                                "c_elegans"), file_type="cas_pdf")
         self.assertTrue(all(predictions[1]))

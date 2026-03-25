@@ -3,6 +3,9 @@
 import os
 import pickle
 import random
+import collections
+import collections.abc
+import numpy as np
 from sklearn import metrics, feature_selection
 from namedlist import namedlist
 from textpresso_classifiers.fileutils import *
@@ -14,6 +17,11 @@ from nltk.stem import WordNetLemmatizer
 __author__ = "Valerio Arnaboldi"
 
 __version__ = "1.0.1"
+
+
+for attr in ("Mapping", "MutableMapping", "Sequence"):
+    if not hasattr(collections, attr):
+        setattr(collections, attr, getattr(collections.abc, attr))
 
 
 DatasetStruct_ = namedlist("DatasetStruct", "data, filenames, target, tr_features")
@@ -59,6 +67,12 @@ class TextpressoDocumentClassifier:
         self.feature_selector = None
         self.vocabulary = None
         self.top_n_feat = 0
+
+    @staticmethod
+    def _to_dense_array(features):
+        if hasattr(features, "toarray"):
+            return np.asarray(features.toarray())
+        return np.asarray(features)
 
     def add_classified_docs_to_dataset(self, dir_path: str = None, recursive: bool = True,
                                        file_type: str = "pdf", category: int = 1):
@@ -210,7 +224,7 @@ class TextpressoDocumentClassifier:
         if self.training_set.tr_features is not None:
             self.classifier = model
             if dense:
-                self.classifier.fit(self.training_set.tr_features.todense(), self.training_set.target)
+                self.classifier.fit(self._to_dense_array(self.training_set.tr_features), self.training_set.target)
             else:
                 self.classifier.fit(self.training_set.tr_features, self.training_set.target)
         else:
@@ -231,7 +245,7 @@ class TextpressoDocumentClassifier:
             test_set = self.test_set
         if test_set.tr_features is not None:
             if dense:
-                pred = self.classifier.predict(test_set.tr_features.todense())
+                pred = self.classifier.predict(self._to_dense_array(test_set.tr_features))
             else:
                 pred = self.classifier.predict(test_set.tr_features)
             precision = metrics.precision_score(test_set.target, pred)
@@ -274,7 +288,7 @@ class TextpressoDocumentClassifier:
                                            reverse=True)
                 tr_features = tr_features[:, best_features_idx[:self.top_n_feat]]
             if dense:
-                return self.classifier.predict(tr_features.todense())
+                return self.classifier.predict(self._to_dense_array(tr_features))
             else:
                 return self.classifier.predict(tr_features)
         else:
@@ -323,7 +337,7 @@ class TextpressoDocumentClassifier:
             tr_features = tr_features[:, best_features_idx[:self.top_n_feat]]
         filenames.extend(failed_filenames)
         if dense:
-            predictions = self.classifier.predict(tr_features.todense()).tolist()
+            predictions = self.classifier.predict(self._to_dense_array(tr_features)).tolist()
         else:
             predictions = self.classifier.predict(tr_features).tolist()
         predictions.extend([None] * len(failed_filenames))
@@ -361,7 +375,8 @@ class TextpressoDocumentClassifier:
             self.training_set.tr_features = []
             self.test_set.data = []
             self.test_set.tr_features = []
-        pickle.dump(self, open(file_path, "wb"))
+        with open(file_path, "wb") as outfile:
+            pickle.dump(self, outfile)
 
     @staticmethod
     def load_from_file(file_path: str):
@@ -372,7 +387,8 @@ class TextpressoDocumentClassifier:
         :return: the classifier object
         :rtype: TextpressoDocumentClassifier
         """
-        return pickle.load(open(file_path, "rb"))
+        with open(file_path, "rb") as infile:
+            return pickle.load(infile)
 
     def remove_features(self, features: List[str]):
         """remove a list of features from the current vocabulary of the classifier, if not empty. The classifier must

@@ -39,6 +39,28 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+## Docker Build and Test
+
+This repository also includes a standalone Dockerfile for the Sorghum classifier code.
+
+Build it:
+
+```bash
+docker build -t sorghumbase-textpresso-implementation .
+```
+
+Run the default unit-test command:
+
+```bash
+docker run --rm sorghumbase-textpresso-implementation
+```
+
+Open an interactive shell instead:
+
+```bash
+docker run --rm -it sorghumbase-textpresso-implementation /bin/bash
+```
+
 ## Textpresso Docker Workflow
 
 This repository does not build the full Textpresso service by itself. For the running Sorghum search system, use the

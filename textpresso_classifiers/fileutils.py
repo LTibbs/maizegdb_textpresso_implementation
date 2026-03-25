@@ -85,12 +85,20 @@ def extract_text_from_pdf(file_path: str):
     :rtype: str
     """
     fulltext = ""
-    pdfFileObj = open(file_path, 'rb')
     try:
-        pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
-        for i in range(pdfReader.numPages):
-            pageObj = pdfReader.getPage(i)
-            fulltext += pageObj.extractText()
+        with open(file_path, 'rb') as pdf_file_obj:
+            if hasattr(PyPDF2, "PdfReader"):
+                pdf_reader = PyPDF2.PdfReader(pdf_file_obj)
+                for page in pdf_reader.pages:
+                    fulltext += page.extract_text() or ""
+            else:
+                pdf_reader = PyPDF2.PdfFileReader(pdf_file_obj)
+                for i in range(pdf_reader.numPages):
+                    page_obj = pdf_reader.getPage(i)
+                    if hasattr(page_obj, "extract_text"):
+                        fulltext += page_obj.extract_text() or ""
+                    else:
+                        fulltext += page_obj.extractText() or ""
         return fulltext
-    except:
+    except Exception:
         return None
