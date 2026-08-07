@@ -1,0 +1,353 @@
+term,doc_freq,total,surface_forms,source_fields,gene_ids,filtered,filter_reason
+red,372,1233,red,EXACT locus_synonym,r1 (tpzm:0020929),True,all constituent words are common English/molecular-biology terms
+expression,283,814,Expression,EXACT locus_synonym,LOC103649053 (tpzm:0004623),True,all constituent words are common English/molecular-biology terms
+binding,282,1690,binding,EXACT locus_synonym,cl14466_1 (tpzm:0010898),True,all constituent words are common English/molecular-biology terms
+promoter,235,1840,promoter,EXACT locus_synonym,ubi1 (tpzm:0023372),True,all constituent words are common English/molecular-biology terms
+transcription factor,204,680,transcription factor,EXACT locus_synonym,IDP3908 (tpzm:0001640),True,all constituent words are common English/molecular-biology terms
+mrna,180,837,mRNA,EXACT locus_synonym,LOC100283589 (tpzm:0003506),True,all constituent words are common English/molecular-biology terms
+late,142,380,late,EXACT locus_synonym,Zm00001eb059970 (tpzm:0007478),True,all constituent words are common English/molecular-biology terms
+protein kinase,74,1582,Protein kinase; protein kinase,EXACT locus_synonym; RELATED locus_synonym,AC226248.1_FG002 (tpzm:0000079); LOC100192801 (tpzm:0002854); LOC110013313 (tpzm:0004928); TIDP9198 (tpzm:0005248); Zm00001d012625 (tpzm:0005704); Zm00001d044639 (tpzm:0006905); Zm00001d053695 (tpzm:0007269); acr9 (tpzm:0008734); cl13065_1b (tpzm:0010871); mkkk72 (tpzm:0016534),True,all constituent words are common English/molecular-biology terms
+peroxidase,73,205,peroxidase,EXACT locus_synonym,Zm00001eb111320 (tpzm:0007614),True,all constituent words are common English/molecular-biology terms
+phosphatase,66,177,phosphatase,EXACT locus_synonym,vtc4 (tpzm:0024416),True,all constituent words are common English/molecular-biology terms
+cds,60,478,CDS,RELATED locus_synonym,GRMZM5G825110 (tpzm:0001313); cl9125_1 (tpzm:0011998),True,all constituent words are common English/molecular-biology terms
+transferase,53,648,transferase,RELATED locus_synonym,Zm00001d002139 (tpzm:0005301); Zm00001d026268 (tpzm:0006210); aat1 (tpzm:0008576); bnlg1863 (tpzm:0009726); gll1 (tpzm:0014002); pco144592b (tpzm:0019238),True,all constituent words are common English/molecular-biology terms
+dna binding,51,300,DNA binding,RELATED locus_synonym,cl48699_1b (tpzm:0011661); ddt4 (tpzm:0012651); si945034e12b (tpzm:0022458),True,all constituent words are common English/molecular-biology terms
+as,47,119,AS,EXACT locus_synonym,asn1 (tpzm:0009290),True,all constituent words are common English/molecular-biology terms
+zinc finger,42,75,Zinc finger; zinc finger,EXACT locus_synonym,pco137522 (tpzm:0019131); ring166 (tpzm:0021153),True,all constituent words are common English/molecular-biology terms
+reverse transcriptase,39,86,reverse transcriptase,RELATED locus_synonym,LOC103635930 (tpzm:0004220); mkkk22 (tpzm:0016489),True,all constituent words are common English/molecular-biology terms
+hydrolase,37,168,hydrolase,RELATED locus_synonym,IDP7290 (tpzm:0002175); apy14 (tpzm:0009118); npi252 (tpzm:0017655),True,all constituent words are common English/molecular-biology terms
+no,34,165,NO,EXACT locus_synonym,LOC100276778 (tpzm:0003189),True,all constituent words are common English/molecular-biology terms
+leucine-rich repeat,34,59,leucine-rich repeat,EXACT locus_synonym,ebf2 (tpzm:0013038),True,all constituent words are common English/molecular-biology terms
+oxidoreductase,32,459,oxidoreductase,RELATED locus_synonym,GRMZM2G018082 (tpzm:0000434); GRMZM2G087312 (tpzm:0000726); LOC100286195 (tpzm:0003651); nyc1 (tpzm:0017803); pco099340a (tpzm:0018625); pco135548 (tpzm:0019106); proh6 (tpzm:0020435); proh8 (tpzm:0020437); proh9 (tpzm:0020438),True,all constituent words are common English/molecular-biology terms
+atpase,32,103,ATPase,EXACT locus_synonym,IDP4334 (tpzm:0001752),True,all constituent words are common English/molecular-biology terms
+membrane protein,28,414,membrane protein,RELATED locus_synonym,Zm00001d005203 (tpzm:0005420); Zm00001d021231 (tpzm:0006004); caspl43 (tpzm:0010189); pco065335b (tpzm:0018147); pco124941 (tpzm:0018960); pco133450 (tpzm:0019070); pco133602 (tpzm:0019073); umc1748 (tpzm:0023822); umc2229 (tpzm:0024023),True,all constituent words are common English/molecular-biology terms
+ribosomal protein,26,213,ribosomal protein,RELATED description; RELATED locus_synonym,Zm00001d042772 (tpzm:0006814); Zm00001d049945 (tpzm:0007123); mta1 (tpzm:0016799),True,all constituent words are common English/molecular-biology terms
+ubiquitin,26,35,Ubiquitin,EXACT locus_synonym,Zm00001eb381010 (tpzm:0008295),True,all constituent words are common English/molecular-biology terms
+methyltransferase,24,148,methyltransferase,RELATED locus_synonym,GRMZM2G090156 (tpzm:0000735); LOC100382446 (tpzm:0003738); LOC100501202 (tpzm:0003838); Zm00001eb293590 (tpzm:0008086),True,all constituent words are common English/molecular-biology terms
+chloroplastic,24,65,chloroplastic,EXACT locus_synonym,glx8 (tpzm:0014131),True,all constituent words are common English/molecular-biology terms
+transcriptional activator,23,53,transcriptional activator,EXACT locus_synonym,pl1 (tpzm:0019797),True,all constituent words are common English/molecular-biology terms
+pentatricopeptide repeat,20,37,pentatricopeptide repeat,EXACT locus_synonym,Zm00001eb226290 (tpzm:0007913),True,all constituent words are common English/molecular-biology terms
+cellulase,19,260,cellulase,RELATED locus_synonym,cel15 (tpzm:0010472); cel16 (tpzm:0010473); cel20 (tpzm:0010478); cel22 (tpzm:0010480); cel24 (tpzm:0010481); cel26 (tpzm:0010483); cel29 (tpzm:0010484); cel3 (tpzm:0010485); cel4 (tpzm:0010488); cel6 (tpzm:0010490),True,all constituent words are common English/molecular-biology terms
+helicase,18,37,helicase,EXACT locus_synonym,Zm00001eb291790 (tpzm:0008079),True,all constituent words are common English/molecular-biology terms
+endonuclease,18,34,endonuclease,EXACT locus_synonym,Zm00001eb097540 (tpzm:0007563),True,all constituent words are common English/molecular-biology terms
+rna binding,17,50,RNA binding,EXACT locus_synonym,Zm00001d005281 (tpzm:0005424),True,all constituent words are common English/molecular-biology terms
+glutathione s-transferase,17,39,Glutathione S-transferase; glutathione S-transferase,EXACT locus_synonym; RELATED locus_synonym,Zm00001d022312 (tpzm:0006061); gst55 (tpzm:0014591); gst59 (tpzm:0014595),True,all constituent words are common English/molecular-biology terms
+cyclase,17,39,cyclase,EXACT locus_synonym,IDP8341 (tpzm:0002571),True,all constituent words are common English/molecular-biology terms
+delta,17,31,delta,EXACT locus_synonym,Zm00001eb441010 (tpzm:0008461),True,all constituent words are common English/molecular-biology terms
+receptor-like kinase,17,28,receptor-like kinase,EXACT locus_synonym,IDP8237 (tpzm:0002537),True,all constituent words are common English/molecular-biology terms
+della,16,89,DELLA,EXACT locus_synonym,gras53 (tpzm:0014390),True,all constituent words are common English/molecular-biology terms
+sucrose synthase,16,68,sucrose synthase,RELATED locus_synonym,Zm00001eb313170 (tpzm:0008134); sus5 (tpzm:0022807),True,all constituent words are common English/molecular-biology terms
+alcohol dehydrogenase,16,63,alcohol dehydrogenase,RELATED locus_synonym,LOC103631145 (tpzm:0004062); cl9439_1 (tpzm:0012016); ts2 (tpzm:0023292),True,all constituent words are common English/molecular-biology terms
+dna repair,16,62,DNA repair,EXACT locus_synonym,Zm00001eb291800 (tpzm:0008080),True,all constituent words are common English/molecular-biology terms
+cellulose synthase,16,40,cellulose synthase,EXACT locus_synonym,thx43 (tpzm:0023063),True,all constituent words are common English/molecular-biology terms
+gamma,15,105,gamma,RELATED locus_synonym,LOC103627333 (tpzm:0003941); Zm00001d018623 (tpzm:0005905); Zm00001eb183170 (tpzm:0007781),True,all constituent words are common English/molecular-biology terms
+ribonucleoprotein,15,42,ribonucleoprotein,RELATED locus_synonym,Zm00001d018821 (tpzm:0005914); uaz7c01c01 (tpzm:0023366),True,all constituent words are common English/molecular-biology terms
+glycosyltransferase,14,220,glycosyltransferase,RELATED locus_name; RELATED locus_synonym,Zm00001d031336 (tpzm:0006400); Zm00014ba364880 (tpzm:0008478); pglcat7 (tpzm:0019577); umc1249 (tpzm:0023572); umc2616 (tpzm:0024165); xat2 (tpzm:0024675); xat4 (tpzm:0024677); xat5 (tpzm:0024678); xat8 (tpzm:0024681); xt9 (tpzm:0024711),True,all constituent words are common English/molecular-biology terms
+transposase,14,55,transposase,EXACT locus_synonym,cl34747_1c (tpzm:0011429),True,all constituent words are common English/molecular-biology terms
+hexokinase,14,28,hexokinase,EXACT locus_synonym,Zm00001eb405610 (tpzm:0008374),True,all constituent words are common English/molecular-biology terms
+diffuse,14,24,diffuse,EXACT locus_synonym,c2 (tpzm:0009957),True,all constituent words are common English/molecular-biology terms
+esterase,13,130,esterase,RELATED locus_synonym,Zm00001d007351 (tpzm:0005493); Zm00001d046136 (tpzm:0006956); Zm00001d053425 (tpzm:0007261); umc2141 (tpzm:0023973); umc2147 (tpzm:0023975),True,all constituent words are common English/molecular-biology terms
+auxin response factor,13,34,auxin response factor,RELATED locus_synonym,IDP683 (tpzm:0002057); arftf25 (tpzm:0009155),True,all constituent words are common English/molecular-biology terms
+elongation factor,13,14,elongation factor,EXACT locus_synonym,rack2 (tpzm:0020937),True,all constituent words are common English/molecular-biology terms
+thioredoxin,12,34,Thioredoxin; thioredoxin,RELATED locus_synonym,IDP6969 (tpzm:0002093); LOC100279286 (tpzm:0003268); aprl1 (tpzm:0009088); pco141631 (tpzm:0019185),True,all constituent words are common English/molecular-biology terms
+calmodulin,11,99,Calmodulin; calmodulin,EXACT locus_synonym; RELATED locus_synonym,IDP7337 (tpzm:0002201); LOC100272455 (tpzm:0002999); LOC100280813 (tpzm:0003328); LOC100286292 (tpzm:0003655); LOC100502179 (tpzm:0003868); TIDP2761 (tpzm:0005079); TIDP3279 (tpzm:0005152); bnlg1136a (tpzm:0009696); umc2698 (tpzm:0024204),True,all constituent words are common English/molecular-biology terms
+agpase,10,50,AGPase,RELATED locus_synonym,agpll1 (tpzm:0008851); agpsl1 (tpzm:0008853),True,all constituent words are common English/molecular-biology terms
+zinc finger protein,10,45,zinc finger protein,RELATED locus_synonym,IDP535 (tpzm:0001922); Zm00001eb256600 (tpzm:0008002); nudx31 (tpzm:0017787),True,all constituent words are common English/molecular-biology terms
+pseudo,10,36,pseudo,RELATED locus_synonym,gata14 (tpzm:0013803); jmj3 (tpzm:0015478); mybr23 (tpzm:0017070),True,all constituent words are common English/molecular-biology terms
+starch synthase,10,26,starch synthase,EXACT locus_synonym,Zm00001eb355940 (tpzm:0008231),True,all constituent words are common English/molecular-biology terms
+polygalacturonase,10,18,Polygalacturonase; polygalacturonase,EXACT locus_synonym,pgl11 (tpzm:0019530); pgl52 (tpzm:0019569),True,all constituent words are common English/molecular-biology terms
+expansin,10,16,expansin,EXACT locus_synonym,Zm00001eb239160 (tpzm:0007955),True,all constituent words are common English/molecular-biology terms
+cysteine protease,10,15,cysteine protease,EXACT locus_synonym,ccp10 (tpzm:0010278),True,all constituent words are common English/molecular-biology terms
+peptidase,10,13,peptidase,EXACT locus_synonym,mlns1 (tpzm:0016562),True,all constituent words are common English/molecular-biology terms
+lipase,9,96,lipase,RELATED locus_synonym,IDP3974 (tpzm:0001660); Zm00001d042183 (tpzm:0006781); Zm00001d048721 (tpzm:0007066); pco060587 (tpzm:0018075),True,all constituent words are common English/molecular-biology terms
+glutathione reductase,9,54,glutathione reductase,RELATED locus_synonym,LOC100381818 (tpzm:0003702); pco111841b (tpzm:0018803); umc2353 (tpzm:0024090),True,all constituent words are common English/molecular-biology terms
+pentatricopeptide repeat protein,9,30,pentatricopeptide repeat protein,RELATED locus_synonym,GRMZM2G123314 (tpzm:0000855); emp7 (tpzm:0013141),True,all constituent words are common English/molecular-biology terms
+legume,9,30,Legume; legume,RELATED locus_synonym,IDP7421 (tpzm:0002235); LOC100281576 (tpzm:0003364); Zm00001d030759 (tpzm:0006376); Zm00001d049741 (tpzm:0007115),True,all constituent words are common English/molecular-biology terms
+transmembrane protein,9,27,transmembrane protein,RELATED locus_synonym,GRMZM2G056606 (tpzm:0000599); Zm00001d051405 (tpzm:0007175); pip1a (tpzm:0019772),True,all constituent words are common English/molecular-biology terms
+nuclear protein,9,22,nuclear protein,EXACT locus_synonym,cl43678_1 (tpzm:0011598),True,all constituent words are common English/molecular-biology terms
+atp synthase,9,15,ATP synthase,EXACT locus_synonym,LOC103643094 (tpzm:0004441),True,all constituent words are common English/molecular-biology terms
+serine/threonine kinase,9,14,serine/threonine kinase,EXACT locus_synonym,IDP27 (tpzm:0001548),True,all constituent words are common English/molecular-biology terms
+transcription activator,9,12,transcription activator,EXACT locus_synonym,GRMZM2G145085 (tpzm:0000931),True,all constituent words are common English/molecular-biology terms
+aldolase,9,12,aldolase,EXACT locus_synonym,ald1 (tpzm:0008875); ald3 (tpzm:0008877),True,all constituent words are common English/molecular-biology terms
+calcium-dependent protein kinase,9,11,calcium-dependent protein kinase,EXACT locus_synonym,cdpk17 (tpzm:0010414),True,all constituent words are common English/molecular-biology terms
+leafy,8,11,LEAFY,EXACT locus_synonym,zfl1 (tpzm:0024833),True,all constituent words are common English/molecular-biology terms
+acyltransferase,7,196,acyltransferase,RELATED locus_synonym,Zm00001d011927 (tpzm:0005681); ad1 (tpzm:0008762); hct12 (tpzm:0014870); kcs1 (tpzm:0015503); kcs38 (tpzm:0015526); kcs39 (tpzm:0015527); kcs40 (tpzm:0015528),True,all constituent words are common English/molecular-biology terms
+rna-binding protein,7,44,RNA-binding protein,RELATED locus_synonym,ncp2 (tpzm:0017479); ncp3 (tpzm:0017480); ring159 (tpzm:0021148); ring60 (tpzm:0021367),True,all constituent words are common English/molecular-biology terms
+receptor-like protein kinase,7,32,receptor-like protein kinase,RELATED locus_synonym,LOC103636588 (tpzm:0004253); Zm00001d051313 (tpzm:0007170); lrx11 (tpzm:0015837); pepr2 (tpzm:0019446),True,all constituent words are common English/molecular-biology terms
+phenylalanine ammonia-lyase,7,24,phenylalanine ammonia-lyase,RELATED locus_synonym,Zm00001d051164 (tpzm:0007162); pal13 (tpzm:0017964); pal5 (tpzm:0017970),True,all constituent words are common English/molecular-biology terms
+transmembrane transporter,7,16,transmembrane transporter,RELATED locus_synonym,mate11 (tpzm:0016057); mate13 (tpzm:0016059),True,all constituent words are common English/molecular-biology terms
+hypothetical protein,7,7,hypothetical protein,EXACT locus_synonym,Zm00001d034611 (tpzm:0006532),True,all constituent words are common English/molecular-biology terms
+ubiquitin-protein ligase,6,156,ubiquitin-protein ligase,EXACT locus_synonym; RELATED locus_synonym,GRMZM2G028014 (tpzm:0000462); IDP176 (tpzm:0001440); LOC100273637 (tpzm:0003064); arm11 (tpzm:0009193); arm53 (tpzm:0009230); arm54 (tpzm:0009231); cl17205_1 (tpzm:0011001); fbl41 (tpzm:0013538); pco073185a (tpzm:0018249); pub18 (tpzm:0020684); pub20 (tpzm:0020687); pub26 (tpzm:0020691); pub35 (tpzm:0020700); pub80 (tpzm:0020735),True,all constituent words are common English/molecular-biology terms
+dna-binding protein,6,49,DNA-binding protein,RELATED locus_synonym,LOC100284873 (tpzm:0003582); Zm00001d028577 (tpzm:0006304); Zm00001d037159 (tpzm:0006610); Zm00001eb173650 (tpzm:0007764); Zm00001eb259170 (tpzm:0008008); arid3 (tpzm:0009182); pco117517 (tpzm:0018879),True,all constituent words are common English/molecular-biology terms
+so,6,36,SO,EXACT locus_synonym,so1 (tpzm:0022621),True,all constituent words are common English/molecular-biology terms
+hexose transporter,6,24,hexose transporter,EXACT locus_synonym; RELATED locus_synonym,LOC100170248 (tpzm:0002780); Zm00001d008565 (tpzm:0005531); tst1 (tpzm:0023300); tst3 (tpzm:0023302),True,all constituent words are common English/molecular-biology terms
+nadh dehydrogenase,6,16,NADH dehydrogenase,RELATED locus_synonym,GRMZM2G041418 (tpzm:0000526); si618008g06 (tpzm:0022215),True,all constituent words are common English/molecular-biology terms
+fad,6,16,FAD; fad,EXACT locus_synonym,Zm00001d018652 (tpzm:0005908); fad1 (tpzm:0013475),True,all constituent words are common English/molecular-biology terms
+glutaredoxin,6,11,glutaredoxin,EXACT locus_synonym,wakl54 (tpzm:0024482),True,all constituent words are common English/molecular-biology terms
+drought-inducible,6,6,drought-inducible,EXACT locus_synonym,dhn3 (tpzm:0012729),True,all constituent words are common English/molecular-biology terms
+ferredoxin,5,36,ferredoxin,EXACT locus_synonym; RELATED locus_synonym,fdx7 (tpzm:0013560); fnr3 (tpzm:0013698); fnr4 (tpzm:0013699); umc2662 (tpzm:0024186),True,all constituent words are common English/molecular-biology terms
+alternative oxidase,5,33,alternative oxidase,RELATED locus_synonym,aox4 (tpzm:0009081); ptox1 (tpzm:0020656); ptox2 (tpzm:0020657),True,all constituent words are common English/molecular-biology terms
+lipid transfer protein,5,28,lipid transfer protein,RELATED locus_synonym,ltpg1 (tpzm:0015863); plt35 (tpzm:0019878); plt36 (tpzm:0019879); plt43 (tpzm:0019887),True,all constituent words are common English/molecular-biology terms
+histone deacetylase,5,28,histone deacetylase,RELATED description; RELATED locus_name; RELATED locus_synonym,hda102 (tpzm:0014898); hda108 (tpzm:0014899); hda109 (tpzm:0014900); hda110 (tpzm:0014901),True,all constituent words are common English/molecular-biology terms
+glycoside hydrolase,5,20,glycoside hydrolase,RELATED locus_synonym,amyb1 (tpzm:0008993); amyb3 (tpzm:0008995),True,all constituent words are common English/molecular-biology terms
+serine/threonine-protein kinase,5,18,serine/threonine-protein kinase,RELATED locus_synonym,IDP8237 (tpzm:0002537); LOC103630247 (tpzm:0004029); LOC103636410 (tpzm:0004242); LOC103638627 (tpzm:0004310); Zm00001d020631 (tpzm:0005983); Zm00001d035588 (tpzm:0006565); Zm00001eb093750 (tpzm:0007556); bhlh179 (tpzm:0009534),True,all constituent words are common English/molecular-biology terms
+cytochrome c,5,14,cytochrome c,RELATED locus_synonym,GRMZM2G070199 (tpzm:0000657); Zm00001d042600 (tpzm:0006802),True,all constituent words are common English/molecular-biology terms
+pyruvate kinase,5,12,pyruvate kinase,RELATED locus_synonym,TIDP3692 (tpzm:0005218); cl7637_1 (tpzm:0011919); pco139502b (tpzm:0019160); umc2285 (tpzm:0024055),True,all constituent words are common English/molecular-biology terms
+speechless,5,7,SPEECHLESS,EXACT locus_synonym,bhlh34 (tpzm:0009574),True,all constituent words are common English/molecular-biology terms
+regulatory subunit,5,6,regulatory subunit,EXACT locus_synonym,pco142939 (tpzm:0019208),True,all constituent words are common English/molecular-biology terms
+chorismate mutase,5,6,chorismate mutase,EXACT locus_synonym,cmu2 (tpzm:0012108),True,all constituent words are common English/molecular-biology terms
+water channel,5,5,water channel,EXACT locus_synonym,cl36355_1 (tpzm:0011472),True,all constituent words are common English/molecular-biology terms
+ca,202,934,CA,RELATED locus_synonym,GRMZM2G087259 (tpzm:0000725); cah7 (tpzm:0010121),True,all constituent words are common English/molecular-biology terms
+aba,104,1724,ABA,EXACT locus_synonym,flz32 (tpzm:0013684),False,"contains 'ABA' -- not a recognized common word/jargon term, kept for manual review"
+myb,76,642,MYB,RELATED locus_synonym,chb101a (tpzm:0010547); myb179 (tpzm:0016932); nactf36 (tpzm:0017268),False,"contains 'MYB' -- not a recognized common word/jargon term, kept for manual review"
+bhlh,68,891,bHLH,RELATED locus_synonym,IDP1489 (tpzm:0001397); Zm00001d037336 (tpzm:0006620); cpp9 (tpzm:0012218),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+gs,60,388,GS; gs,EXACT locus_synonym,gln2 (tpzm:0014004); gshs2 (tpzm:0014514),False,"contains 'GS' -- not a recognized common word/jargon term, kept for manual review"
+pr,55,427,PR,EXACT locus_synonym,prp16 (tpzm:0020454),False,"contains 'PR' -- not a recognized common word/jargon term, kept for manual review"
+p1,53,1555,P1; p1,EXACT jschnable_name; EXACT locus; NAME (gene symbol); RELATED locus_synonym,LOC100282819 (tpzm:0003458); Zm00001eb014370 (tpzm:0007354); arpp1a (tpzm:0009250); p1 (tpzm:0017953),False,contains a digit in some surface form -- real gene ID
+sam,52,655,SAM,EXACT locus_synonym,sams4 (tpzm:0021633),True,all constituent words are common English/molecular-biology terms
+rs,51,126,RS,EXACT locus_synonym,r1 (tpzm:0020929),False,"contains 'RS' -- not a recognized common word/jargon term, kept for manual review"
+bzip,47,100,bZIP,EXACT locus_synonym,Zm00001d034455 (tpzm:0006525),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+cv,46,73,cv,EXACT locus_synonym,bt1 (tpzm:0009788),False,"contains 'cv' -- not a recognized common word/jargon term, kept for manual review"
+eh,44,205,EH,EXACT locus_synonym,IDP7290 (tpzm:0002175),True,all constituent words are common English/molecular-biology terms
+ct,44,76,Ct,EXACT locus_synonym,clt1 (tpzm:0012102),True,all constituent words are common English/molecular-biology terms
+cs,42,259,CS,EXACT locus_synonym,si486062b02 (tpzm:0021963),False,"contains 'CS' -- not a recognized common word/jargon term, kept for manual review"
+ea,42,111,EA,EXACT locus_synonym,GRMZM2G148904 (tpzm:0000950),False,"contains 'EA' -- not a recognized common word/jargon term, kept for manual review"
+nac,41,108,NAC,EXACT locus_synonym,wrky35 (tpzm:0024594),False,"contains 'NAC' -- not a recognized common word/jargon term, kept for manual review"
+co,39,537,CO,EXACT locus_synonym,col11 (tpzm:0012158),True,all constituent words are common English/molecular-biology terms
+rg,37,74,rg,EXACT locus_synonym,rgd1 (tpzm:0021108),False,"contains 'rg' -- not a recognized common word/jargon term, kept for manual review"
+ks,36,48,KS,EXACT locus_synonym,tps1 (tpzm:0023166),True,all constituent words are common English/molecular-biology terms
+p2,35,777,P2; p2,EXACT jschnable_name; EXACT locus; NAME (gene symbol); RELATED locus_synonym,Zm00001d007055 (tpzm:0005476); Zm00001d009657 (tpzm:0005576); arpp2a (tpzm:0009251); arpp2a-2 (tpzm:0009252); arpp2a-3 (tpzm:0009253); p2 (tpzm:0017954),False,contains a digit in some surface form -- real gene ID
+gst,35,306,GST,EXACT locus_synonym; RELATED locus_synonym,LOC103655499 (tpzm:0004816); bhlh198 (tpzm:0009552); cgt2 (tpzm:0010543); gst23 (tpzm:0014562),False,"contains 'GST' -- not a recognized common word/jargon term, kept for manual review"
+bam,31,84,BAM,EXACT locus_synonym,amyb2 (tpzm:0008994),True,all constituent words are common English/molecular-biology terms
+ai,31,50,AI,EXACT locus_synonym,LOC103646190 (tpzm:0004530),True,all constituent words are common English/molecular-biology terms
+met,30,74,met,RELATED locus_synonym,mets3 (tpzm:0016243); sams3 (tpzm:0021632),False,"contains 'met' -- not a recognized common word/jargon term, kept for manual review"
+sra,30,36,sra,EXACT locus_synonym,trpp9 (tpzm:0023253),True,all constituent words are common English/molecular-biology terms
+arf,29,126,ARF,EXACT locus_synonym,iaa48 (tpzm:0015243),False,"contains 'ARF' -- not a recognized common word/jargon term, kept for manual review"
+bb,26,47,BB,EXACT locus_synonym,GRMZM2G116520 (tpzm:0000829),False,"contains 'BB' -- not a recognized common word/jargon term, kept for manual review"
+histone h3,25,214,Histone H3; histone H3,RELATED locus_synonym,LOC103638044 (tpzm:0004292); LOC103641629 (tpzm:0004391); LOC103646477 (tpzm:0004547); cl11215_-2b (tpzm:0010799); his303 (tpzm:0015031); his305 (tpzm:0015033); magi21275 (tpzm:0016007); uaz248a(his3) (tpzm:0023353),False,contains a digit in some surface form -- real gene ID
+tga,23,87,TGA,RELATED locus_synonym,bzip129 (tpzm:0009851); bzip27 (tpzm:0009875); obf3 (tpzm:0017816),False,"contains 'TGA' -- not a recognized common word/jargon term, kept for manual review"
+pod,22,1071,POD,RELATED locus_synonym,TIDP2769 (tpzm:0005081); Zm00001d028347 (tpzm:0006290); prx11 (tpzm:0020491); prx26 (tpzm:0020518); prx39 (tpzm:0020530); prx7 (tpzm:0020561); prx8 (tpzm:0020569); prx87 (tpzm:0020577); px16 (tpzm:0020783),True,all constituent words are common English/molecular-biology terms
+g2,22,57,g2,EXACT jschnable_name; EXACT locus; NAME (gene symbol),g2 (tpzm:0013759),False,contains a digit in some surface form -- real gene ID
+ap2/erf,21,62,AP2/ERF,EXACT locus_synonym,ereb218 (tpzm:0013306),False,contains a digit in some surface form -- real gene ID
+cytochrome p450,21,35,cytochrome P450,EXACT locus_name; EXACT locus_synonym,cyp6 (tpzm:0012544),False,contains a digit in some surface form -- real gene ID
+pal,20,264,PAL,RELATED locus_synonym,LOC103637472 (tpzm:0004277); Zm00001d027250 (tpzm:0006237); pal13 (tpzm:0017964); pal18 (tpzm:0017966),False,"contains 'PAL' -- not a recognized common word/jargon term, kept for manual review"
+d1,20,175,d1,EXACT locus; NAME (gene symbol),d1 (tpzm:0012598),False,contains a digit in some surface form -- real gene ID
+tb1,19,42,TB1; tb1,EXACT jschnable_name; EXACT locus; EXACT locus_synonym; NAME (gene symbol),tb1 (tpzm:0022861); tcptf15 (tpzm:0022937),False,contains a digit in some surface form -- real gene ID
+glu,19,37,GLU; Glu,EXACT locus_synonym,dhr2 (tpzm:0012736); eng1 (tpzm:0013147),False,"contains 'GLU' -- not a recognized common word/jargon term, kept for manual review"
+nr,19,31,NR,EXACT locus_synonym,nnr2 (tpzm:0017571),False,"contains 'NR' -- not a recognized common word/jargon term, kept for manual review"
+gt,18,22,GT,EXACT locus_synonym,GRMZM2G078465 (tpzm:0000691),False,"contains 'GT' -- not a recognized common word/jargon term, kept for manual review"
+c2h2,17,155,C2H2,EXACT locus_synonym; RELATED locus_synonym,IDP8537 (tpzm:0002647); LOC118473385 (tpzm:0004969); Zm00001eb151570 (tpzm:0007699); Zm00001eb214230 (tpzm:0007880); cchh2 (tpzm:0010238); idd24 (tpzm:0015278),False,contains a digit in some surface form -- real gene ID
+gr,17,59,GR,EXACT locus_synonym,Zm00001d008883 (tpzm:0005541),False,"contains 'GR' -- not a recognized common word/jargon term, kept for manual review"
+b1,16,124,b1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),b1 (tpzm:0009369),False,contains a digit in some surface form -- real gene ID
+hsp,15,139,HSP,EXACT locus_synonym,dnaJ45 (tpzm:0012802),False,"contains 'HSP' -- not a recognized common word/jargon term, kept for manual review"
+pepc,15,79,PEPC; PEPc,EXACT locus_synonym; RELATED locus_synonym,pep1 (tpzm:0019439); pep2 (tpzm:0019440); pep6 (tpzm:0019444),False,"contains 'PEPC' -- not a recognized common word/jargon term, kept for manual review"
+e3 ligase,15,42,E3 ligase,EXACT locus_synonym,arm11 (tpzm:0009193),False,contains a digit in some surface form -- real gene ID
+bhlh transcription factor,15,30,bHLH transcription factor,EXACT locus_synonym,GRMZM2G138454 (tpzm:0000912),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+l2,14,288,L2,RELATED locus_synonym,agp2 (tpzm:0008850); agpsl1 (tpzm:0008853); ole3 (tpzm:0017881),False,contains a digit in some surface form -- real gene ID
+a1,14,90,a1,EXACT jschnable_name; EXACT locus; EXACT maizegdb_name; NAME (gene symbol),a1 (tpzm:0008482),False,contains a digit in some surface form -- real gene ID
+pk,14,51,PK,EXACT locus_synonym,Zm00001d026619 (tpzm:0006230); gsk2 (tpzm:0014521),False,"contains 'PK' -- not a recognized common word/jargon term, kept for manual review"
+r1,14,41,r1,EXACT jschnable_name; EXACT locus; EXACT maizegdb_name; NAME (gene symbol),r1 (tpzm:0020929),False,contains a digit in some surface form -- real gene ID
+td,14,40,TD,EXACT locus_synonym,LOC100274380 (tpzm:0003104),False,"contains 'TD' -- not a recognized common word/jargon term, kept for manual review"
+sec,14,32,sec,EXACT locus_synonym,Zm00001eb017010 (tpzm:0007363),False,"contains 'sec' -- not a recognized common word/jargon term, kept for manual review"
+chr5,14,25,Chr5; chr5,EXACT locus; EXACT locus_synonym; NAME (gene symbol),chr5 (tpzm:0010649); cl48276_1 (tpzm:0011657),False,contains a digit in some surface form -- real gene ID
+4cl,13,799,4CL,RELATED locus_synonym,Zm00001d003319 (tpzm:0005365); Zm00001d011443 (tpzm:0005660); Zm00001d015417 (tpzm:0005799); acsn2 (tpzm:0008741); acsn3 (tpzm:0008742); bm5 (tpzm:0009664); ccl16 (tpzm:0010252); ccl2 (tpzm:0010256); ccl22 (tpzm:0010259); ccl24 (tpzm:0010261); ccl27 (tpzm:0010264); ccl3 (tpzm:0010267); ccl30 (tpzm:0010268); ccl4 (tpzm:0010270); ccl5 (tpzm:0010271); ccl7 (tpzm:0010273); ccl9 (tpzm:0010275),False,contains a digit in some surface form -- real gene ID
+p3,13,126,P3,RELATED locus_synonym,Zm00001eb272850 (tpzm:0008031); arpp3 (tpzm:0009255),False,contains a digit in some surface form -- real gene ID
+a2,13,75,a2,NAME (gene symbol); RELATED jschnable_name; RELATED locus; RELATED locus_synonym; RELATED maizegdb_name,a2 (tpzm:0008483); xat2 (tpzm:0024675),False,contains a digit in some surface form -- real gene ID
+c1,13,59,c1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),c1 (tpzm:0009956),False,contains a digit in some surface form -- real gene ID
+lob,13,38,LOB,RELATED locus_synonym,lbd14 (tpzm:0015660); lbd25 (tpzm:0015669),False,"contains 'LOB' -- not a recognized common word/jargon term, kept for manual review"
+abc transporter,13,17,ABC transporter,EXACT locus_synonym,IDP7571 (tpzm:0002291),False,"contains 'ABC' -- not a recognized common word/jargon term, kept for manual review"
+taa,13,16,TAA,EXACT locus_synonym,tar2 (tpzm:0022853),False,"contains 'TAA' -- not a recognized common word/jargon term, kept for manual review"
+hct,12,912,HCT,RELATED locus_synonym,Zm00001d002139 (tpzm:0005301); gll1 (tpzm:0014002); hct16 (tpzm:0014874); hct17 (tpzm:0014875); hct19 (tpzm:0014877); hct23 (tpzm:0014882); hct24 (tpzm:0014883); hct25 (tpzm:0014884); hct26 (tpzm:0014885); hct28 (tpzm:0014887); hct29 (tpzm:0014888); hct31 (tpzm:0014891),False,"contains 'HCT' -- not a recognized common word/jargon term, kept for manual review"
+cct,12,144,CCT,RELATED locus_synonym,GRMZM2G041369 (tpzm:0000525); GRMZM2G082633 (tpzm:0000705); GRMZM2G352855 (tpzm:0001133); Zm00001eb096400 (tpzm:0007559),False,"contains 'CCT' -- not a recognized common word/jargon term, kept for manual review"
+f-box protein,12,116,F-box protein,RELATED locus_synonym,Zm00001eb049550 (tpzm:0007457); Zm00001eb187770 (tpzm:0007789); cl9792_1b (tpzm:0012032); umc1557a (tpzm:0023741),False,"contains 'box' -- not a recognized common word/jargon term, kept for manual review"
+h4,12,59,H4,EXACT locus_synonym,his402 (tpzm:0015035),False,contains a digit in some surface form -- real gene ID
+g1,12,37,G1,EXACT locus_synonym,AB512482 (tpzm:0000048),False,contains a digit in some surface form -- real gene ID
+saur,12,21,SAUR,EXACT locus_synonym,LOC100282558 (tpzm:0003435),False,"contains 'SAUR' -- not a recognized common word/jargon term, kept for manual review"
+chs,11,264,CHS,RELATED locus_synonym,LOC103650038 (tpzm:0004657); LOC109940988 (tpzm:0004869); LOC109946089 (tpzm:0004925); Zm00001eb158750 (tpzm:0007725); chls8 (tpzm:0010570); pco074899 (tpzm:0018273); pco104509 (tpzm:0018707); whp1 (tpzm:0024495),False,"contains 'CHS' -- not a recognized common word/jargon term, kept for manual review"
+o2,11,253,o2,EXACT jschnable_name; EXACT locus; EXACT maizegdb_name; NAME (gene symbol),o2 (tpzm:0017812),False,contains a digit in some surface form -- real gene ID
+rum1,11,205,rum1,EXACT locus; NAME (gene symbol),rum1 (tpzm:0021577),False,contains a digit in some surface form -- real gene ID
+l3,11,135,L3,EXACT locus_synonym,ole1 (tpzm:0017880),False,contains a digit in some surface form -- real gene ID
+anr,11,124,ANR,RELATED locus_synonym,AY103770 (tpzm:0000127); IDP7346 (tpzm:0002205); LOC100193896 (tpzm:0002921); umc2332 (tpzm:0024078),False,"contains 'ANR' -- not a recognized common word/jargon term, kept for manual review"
+ccr,11,122,CCR,RELATED locus_synonym,GRMZM2G068917 (tpzm:0000650); Zm00001d015513 (tpzm:0005801),False,"contains 'CCR' -- not a recognized common word/jargon term, kept for manual review"
+c4h,11,105,C4H,RELATED locus_synonym,LOC109940614 (tpzm:0004865); Zm00001d012510 (tpzm:0005698); Zm00001d016471 (tpzm:0005834); Zm00001d037849 (tpzm:0006641); cyp46 (tpzm:0012529); cyp47 (tpzm:0012530); umc2381 (tpzm:0024103),False,contains a digit in some surface form -- real gene ID
+pr1,11,53,PR1; pr1,EXACT locus; NAME (gene symbol); RELATED locus_synonym,drg6 (tpzm:0012973); pr1 (tpzm:0020267); prp24 (tpzm:0020463),False,contains a digit in some surface form -- real gene ID
+hk,11,48,HK,RELATED locus_synonym,hex1 (tpzm:0014915); hex4 (tpzm:0014918); hex7 (tpzm:0014921),False,"contains 'HK' -- not a recognized common word/jargon term, kept for manual review"
+nadp-me,11,38,NADP-ME,EXACT locus_synonym,me3 (tpzm:0016196),False,"contains 'NADP' -- not a recognized common word/jargon term, kept for manual review"
+kn1,11,28,kn1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),kn1 (tpzm:0015545),False,contains a digit in some surface form -- real gene ID
+udp-glycosyltransferase,11,22,UDP-glycosyltransferase,EXACT locus_synonym,sus2 (tpzm:0022806),False,"contains 'UDP' -- not a recognized common word/jargon term, kept for manual review"
+wd40,11,19,WD40,EXACT locus_synonym,Zm00001d036359 (tpzm:0006583),False,contains a digit in some surface form -- real gene ID
+bzip transcription factor,11,19,BZIP transcription factor; bZIP transcription factor,EXACT locus_synonym; RELATED locus_synonym,bzip117 (tpzm:0009840); nrg14 (tpzm:0017714); nrg17 (tpzm:0017717); nrg23 (tpzm:0017724); nrg4 (tpzm:0017726); nrg5 (tpzm:0017727),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+myb transcription factor,11,17,MYB transcription factor,EXACT locus_synonym,GRMZM5G892094 (tpzm:0001339),False,"contains 'MYB' -- not a recognized common word/jargon term, kept for manual review"
+liguleless1,11,15,liguleless1,EXACT description; EXACT locus_name; EXACT locus_synonym,lg1 (tpzm:0015753),False,contains a digit in some surface form -- real gene ID
+knotted1,11,12,knotted1,EXACT description; EXACT locus_name; EXACT locus_synonym,kn1 (tpzm:0015545),False,contains a digit in some surface form -- real gene ID
+c3h,10,155,C3H,RELATED locus_synonym,LOC103646328 (tpzm:0004540); pco105214a (tpzm:0018716); si486014g01 (tpzm:0021939); umc1214 (tpzm:0023556); umc2009 (tpzm:0023926),False,contains a digit in some surface form -- real gene ID
+gt1,10,125,GT1; gt1,EXACT locus; EXACT locus_synonym; NAME (gene symbol),gt1 (tpzm:0014604); ugt2 (tpzm:0023479),False,contains a digit in some surface form -- real gene ID
+sh2,10,96,sh2,EXACT jschnable_name; EXACT locus; NAME (gene symbol),sh2 (tpzm:0021918),False,contains a digit in some surface form -- real gene ID
+pol,10,84,Pol,EXACT locus_synonym,mgs1 (tpzm:0016254),False,"contains 'Pol' -- not a recognized common word/jargon term, kept for manual review"
+hsp70,10,50,HSP70,EXACT locus_synonym,Zm00001d048687 (tpzm:0007063),False,contains a digit in some surface form -- real gene ID
+ost1,10,46,OST1,EXACT locus; NAME (gene symbol); RELATED locus_synonym,nactf49 (tpzm:0017282); ost1 (tpzm:0017943); snrkII8 (tpzm:0022618),False,contains a digit in some surface form -- real gene ID
+pif4,10,45,PIF4; pif4,EXACT locus_synonym; RELATED locus_synonym,bhlh163 (tpzm:0009519); bhlh47 (tpzm:0009588); bhlh60 (tpzm:0009603),False,contains a digit in some surface form -- real gene ID
+wrky transcription factor,10,14,WRKY transcription factor,EXACT locus_synonym,ring425 (tpzm:0021286),False,"contains 'WRKY' -- not a recognized common word/jargon term, kept for manual review"
+pa,10,11,pa,EXACT locus_synonym,bz2 (tpzm:0009821),True,all constituent words are common English/molecular-biology terms
+fer,9,394,FER,RELATED locus_synonym,flr1 (tpzm:0013640); flr2 (tpzm:0013649),False,"contains 'FER' -- not a recognized common word/jargon term, kept for manual review"
+rth3,9,327,rth3,EXACT jschnable_name; EXACT locus; NAME (gene symbol),rth3 (tpzm:0021569),False,contains a digit in some surface form -- real gene ID
+zmcct,9,240,ZmCCT,EXACT locus_synonym; RELATED locus_synonym,cct1 (tpzm:0010325); cct3 (tpzm:0010340); cct41 (tpzm:0010345); prrh1 (tpzm:0020479),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+f5h,9,150,F5H,RELATED locus_synonym,LOC103626064 (tpzm:0003903); LOC103632819 (tpzm:0004100); cyp20 (tpzm:0012503); fah1 (tpzm:0013494); fah2 (tpzm:0013495),False,contains a digit in some surface form -- real gene ID
+lg1,9,81,lg1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),lg1 (tpzm:0015753),False,contains a digit in some surface form -- real gene ID
+tpp,9,80,TPP,RELATED locus_synonym,trpp14 (tpzm:0023245); trpp4 (tpzm:0023248); trpp6 (tpzm:0023250); trpp7 (tpzm:0023251),False,"contains 'TPP' -- not a recognized common word/jargon term, kept for manual review"
+lg2,9,76,lg2,EXACT jschnable_name; EXACT locus; NAME (gene symbol),lg2 (tpzm:0015754),False,contains a digit in some surface form -- real gene ID
+cad,9,76,CAD,RELATED locus_synonym,LOC103638604 (tpzm:0004308); cad3 (tpzm:0010091); cad5 (tpzm:0010092); cad9 (tpzm:0010096),False,"contains 'CAD' -- not a recognized common word/jargon term, kept for manual review"
+tps,9,74,TPS,RELATED locus_synonym,trps12 (tpzm:0023257); trps8 (tpzm:0023267),False,"contains 'TPS' -- not a recognized common word/jargon term, kept for manual review"
+bak1,9,58,BAK1; bak1,EXACT locus; EXACT locus_synonym; NAME (gene symbol),Zm00001d053818 (tpzm:0007281); bak1 (tpzm:0009394),False,contains a digit in some surface form -- real gene ID
+zmubi,9,50,ZmUBI; ZmUbi,EXACT locus_synonym; RELATED locus_synonym,ubi1 (tpzm:0023372); ubi2 (tpzm:0023373); uce9 (tpzm:0023441),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+chi,9,28,CHI,RELATED locus_synonym,Zm00001eb193130 (tpzm:0007818); si707052g07 (tpzm:0022404),False,"contains 'CHI' -- not a recognized common word/jargon term, kept for manual review"
+protein phosphatase 2c,9,27,Protein phosphatase 2C; protein phosphatase 2C,EXACT locus_synonym; RELATED locus_synonym,prh137 (tpzm:0020330); prh29 (tpzm:0020353); prh3 (tpzm:0020354); prh45 (tpzm:0020367); prh90 (tpzm:0020404),False,contains a digit in some surface form -- real gene ID
+rlk,9,19,RLK,EXACT locus_synonym,rlk11 (tpzm:0021409),False,"contains 'RLK' -- not a recognized common word/jargon term, kept for manual review"
+sugary1,9,15,sugary1,EXACT description; EXACT locus_name; EXACT locus_synonym,su1 (tpzm:0022776),False,contains a digit in some surface form -- real gene ID
+zmactin,9,14,ZmActin,EXACT locus_synonym,act10 (tpzm:0008744),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+ag,9,14,ag,EXACT locus_synonym,glb3 (tpzm:0013938),False,"contains 'ag' -- not a recognized common word/jargon term, kept for manual review"
+ts2,8,71,ts2,EXACT jschnable_name; EXACT locus; NAME (gene symbol),ts2 (tpzm:0023292),False,contains a digit in some surface form -- real gene ID
+snrk2,8,69,SnRK2,RELATED locus_synonym,C0P676 (tpzm:0000346); Zm00001d024775 (tpzm:0006137); snrkII3 (tpzm:0022613),False,contains a digit in some surface form -- real gene ID
+lrr-rlk,8,55,LRR-RLK,RELATED locus_synonym,Zm00001d039188 (tpzm:0006683); Zm00001d048390 (tpzm:0007048); Zm00001eb153630 (tpzm:0007707); mmp168 (tpzm:0016602); rlk10 (tpzm:0021408),False,"contains 'LRR' -- not a recognized common word/jargon term, kept for manual review"
+comt,8,54,COMT,RELATED locus_synonym,fomt4 (tpzm:0013709); omt1 (tpzm:0017884); omt2 (tpzm:0017885),False,"contains 'COMT' -- not a recognized common word/jargon term, kept for manual review"
+f3h,8,50,F3H,RELATED locus_synonym,fht2 (tpzm:0013598); ga20ox4 (tpzm:0013764),False,contains a digit in some surface form -- real gene ID
+pds,8,48,PDS,RELATED locus_synonym,LOC103633372 (tpzm:0004132); LOC103650644 (tpzm:0004670),False,"contains 'PDS' -- not a recognized common word/jargon term, kept for manual review"
+myc2,8,48,MYC2,RELATED locus_synonym,bhlh116 (tpzm:0009469); pco113818 (tpzm:0018820); r1 (tpzm:0020929),False,contains a digit in some surface form -- real gene ID
+mir156,8,47,miR156,EXACT locus_synonym,cg1 (tpzm:0010540),False,contains a digit in some surface form -- real gene ID
+su1,8,43,su1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),su1 (tpzm:0022776),False,contains a digit in some surface form -- real gene ID
+aux1,8,42,AUX1,RELATED locus_synonym,aic4 (tpzm:0008862); iaa25 (tpzm:0015221),False,contains a digit in some surface form -- real gene ID
+ccoaomt,8,40,CCoAOMT,RELATED locus_synonym,Zm00001d005998 (tpzm:0005440); cts4 (tpzm:0012412); omt3 (tpzm:0017886); omt4 (tpzm:0017887),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+mep,8,32,MEP,EXACT locus_synonym,GRMZM2G018103 (tpzm:0000435),False,"contains 'MEP' -- not a recognized common word/jargon term, kept for manual review"
+h2b,8,32,H2B,EXACT locus_synonym; RELATED locus_synonym,his2b2 (tpzm:0015022); his2b4 (tpzm:0015024); his2b5 (tpzm:0015025),False,contains a digit in some surface form -- real gene ID
+fkf1,8,29,FKF1; fkf1,EXACT locus; EXACT locus_synonym; NAME (gene symbol),fkf1 (tpzm:0013609); fkf2 (tpzm:0013610),False,contains a digit in some surface form -- real gene ID
+zmcct10,8,28,ZmCCT10,RELATED locus_synonym,cct1 (tpzm:0010325); cct10 (tpzm:0010326),False,contains a digit in some surface form -- real gene ID
+hd1,8,28,Hd1,EXACT locus_synonym,conz1 (tpzm:0012180),False,contains a digit in some surface form -- real gene ID
+agc,8,23,AGC,EXACT locus_synonym,LOC100193886 (tpzm:0002920),False,"contains 'AGC' -- not a recognized common word/jargon term, kept for manual review"
+tir1,8,21,TIR1; tir1,EXACT locus; EXACT locus_synonym; NAME (gene symbol),tir1 (tpzm:0023108); tir2 (tpzm:0023109),False,contains a digit in some surface form -- real gene ID
+pl1,8,15,pl1,EXACT jschnable_name; EXACT locus; EXACT maizegdb_name; NAME (gene symbol),pl1 (tpzm:0019797),False,contains a digit in some surface form -- real gene ID
+teosinte branched1,8,10,teosinte branched1,EXACT description; EXACT locus_name; EXACT locus_synonym,tb1 (tpzm:0022861),False,contains a digit in some surface form -- real gene ID
+trehalose-6-phosphate phosphatase,8,9,trehalose-6-phosphate phosphatase,EXACT locus_synonym,ra3 (tpzm:0020932),False,contains a digit in some surface form -- real gene ID
+gata,8,9,GATA,EXACT locus_synonym,ami4 (tpzm:0008975),False,"contains 'GATA' -- not a recognized common word/jargon term, kept for manual review"
+actin1,8,9,actin1,EXACT description; EXACT locus_name,act1 (tpzm:0008743),False,contains a digit in some surface form -- real gene ID
+cbl,8,8,CBL,EXACT locus_synonym,cipk16 (tpzm:0010679),False,"contains 'CBL' -- not a recognized common word/jargon term, kept for manual review"
+dfr,7,667,DFR,RELATED locus_synonym,AY103770 (tpzm:0000127); IDP2557 (tpzm:0001529); IDP4405 (tpzm:0001773); IDP4767 (tpzm:0001835); IDP7346 (tpzm:0002205); LOC100193896 (tpzm:0002921); LOC100282228 (tpzm:0003406); LOC100284504 (tpzm:0003558); LOC100382657 (tpzm:0003740); LOC103632940 (tpzm:0004108); LOC103647545 (tpzm:0004575); LOC103654125 (tpzm:0004786); LOC109946031 (tpzm:0004924); Zm00001d015513 (tpzm:0005801); andr1 (tpzm:0009001); andr2 (tpzm:0009002); cl42025_1 (tpzm:0011578); cncr1 (tpzm:0012111); cncr2 (tpzm:0012112); dfr3 (tpzm:0012697),False,"contains 'DFR' -- not a recognized common word/jargon term, kept for manual review"
+hsp20,7,120,HSP20,EXACT locus; NAME (gene symbol); RELATED locus_synonym,hsp10 (tpzm:0015145); hsp11 (tpzm:0015146); hsp12 (tpzm:0015147); hsp20 (tpzm:0015155); hsp24 (tpzm:0015158),False,contains a digit in some surface form -- real gene ID
+gh3,7,108,GH3,RELATED locus_synonym,aas1 (tpzm:0008554); aas12 (tpzm:0008557); aas2 (tpzm:0008559); cl7007_1 (tpzm:0011889),False,contains a digit in some surface form -- real gene ID
+zmsut1,7,82,ZmSUT1,RELATED locus_synonym,sut1 (tpzm:0022810); sut7 (tpzm:0022816),False,contains a digit in some surface form -- real gene ID
+br2,7,73,br2,EXACT locus; NAME (gene symbol),br2 (tpzm:0009750),False,contains a digit in some surface form -- real gene ID
+nb-arc,7,52,NB-ARC,EXACT locus_synonym,GRMZM2G079082 (tpzm:0000693),False,"contains 'NB' -- not a recognized common word/jargon term, kept for manual review"
+ts1,7,49,ts1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),ts1 (tpzm:0023291),False,contains a digit in some surface form -- real gene ID
+bif2,7,38,bif2,EXACT jschnable_name; EXACT locus; NAME (gene symbol),bif2 (tpzm:0009646),False,contains a digit in some surface form -- real gene ID
+rps12,7,29,rps12,EXACT locus; NAME (gene symbol),rps12 (tpzm:0021518),False,contains a digit in some surface form -- real gene ID
+lar,7,25,LAR,EXACT locus_synonym,andr2 (tpzm:0009002),False,"contains 'LAR' -- not a recognized common word/jargon term, kept for manual review"
+abf,7,24,ABF,RELATED locus_synonym,Zm.048093 (tpzm:0005277); bzip111 (tpzm:0009835); bzip38 (tpzm:0009885),False,"contains 'ABF' -- not a recognized common word/jargon term, kept for manual review"
+dlf1,7,18,dlf1,EXACT jschnable_name; EXACT locus; EXACT maizegdb_name; NAME (gene symbol),dlf1 (tpzm:0012747),False,contains a digit in some surface form -- real gene ID
+c2,7,17,c2,EXACT jschnable_name; EXACT locus; NAME (gene symbol),c2 (tpzm:0009957),False,contains a digit in some surface form -- real gene ID
+gat,7,15,GAT,EXACT locus_synonym,aaap23 (tpzm:0008500),False,"contains 'GAT' -- not a recognized common word/jargon term, kept for manual review"
+zein protein,7,14,zein protein,EXACT description,zp15 (tpzm:0024961),False,"contains 'zein' -- not a recognized common word/jargon term, kept for manual review"
+dcl3,7,14,DCL3,EXACT locus_synonym,dcl104 (tpzm:0012644),False,contains a digit in some surface form -- real gene ID
+d3,7,13,d3,EXACT jschnable_name; EXACT locus; EXACT maizegdb_name; NAME (gene symbol),d3 (tpzm:0012602),False,contains a digit in some surface form -- real gene ID
+gbp,7,12,Gbp,EXACT locus_synonym,csu108a(gbp) (tpzm:0012275),False,"contains 'Gbp' -- not a recognized common word/jargon term, kept for manual review"
+zm00001d010159,7,11,Zm00001d010159,EXACT B73_v4_id,act1 (tpzm:0008743),False,contains a digit in some surface form -- real gene ID
+nac transcription factor,7,11,NAC transcription factor,EXACT locus_synonym,Zm00001eb112280 (tpzm:0007616),False,"contains 'NAC' -- not a recognized common word/jargon term, kept for manual review"
+snrk2.6,7,10,SnRK2.6,EXACT locus_synonym,snrkII6 (tpzm:0022616),False,contains a digit in some surface form -- real gene ID
+d8,7,10,d8,EXACT jschnable_name; EXACT locus; NAME (gene symbol),d8 (tpzm:0012604),False,contains a digit in some surface form -- real gene ID
+mapkkk,7,9,MAPKKK,EXACT locus_synonym,mapkkk1 (tpzm:0016052),False,"contains 'MAPKKK' -- not a recognized common word/jargon term, kept for manual review"
+barren stalk1,7,9,barren stalk1,EXACT description; EXACT locus_name; EXACT locus_synonym,ba1 (tpzm:0009370),False,contains a digit in some surface form -- real gene ID
+d9,7,8,d9,EXACT jschnable_name; EXACT locus; NAME (gene symbol),d9 (tpzm:0012605),False,contains a digit in some surface form -- real gene ID
+grassy tillers1,7,7,grassy tillers1,EXACT locus_name; EXACT locus_synonym,gt1 (tpzm:0014604),False,contains a digit in some surface form -- real gene ID
+zmmpk5,6,486,ZmMPK5,RELATED locus_synonym,mpk1 (tpzm:0016691); mpk2 (tpzm:0016701),False,contains a digit in some surface form -- real gene ID
+crtrb1,6,167,crtRB1,EXACT locus_synonym,hyd3 (tpzm:0015198),False,contains a digit in some surface form -- real gene ID
+zmpip2;5,6,109,ZmPIP2;5,EXACT locus_synonym,pip2a (tpzm:0019777),False,contains a digit in some surface form -- real gene ID
+ssiia,6,85,SSIIa,EXACT locus_synonym,su2 (tpzm:0022777),False,"contains 'SSIIa' -- not a recognized common word/jargon term, kept for manual review"
+gbe,6,73,GBE,EXACT locus_synonym,LOC109939512 (tpzm:0004853),False,"contains 'GBE' -- not a recognized common word/jargon term, kept for manual review"
+ct2,6,68,Ct2; ct2,EXACT locus; EXACT locus_synonym; NAME (gene symbol),cat2 (tpzm:0010200); ct2 (tpzm:0012401),False,contains a digit in some surface form -- real gene ID
+pip2,6,53,PIP2,EXACT locus_synonym,pip2a (tpzm:0019777),False,contains a digit in some surface form -- real gene ID
+pr5,6,48,PR5,RELATED locus_synonym,LOC100273384 (tpzm:0003050); osm1 (tpzm:0017941); prp5 (tpzm:0020468); sip1 (tpzm:0022527),False,contains a digit in some surface form -- real gene ID
+toc1,6,47,TOC1,EXACT locus; EXACT locus_synonym; NAME (gene symbol),toc1 (tpzm:0023141); toc2 (tpzm:0023142),False,contains a digit in some surface form -- real gene ID
+hsp90,6,39,HSP90,EXACT locus; EXACT locus_synonym; NAME (gene symbol),hsp90 (tpzm:0015186); pza03529 (tpzm:0020907),False,contains a digit in some surface form -- real gene ID
+chl,6,33,Chl,EXACT locus_synonym,Zm00001d015385 (tpzm:0005797),False,"contains 'Chl' -- not a recognized common word/jargon term, kept for manual review"
+shrunken2,6,26,shrunken2,EXACT description; EXACT locus_name; EXACT locus_synonym,sh2 (tpzm:0021918),False,contains a digit in some surface form -- real gene ID
+y1,6,25,y1,EXACT locus; NAME (gene symbol),y1 (tpzm:0024753),False,contains a digit in some surface form -- real gene ID
+ms1,6,24,MS1,EXACT locus; EXACT locus_synonym; NAME (gene symbol),mets1 (tpzm:0016241); ms1 (tpzm:0016751),False,contains a digit in some surface form -- real gene ID
+rth1,6,23,rth1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),rth1 (tpzm:0021568),False,contains a digit in some surface form -- real gene ID
+na1,6,19,na1,EXACT locus; NAME (gene symbol),na1 (tpzm:0017153),False,contains a digit in some surface form -- real gene ID
+ramosa1,6,13,ramosa1,EXACT description; EXACT locus_name; EXACT locus_synonym,ra1 (tpzm:0020930),False,contains a digit in some surface form -- real gene ID
+zmyuc1,6,12,ZmYUC1; ZmYuc1,EXACT locus_synonym,de18 (tpzm:0012656); yuc4 (tpzm:0024803),False,contains a digit in some surface form -- real gene ID
+ub3,6,11,ub3,EXACT locus; NAME (gene symbol),ub3 (tpzm:0023370),False,contains a digit in some surface form -- real gene ID
+tsh4,6,11,tsh4,EXACT locus; NAME (gene symbol),tsh4 (tpzm:0023299),False,contains a digit in some surface form -- real gene ID
+nad4,6,11,nad4,EXACT locus; NAME (gene symbol),nad4 (tpzm:0017342),False,contains a digit in some surface form -- real gene ID
+aos,6,11,AOS,EXACT locus_synonym,cyp78 (tpzm:0012564),False,"contains 'AOS' -- not a recognized common word/jargon term, kept for manual review"
+leaf blight resistance,6,10,leaf blight resistance,EXACT locus_synonym,ht1 (tpzm:0015189),False,"contains 'leaf' -- not a recognized common word/jargon term, kept for manual review"
+indeterminate spikelet1,6,10,indeterminate spikelet1,EXACT locus_synonym,ts6 (tpzm:0023295),False,contains a digit in some surface form -- real gene ID
+erecta,6,10,ERECTA,EXACT locus_synonym,er2 (tpzm:0013173),False,"contains 'ERECTA' -- not a recognized common word/jargon term, kept for manual review"
+h2a,6,9,H2A,EXACT locus_synonym,his2a1 (tpzm:0015019),False,contains a digit in some surface form -- real gene ID
+liguleless2,6,8,liguleless2,EXACT description; EXACT locus_name; EXACT locus_synonym,lg2 (tpzm:0015754),False,contains a digit in some surface form -- real gene ID
+fasciated ear2,6,7,fasciated ear2,EXACT description; EXACT locus_name; EXACT locus_synonym,fea2 (tpzm:0013563),False,contains a digit in some surface form -- real gene ID
+tasselseed4,6,6,tasselseed4,EXACT description,ts4 (tpzm:0023293),False,contains a digit in some surface form -- real gene ID
+dwarf plant8,6,6,dwarf plant8,EXACT description; EXACT locus_name; EXACT locus_synonym,d8 (tpzm:0012604),False,contains a digit in some surface form -- real gene ID
+histone h2a,5,103,Histone H2A; histone H2A,RELATED locus_synonym,GRMZM2G050833 (tpzm:0000574); GRMZM2G109448 (tpzm:0000797); LOC100216638 (tpzm:0002954); LOC100273753 (tpzm:0003071); LOC100501984 (tpzm:0003863); LOC103504712 (tpzm:0003887); Zm00001d021706 (tpzm:0006034); Zm00001eb004820 (tpzm:0007327); Zm00001eb025450 (tpzm:0007392); Zm00001eb114760 (tpzm:0007622); Zm00001eb197330 (tpzm:0007841); Zm00001eb239220 (tpzm:0007956); Zm00001eb266530 (tpzm:0008022); Zm00001eb297790 (tpzm:0008101); Zm00001eb341920 (tpzm:0008204); Zm00001eb345480 (tpzm:0008210); Zm00001eb421810 (tpzm:0008416); ca5p20 (tpzm:0010060); ca5p21 (tpzm:0010061); ca5p22 (tpzm:0010062),False,contains a digit in some surface form -- real gene ID
+mop1,5,97,mop1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),mop1 (tpzm:0016680),False,contains a digit in some surface form -- real gene ID
+peroxidase 1,5,92,Peroxidase 1; peroxidase 1,EXACT locus_synonym; RELATED locus_synonym,LOC103632211 (tpzm:0004086); TIDP2769 (tpzm:0005081); prx105 (tpzm:0020487); prx119 (tpzm:0020500); prx35 (tpzm:0020527); prx47 (tpzm:0020538); prx66 (tpzm:0020558); prx69 (tpzm:0020560); prx80 (tpzm:0020570); prx82 (tpzm:0020572); prx84 (tpzm:0020574); prx88 (tpzm:0020578); px22 (tpzm:0020789); px64 (tpzm:0020797),False,contains a digit in some surface form -- real gene ID
+ra1,5,88,ra1,EXACT jschnable_name; EXACT locus; EXACT maizegdb_name; NAME (gene symbol),ra1 (tpzm:0020930),False,contains a digit in some surface form -- real gene ID
+sk1,5,84,sk1,EXACT locus; NAME (gene symbol),sk1 (tpzm:0022531),False,contains a digit in some surface form -- real gene ID
+zep1,5,83,ZEP1; zep1,EXACT locus; EXACT locus_synonym; NAME (gene symbol),zep1 (tpzm:0024831); zyp1 (tpzm:0024969),False,contains a digit in some surface form -- real gene ID
+ans,5,77,ANS,RELATED locus_synonym,EU973925 (tpzm:0000375); LOC100501344 (tpzm:0003842); LOC103636527 (tpzm:0004250); Zm00001eb166520 (tpzm:0007745); a2 (tpzm:0008483); fht14 (tpzm:0013596); fht15 (tpzm:0013597); fht4 (tpzm:0013600); fht6 (tpzm:0013602); fht7 (tpzm:0013603); ga20ox8 (tpzm:0013768),False,"contains 'ANS' -- not a recognized common word/jargon term, kept for manual review"
+ein3,5,70,EIN3; ein3,EXACT locus; NAME (gene symbol); RELATED locus_synonym,eil6 (tpzm:0013082); eil7 (tpzm:0013083); eil8 (tpzm:0013084); ein3 (tpzm:0013087),False,contains a digit in some surface form -- real gene ID
+tga1,5,63,tga1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),tga1 (tpzm:0023004),False,contains a digit in some surface form -- real gene ID
+mads1,5,60,MADS1,EXACT jschnable_name; EXACT locus; NAME (gene symbol); RELATED description; RELATED locus_name; RELATED locus_synonym,mads1 (tpzm:0015920); zmm1 (tpzm:0024928),False,contains a digit in some surface form -- real gene ID
+rbcl,5,56,RBCL; rbcL,EXACT locus_synonym; RELATED locus_synonym,Zm00001d000279 (tpzm:0005280); Zm00001d045544 (tpzm:0006937); rbcL (cp) (tpzm:0020999); rca1 (tpzm:0021020),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+pal1,5,48,PAL1,EXACT jschnable_name; EXACT locus; NAME (gene symbol); RELATED locus_synonym,Zm00001d051164 (tpzm:0007162); pal1 (tpzm:0017960); pal11 (tpzm:0017962); pal3 (tpzm:0017968); pal5 (tpzm:0017970); pal6 (tpzm:0017971); pal8 (tpzm:0017973),False,contains a digit in some surface form -- real gene ID
+ar1,5,48,AR1,EXACT locus_synonym,aldr1 (tpzm:0008911),False,contains a digit in some surface form -- real gene ID
+ra2,5,39,ra2,EXACT jschnable_name; EXACT locus; NAME (gene symbol),ra2 (tpzm:0020931),False,contains a digit in some surface form -- real gene ID
+pr4,5,38,PR4,RELATED locus_synonym,epr4 (tpzm:0013170); prp11 (tpzm:0020449); prp3 (tpzm:0020466); prp4 (tpzm:0020467),False,contains a digit in some surface form -- real gene ID
+zmnac111,5,36,ZmNAC111,RELATED locus_synonym,nactf111 (tpzm:0017174); nactf25 (tpzm:0017256); nactf85 (tpzm:0017322),False,contains a digit in some surface form -- real gene ID
+ndhb,5,36,ndhB,RELATED locus_synonym,ndhB-I (cp) (tpzm:0017483); ndhB-II (cp) (tpzm:0017484),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+ra3,5,35,ra3,EXACT jschnable_name; EXACT locus; NAME (gene symbol),ra3 (tpzm:0020932),False,contains a digit in some surface form -- real gene ID
+yuc,5,28,YUC,RELATED locus_synonym,yuc2 (tpzm:0024801); yuc6 (tpzm:0024805),False,"contains 'YUC' -- not a recognized common word/jargon term, kept for manual review"
+phytoene synthase,5,24,phytoene synthase,RELATED locus_synonym,LOC100284678 (tpzm:0003566); LOC103629366 (tpzm:0004000),False,"contains 'phytoene' -- not a recognized common word/jargon term, kept for manual review"
+zmvpp1,5,20,ZmVPP1,RELATED locus_synonym,vpp3 (tpzm:0024336); vpp5 (tpzm:0024338),False,contains a digit in some surface form -- real gene ID
+chr4,5,19,chr4,EXACT locus; NAME (gene symbol),chr4 (tpzm:0010648),False,contains a digit in some surface form -- real gene ID
+abcb,5,19,ABCB,EXACT locus_synonym,cyp63 (tpzm:0012548),False,"contains 'ABCB' -- not a recognized common word/jargon term, kept for manual review"
+nlr gene,5,16,NLR gene,EXACT locus_synonym,Zm00025ab420970 (tpzm:0008480),False,"contains 'NLR' -- not a recognized common word/jargon term, kept for manual review"
+zmpip2;1,5,15,ZmPIP2;1,EXACT locus_synonym,pip2e (tpzm:0019781),False,contains a digit in some surface form -- real gene ID
+vt2,5,14,vt2,EXACT locus; NAME (gene symbol),vt2 (tpzm:0024414),False,contains a digit in some surface form -- real gene ID
+psy1,5,14,PSY1; Psy1,EXACT locus_synonym,Zm00001d009425 (tpzm:0005566); y1 (tpzm:0024753),False,contains a digit in some surface form -- real gene ID
+zmpin1,5,13,ZmPIN1,EXACT locus_synonym,pin1 (tpzm:0019758),False,contains a digit in some surface form -- real gene ID
+zmga3ox2,5,13,ZmGA3ox2; Zmga3ox2,EXACT locus_synonym; RELATED locus_synonym,d1 (tpzm:0012598); ga20ox2 (tpzm:0013762); ga3ox1 (tpzm:0013785),False,contains a digit in some surface form -- real gene ID
+ts4,5,13,ts4,EXACT jschnable_name; EXACT locus; NAME (gene symbol),ts4 (tpzm:0023293),False,contains a digit in some surface form -- real gene ID
+psba,5,13,psbA,EXACT locus_synonym,psbA (cp) (tpzm:0020606),False,"contains a lowercase-to-uppercase transition in some surface form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+zmpip1;5,5,12,ZmPIP1;5,EXACT locus_synonym,pip1e (tpzm:0019775),False,contains a digit in some surface form -- real gene ID
+zmcct9,5,12,ZmCCT9,RELATED locus_synonym,cct2 (tpzm:0010335); col11 (tpzm:0012158),False,contains a digit in some surface form -- real gene ID
+zds,5,12,ZDS,EXACT locus_synonym,vp9 (tpzm:0024330),False,"contains 'ZDS' -- not a recognized common word/jargon term, kept for manual review"
+vq,5,12,VQ,RELATED locus_synonym,Zm00001d045300 (tpzm:0006925); vq58 (tpzm:0024404),False,"contains 'VQ' -- not a recognized common word/jargon term, kept for manual review"
+td1,5,12,td1,EXACT locus; NAME (gene symbol),td1 (tpzm:0022979),False,contains a digit in some surface form -- real gene ID
+bt1,5,12,bt1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),bt1 (tpzm:0009788),False,contains a digit in some surface form -- real gene ID
+phya,5,11,PHYA,EXACT locus_synonym,Zm00001d008542 (tpzm:0005528),False,"contains 'PHYA' -- not a recognized common word/jargon term, kept for manual review"
+fea2,5,11,fea2,EXACT jschnable_name; EXACT locus; NAME (gene symbol),fea2 (tpzm:0013563),False,contains a digit in some surface form -- real gene ID
+coi1,5,11,COI1; coi1,EXACT locus; EXACT locus_synonym; NAME (gene symbol),coi1 (tpzm:0012151); coi2 (tpzm:0012152),False,contains a digit in some surface form -- real gene ID
+brd1,5,11,brd1,EXACT locus; NAME (gene symbol),brd1 (tpzm:0009754),False,contains a digit in some surface form -- real gene ID
+zmcle7,5,10,ZmCLE7,EXACT locus_synonym,fcp1 (tpzm:0013546),False,contains a digit in some surface form -- real gene ID
+cab,5,10,CAB,EXACT locus_synonym,Zm00001d032197 (tpzm:0006442),False,"contains 'CAB' -- not a recognized common word/jargon term, kept for manual review"
+acyl carrier protein,5,10,acyl carrier protein,RELATED locus_synonym,acpt10 (tpzm:0008703); acpt5 (tpzm:0008708); acpt7 (tpzm:0008710); acpt8 (tpzm:0008711),False,"contains 'acyl' -- not a recognized common word/jargon term, kept for manual review"
+rps3,5,9,rps3,EXACT locus; NAME (gene symbol),rps3 (tpzm:0021536),False,contains a digit in some surface form -- real gene ID
+purple plant1,5,9,purple plant1,EXACT description; EXACT locus_name; EXACT locus_synonym,pl1 (tpzm:0019797),False,contains a digit in some surface form -- real gene ID
+lea,5,9,LEA,EXACT locus_synonym,Zm00001d009538 (tpzm:0005571),False,"contains 'LEA' -- not a recognized common word/jargon term, kept for manual review"
+gl1,5,9,gl1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),gl1 (tpzm:0013923),False,contains a digit in some surface form -- real gene ID
+bd1,5,9,bd1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),bd1 (tpzm:0009437),False,contains a digit in some surface form -- real gene ID
+zmlox12,5,8,ZmLOX12,EXACT locus_synonym,lox11 (tpzm:0015816),False,contains a digit in some surface form -- real gene ID
+nana plant2,5,8,nana plant2,EXACT locus_name; EXACT locus_synonym,na2 (tpzm:0017154),False,contains a digit in some surface form -- real gene ID
+heat shock transcription factor,5,8,heat shock transcription factor,EXACT locus_synonym,hsftf13 (tpzm:0015117),False,"contains 'heat' -- not a recognized common word/jargon term, kept for manual review"
+brachytic2,5,8,brachytic2,EXACT locus_name; EXACT locus_synonym,br2 (tpzm:0009750),False,contains a digit in some surface form -- real gene ID
+an1,5,8,an1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),an1 (tpzm:0008999),False,contains a digit in some surface form -- real gene ID
+x1,5,7,x1,EXACT locus; NAME (gene symbol),x1 (tpzm:0024672),False,contains a digit in some surface form -- real gene ID
+ga2ox1,5,7,ga2ox1,EXACT locus; NAME (gene symbol),ga2ox1 (tpzm:0013770),False,contains a digit in some surface form -- real gene ID
+zmmm1,5,6,ZmMM1,EXACT locus_synonym,zmm1 (tpzm:0024928),False,contains a digit in some surface form -- real gene ID
+zfl1,5,6,zfl1,EXACT jschnable_name; EXACT locus; NAME (gene symbol),zfl1 (tpzm:0024833),False,contains a digit in some surface form -- real gene ID
+rough sheath1,5,6,rough sheath1,EXACT description; EXACT locus_name; EXACT locus_synonym,rs1 (tpzm:0021556),False,contains a digit in some surface form -- real gene ID
+pyr/pyl,5,6,PYR/PYL,EXACT locus_synonym,pyl12 (tpzm:0020804),False,"contains 'PYR' -- not a recognized common word/jargon term, kept for manual review"
+pericarp color1,5,6,pericarp color1,EXACT description; EXACT locus_name; EXACT locus_synonym,p1 (tpzm:0017953),False,contains a digit in some surface form -- real gene ID
+chr10,5,6,chr10,EXACT locus; NAME (gene symbol),chr10 (tpzm:0010614),False,contains a digit in some surface form -- real gene ID
+anther ear1,5,6,anther ear1,EXACT description; EXACT locus_name; EXACT locus_synonym,an1 (tpzm:0008999),False,contains a digit in some surface form -- real gene ID
+dwarf plant9,5,5,dwarf plant9,EXACT description; EXACT locus_name; EXACT locus_synonym,d9 (tpzm:0012605),False,contains a digit in some surface form -- real gene ID
+branched silkless1,5,5,branched silkless1,EXACT description; EXACT locus_name; EXACT locus_synonym,bd1 (tpzm:0009437),False,contains a digit in some surface form -- real gene ID

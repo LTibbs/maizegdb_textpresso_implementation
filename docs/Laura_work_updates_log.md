@@ -1882,3 +1882,46 @@ breaker (2026-07-13 entry) stops enqueuing new work at a 1.5GB free floor,
 and per-paper cost has real variance (a few outlier papers with large PDFs or
 many pages can be well above the 10–13MB average), so this formula should be
 treated as a planning floor, not a tight bound.
+
+---
+
+## Update log — 2026-08-07: reconstructing the synonym filter, extending it, and fixing an OBO EXACT/RELATED mistyping bug
+
+### Reconstructing `bin/ontology_synonym_filter.py`
+
+The v2 "cheap first filter" script referenced in the 2026-07-14 entry (the one that produced `docs/synonym_audit_maizetest100_maizeoa_20260714_filtered.csv`'s `filtered`/`filter_reason` columns) was never saved to either repo -- only its output and the prose description of its algorithm survived. Rebuilt it from that description as `bin/ontology_synonym_filter.py`: digit-presence hard override ("real gene ID"), then per-token genericness (stopwords, short bio acronyms, domain nouns, `/usr/share/dict/words` for tokens >=5 chars, `-ase` enzyme suffix). Confirmed `/usr/share/dict/words` is the same file the original used (479,826 entries, matching the count recorded in the 2026-07-14 entry exactly).
+
+Fidelity caveat: the exact membership of the original STOPWORDS/SHORT_BIO_ACRONYMS/DOMAIN_NOUNS lists wasn't recoverable, only examples -- flagged explicitly in the script's docstring. Where this mattered in practice, added a safeguard: a row that already carries a real (non-out-of-scope) classification is only ever overwritten if a later run flips its `filtered` value or resolves it to a hard override reason; if it would still land in "kept for manual review" territory, it's left byte-identical rather than silently rewriting *which* token gets blamed (caught this happening on `f-box protein` -- reconstruction cited `'F'` instead of the original's `'box'` -- before it made it into an output file).
+
+### Extending scope to the "out of filter scope" rows
+
+The original run only evaluated rows with >=1 `locus_synonym`-sourced OBO entry; 56 rows (classical single-locus symbols like `c1`/`b1`/`r1`/`kn1`, matched via `locus`/`jschnable_name`/`maizegdb_name`/gene-symbol fields instead) were skipped entirely and left unlabeled. Ran them through the same classifier: 55/56 resolved via the digit-override rule (nearly all of these symbols carry a trailing digit -- classic maize genetics nomenclature), 1 (`zein protein`) landed in manual-review (`protein` is a >=5-char dictionary word, `zein` is only 4 chars so it doesn't reach the dictionary check despite technically being a real word -- same edge case as `gata`/`saur` in the original run). **None flipped to `filtered=True`.**
+
+### New generic-token categories (all manually requested/confirmed, not derived)
+
+- **State abbreviations** (USPS 2-letter codes + DC): flipped `ca`/`ct`/`co`/`ks`/`pa` from manual-review to `filtered=True`. (`co` also weakly matches `col11`/CONSTANS-like via `RELATED locus_synonym` -- noted but not treated as a reason to keep it, consistent with the whole point of this filter.)
+- **`MANUALLY_CONFIRMED_AMBIGUOUS`**: `eh` (ear height), `sam` (shoot apical meristem), `sra` (NCBI Sequence Read Archive), `ai` (artificial intelligence), `bam` (BAM file format), `pod` (seed pod) -- all flipped to `filtered=True`. Documented per-entry since this list only grows by manual review, no general rule.
+- **Case-transition override** (`CASE_TRANSITION_RE = [a-z][A-Z]`): a lowercase-to-uppercase transition in a surface form (species-prefix + symbol pattern, e.g. `ZmUBI`, `ZmActin`, `ZmCCT`) is treated as a hard "real gene ID" signal, same tier as digit-presence. Also correctly caught plastid gene symbols using the same convention (`psbA`, `ndhB`, `rbcL`, `CCoAOMT`).
+
+  Caught `bHLH`/`bZIP` too, but those are a different case: real, biologically-relevant terms, just not locus-specific (family/domain names, not single genes) -- same shape as the `MYB` false-attribution issue found earlier. Decision: keep them findable (not `filtered=True`), on the condition that they're typed `RELATED` (never `EXACT`) in the OBO so downstream tooling can include/exclude at will (`tpc_search_internal.py --ontology MAIZE_GENES` vs `MAIZE_GENES_RELATED` already supports this distinction).
+
+### Root-cause: OBO EXACT/RELATED mistyping bug (case-collision gap in the R generation script)
+
+Checking whether `MYB`/`bHLH`/`bZIP` were already correctly `RELATED` surfaced a real bug. `MYB` and `bHLH` were fine (3 genes each, all `RELATED` -- the R script's Rule 2, "a synonym string appearing in >1 term becomes globally RELATED," worked correctly for these since the case is identical across all instances). `bZIP` was still `EXACT`, but turned out to be a **separate, legitimate gap**: it's only curated onto one gene (`tpzm:0006525`) anywhere in the whole file, so the frequency-based rule can't flag it as generic no matter what -- it doesn't collide with itself.
+
+Investigating a specific example (`glu`/`Glu`/`GLU`, both `dhr2` tpzm:0012736 and `eng1` tpzm:0013147 independently claim it as `EXACT locus_synonym`) found the real bug: the R script's `global_related <- syn_long[, .(n_terms = uniqueN(term_idx)), by = value][n_terms > 1L, value]` groups on the literal, **case-sensitive** synonym string. `"Glu"` (curated on `dhr2`'s row) and `"GLU"` (curated on `eng1`'s row) are different `value`s to R, so each is counted as appearing on only 1 gene and neither reaches `global_related`, even though the downstream annotator matches case-insensitively and treats them as the same term. Quantified the blast radius: **1,665 `EXACT locus_synonym` lines across the whole OBO wrongly escaped RELATED-demotion this way.**
+
+### Fix: R logic + Python patch, applied to the live `obofiles4production` file
+
+Two deliverables:
+1. Corrected R snippet (case-insensitive `value_ci = tolower(value)` grouping for the collision check, plus a `FORCE_RELATED` denylist pattern for singleton generic terms like `bZIP` that the frequency rule structurally can't catch) -- for the next upstream OBO regeneration. Not applied here since the R source itself isn't in either repo.
+2. `agr_textpresso/scripts/fix_obo_synonym_exactness.py` -- patches the already-generated OBO file directly: re-runs the collision check case-insensitively (1,665 lines demoted) plus a seeded `FORCE_RELATED = {"bzip"}` list (1 more line demoted). Verified `Glu`/`GLU`/`bZIP` all correctly `RELATED` in the output; line count unchanged (315,610); diff touches only the `EXACT`→`RELATED` token on the 1,666 affected `synonym:` lines, nothing else.
+
+Deployed: backed up the original as `zmays_genes_20260708.obo.bak-20260807T000000Z` and moved the patched file into `obofiles4production/zmays_genes_20260708.obo` (the live path the container reads).
+
+### Not yet done
+
+- [ ] Nothing has been re-annotated against the corrected OBO yet -- existing CAS2 files across all corpora still reflect the old (bugged) EXACT/RELATED typing. Per the 2026-07-14 entry's still-open item, retroactively re-tokenizing/re-annotating ~609+ already-ingested papers is a real, not-yet-scoped operation, and this makes it more relevant, not less.
+- [x] The R fix documented above has been applied to the upstream R script directly by the user (2026-08-07), so the next monthly ontology refresh (`check_and_run_ontology_update.sh`) should regenerate the OBO with the corrected case-insensitive collision logic instead of reintroducing the bug.
+- [ ] `docs/synonym_audit_maizetest100_maizeoa_20260807_filtered_v3.csv`, `bin/ontology_synonym_filter.py`, `agr_textpresso/scripts/fix_obo_synonym_exactness.py`, and the patched OBO file are all local/uncommitted as of this entry -- commit is the next step.
+- [ ] `FORCE_RELATED` currently has exactly one entry (`bzip`). Almost certainly incomplete -- other family/domain-name abbreviations curated onto only one gene so far are likely sitting in the same blind spot; this list only grows by manual spot-check, same as `MANUALLY_CONFIRMED_AMBIGUOUS` in the filter script.
