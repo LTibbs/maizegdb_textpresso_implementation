@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Search a Textpresso corpus with CAS2 ontology annotation (internal/server use only).
+"""Search a Textpresso corpus with CAS2 ontology annotation.
 
-Extends tpc_search.py with two annotation modes that require read access to the
-local CAS2 files under the agr_textpresso data directory.
+Extends tpc_search.py with two annotation modes backed by CAS2 data. By
+default this data is fetched over HTTP from the cas_annotate_server.py
+endpoint on the Textpresso server (same --url host, /v1/textpresso/annotate),
+so -- like tpc_search.py -- this script works from anywhere with network
+access; no server-side file access is required. Pass --cas-root to instead
+parse CAS2 files directly from a local directory (server-side use only).
 
   --annotate
       After each result, append an ontology term summary showing all terms found
@@ -43,7 +47,7 @@ examples:
   %(prog)s -c MaizeTest100 "anthocyanin" --annotate-sentences --ontology GO --ontology PO
   %(prog)s -c MaizeTest100 --author "Buckler" --annotate
   %(prog)s -c MaizeTest100 "drought" --annotate-sentences \\
-      --cas-root /data/textpresso/tpcas-2   # use this path when running inside the container
+      --cas-root /data/textpresso/tpcas-2   # local-file fallback; inside the container
   %(prog)s -c MaizeTest100 --type sentence "MARK" --exclude-type references
   %(prog)s -c MaizeTest100 --type document "MARK" --exclude-type references
   %(prog)s -c MaizeTest100 "adh1" --annotate --exclude-type references --exclude-type acknowledgments
@@ -55,10 +59,14 @@ import json
 import os
 import sys
 import urllib.error
+import urllib.parse
+import urllib.request
 
 _BIN  = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_BIN, "..")
 
+# --cas-root fallback only (server-side, local-file parsing). Not used by the
+# default HTTP path.
 # Host-side path to the CAS2 files (the container mounts this at /data/textpresso).
 # Pass --cas-root /data/textpresso/tpcas-2 when running inside the container.
 DEFAULT_CAS_ROOT = "/home/ec2-user/agr_textpresso/.data/tpcas-2"
@@ -83,45 +91,82 @@ def _load_module(name, rel_path):
 _search = _load_module("tpc_search", "bin/tpc_search.py")
 _ca     = _load_module("casannot",   "textpresso_classifiers/casannot.py")
 
-build_query          = _search.build_query
-search               = _search.search
-list_corpora         = _search.list_corpora
-add_search_args      = _search.add_search_args
-validate_search_args = _search.validate_search_args
-DEFAULT_URL          = _search.DEFAULT_URL
-SEARCH_TYPES         = _search.SEARCH_TYPES
+build_query           = _search.build_query
+search                = _search.search
+list_corpora          = _search.list_corpora
+add_search_args       = _search.add_search_args
+validate_search_args  = _search.validate_search_args
+check_categories_or_exit = _search.check_categories_or_exit
+DEFAULT_URL           = _search.DEFAULT_URL
+SEARCH_TYPES          = _search.SEARCH_TYPES
 
 
 # ---------------------------------------------------------------------------
 # CAS2 helpers
 # ---------------------------------------------------------------------------
 
-def _load_annotations(doc, cas_root, ontology_filter=None, include_related=False):
-    """Parse the CAS2 file for a search result document.
+def _annotate_endpoint_url(search_url):
+    """Derive the cas_annotate_server.py endpoint URL from the search --url.
 
-    Returns (sentences, annotations, sections), or (None, None, None) if the
-    file is missing. Neither sentences nor annotations are filtered by
-    section here -- callers apply _ca.exclude_sections() themselves, since
-    some uses (e.g. mapping raw API sentence strings back to a CAS2 position)
-    need the unfiltered sentence list first.
+    ".../v1/textpresso/api" -> ".../v1/textpresso/annotate" -- replaces
+    whatever the last path segment is, so a custom --url still resolves to a
+    sibling endpoint on the same host.
+    """
+    return search_url.rsplit("/", 1)[0] + "/annotate"
+
+
+def _load_annotations(doc, args, ontology_filter=None, include_related=False):
+    """Get (sentences, annotations, sections) for a search result document.
+
+    Returns (None, None, None) if the CAS2 data can't be found. Neither
+    sentences nor annotations are filtered by section here -- callers apply
+    _ca.exclude_sections() themselves, since some uses (e.g. mapping raw API
+    sentence strings back to a CAS2 position) need the unfiltered sentence
+    list first.
     ontology_filter, if given, is a set of ontology labels (e.g. {'GO', 'PO'})
     used to discard annotations from other ontologies before returning.
     When ontology_filter is None and include_related is False (the default),
     annotations matched via RELATED synonyms (ontology label ending in '_RELATED')
     are excluded.  Pass include_related=True or set ontology_filter explicitly to
     control RELATED synonym visibility.
+
+    By default this fetches from cas_annotate_server.py over HTTP (works from
+    anywhere with network access). If args.cas_root is set, it instead parses
+    the CAS2 file directly from that local directory (server-side only).
     """
-    path = _ca.identifier_to_cas_path(doc.get("identifier", ""), cas_root)
-    if not os.path.exists(path):
-        print(f"  [CAS2 not found: {path}]", file=sys.stderr)
+    identifier = doc.get("identifier", "")
+
+    if args.cas_root:
+        path = _ca.identifier_to_cas_path(identifier, args.cas_root)
+        if not os.path.exists(path):
+            print(f"  [CAS2 not found: {path}]", file=sys.stderr)
+            return None, None, None
+        sentences, annotations, sections = _ca.parse_cas_file(path)
+        if ontology_filter:
+            annotations = [a for a in annotations if a["ontology"] in ontology_filter]
+        elif not include_related:
+            annotations = [a for a in annotations
+                           if not a["ontology"].endswith("_RELATED")]
+        return sentences, annotations, sections
+
+    params = [("identifier", identifier)]
+    params += [("ontology", o) for o in (ontology_filter or ())]
+    if include_related:
+        params.append(("related_synonyms", "1"))
+    url = f"{_annotate_endpoint_url(args.url)}?{urllib.parse.urlencode(params)}"
+    try:
+        with urllib.request.urlopen(url) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            print(f"  [CAS2 annotation not found for: {identifier}]", file=sys.stderr)
+        else:
+            print(f"  [annotation API error {e.code}: {e.reason}]", file=sys.stderr)
         return None, None, None
-    sentences, annotations, sections = _ca.parse_cas_file(path)
-    if ontology_filter:
-        annotations = [a for a in annotations if a["ontology"] in ontology_filter]
-    elif not include_related:
-        annotations = [a for a in annotations
-                       if not a["ontology"].endswith("_RELATED")]
-    return sentences, annotations, sections
+    except urllib.error.URLError as e:
+        print(f"  [annotation API connection failed: {e.reason}]", file=sys.stderr)
+        return None, None, None
+    return data["sentences"], data["annotations"], data["sections"]
 
 
 def _normalize_text(s):
@@ -196,7 +241,7 @@ def _document_has_match_outside_excluded(doc, args, exclude_types):
     if not matched:
         return True
 
-    sentences, _, sections = _load_annotations(doc, args.cas_root)
+    sentences, _, sections = _load_annotations(doc, args)
     if sentences is None:
         return True
 
@@ -250,7 +295,7 @@ def print_results(results, args):
     # applied.
     if exclude_types and args.type == "sentence":
         for doc in results:
-            sentences, _, sections = _load_annotations(doc, args.cas_root)
+            sentences, _, sections = _load_annotations(doc, args)
             if sentences is not None:
                 doc["matched_sentences"] = _filter_matched_sentences(
                     doc.get("matched_sentences", []), sentences, sections, exclude_types)
@@ -259,7 +304,7 @@ def print_results(results, args):
         output = []
         for doc in results:
             sentences, annotations, sections = _load_annotations(
-                doc, args.cas_root, ontology_filter, include_related)
+                doc, args, ontology_filter, include_related)
             annotated = []
             if sentences is not None:
                 if exclude_types:
@@ -286,7 +331,7 @@ def print_results(results, args):
         if args.annotate:
             for doc in results:
                 _, annotations, sections = _load_annotations(
-                    doc, args.cas_root, ontology_filter, include_related)
+                    doc, args, ontology_filter, include_related)
                 if exclude_types and annotations is not None:
                     annotations = _ca.exclude_sections(annotations, sections, exclude_types)
                 doc["ontology_summary"] = (
@@ -304,7 +349,7 @@ def print_results(results, args):
             print(f"  - {s.strip()}")
         if args.annotate:
             _, annotations, sections = _load_annotations(
-                doc, args.cas_root, ontology_filter, include_related)
+                doc, args, ontology_filter, include_related)
             if annotations is not None:
                 if exclude_types:
                     annotations = _ca.exclude_sections(annotations, sections, exclude_types)
@@ -321,7 +366,7 @@ def print_results(results, args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Search Textpresso with CAS2 ontology annotation (server use only).",
+        description="Search Textpresso with CAS2 ontology annotation.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -329,7 +374,9 @@ def main():
     # Reuse all standard search arguments from the public script
     add_search_args(parser)
 
-    ann = parser.add_argument_group("CAS2 annotation (requires local CAS2 file access)")
+    ann = parser.add_argument_group(
+        "CAS2 annotation (fetched over HTTP from --url by default; "
+        "--cas-root for local-file fallback)")
     ann.add_argument("--annotate", action="store_true",
                      help="Append ontology term summary per paper to each result")
     ann.add_argument("--annotate-sentences", action="store_true",
@@ -346,10 +393,14 @@ def main():
                           "use MAIZE_GENES for EXACT-synonym matches only, "
                           "MAIZE_GENES_RELATED for RELATED-synonym matches only, "
                           "or both together")
-    ann.add_argument("--cas-root", default=DEFAULT_CAS_ROOT, metavar="PATH",
-                     help=f"Root directory of CAS2 files "
-                          f"(default: {DEFAULT_CAS_ROOT}; "
-                          f"use /data/textpresso/tpcas-2 inside the container)")
+    ann.add_argument("--cas-root", default=None, metavar="PATH",
+                     help="Bypass the network annotation endpoint and parse CAS2 "
+                          "files directly from this local root directory instead "
+                          "(server-side use only, e.g. "
+                          f"{DEFAULT_CAS_ROOT} on the host, or "
+                          "/data/textpresso/tpcas-2 inside the container). "
+                          "Default: unset, i.e. fetch over HTTP from --url -- "
+                          "works without local file access.")
     ann.add_argument("--exclude-type", action="append", metavar="TYPE",
                      choices=_ca.SECTION_TYPES,
                      help="Exclude results from this CAS section type (repeatable), "
@@ -369,6 +420,8 @@ def main():
             return
 
         validate_search_args(args, parser)
+        if args.category:
+            check_categories_or_exit(args.category, args.url, parser)
         corpora = args.corpora or list_corpora(args.url)
         payload = build_query(args, corpora)
         results = search(payload, url=args.url)

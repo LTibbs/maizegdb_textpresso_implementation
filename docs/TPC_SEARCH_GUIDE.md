@@ -1,26 +1,32 @@
 # `tpc_search.py` / `tpc_search_internal.py` — usage guide
 
 Reference for the two Textpresso search command-line tools in
-`bin/` as of 2026-07-15.
+`bin/` as of 2026-08-12.
 
 ## Overview
 
-Both scripts search a Textpresso corpus over the REST API. They share an
-identical base option set; `tpc_search_internal.py` is a superset that adds
-local CAS2 file access for ontology annotation.
+Both scripts search a Textpresso corpus over the REST API and now require
+**only network access** — neither needs to run on the Textpresso server.
+`tpc_search_internal.py` is a superset that adds ontology-annotation modes,
+backed by a small annotation service (`cas_annotate_server.py`, in the
+`agr_textpresso` repo) that runs alongside the Textpresso API and serves CAS2
+data over HTTP. Before 2026-08-12, those modes required direct filesystem
+access to the CAS2 data directory and could only run on the server; see
+"Architecture: how annotation data reaches the client" below.
 
 | | `tpc_search.py` | `tpc_search_internal.py` |
 |---|---|---|
-| Requires | network access to the public API only | server-side access to the CAS2 data directory |
-| Who can run it | anyone with network access | server users only |
+| Requires | network access to the public API only | network access to the public API only (or, with `--cas-root`, direct server-side CAS2 file access) |
+| Who can run it | anyone with network access | anyone with network access |
 | Adds | — | `--annotate`, `--annotate-sentences`, `--related-synonyms`, `--ontology`, `--cas-root`, precise `--exclude-type` |
 
 The Textpresso instance runs inside a Docker container
-(`agr-textpresso-textpresso-1`); its API is proxied through lighttpd and
-exposed publicly at:
+(`agr-textpresso-textpresso-1`); its search API and the CAS2 annotation
+service are both proxied through lighttpd and exposed publicly at:
 
 ```
-http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api/
+http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api/        (search)
+http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/annotate    (CAS2 annotation data)
 ```
 
 ## `tpc_search.py`
@@ -79,7 +85,7 @@ keywords                  Search keywords
 --year YEAR                Filter by publication year
 --accession ID             Filter by DOI / accession. NOTE that slashes ("/") cause problems and so must be replaced by underscores ("_") e.g. search for 10.1007_s00425-012-1754-3 to retrieve doi 10.1007/s00425-012-1754-3
 --paper-type TYPE          Filter by paper type (Journal_article, Review, ...)
---category CATEGORY        Restrict to ontology category (repeatable). Must include the ID suffix obtained from OBO file, e.g. "seed (PO:0009010)" or "adh1 (tpzm:0008786)"
+--category CATEGORY        Restrict to ontology category (repeatable). Must be the exact stored string with ID suffix, e.g. "seed (PO:0009010)" or "adh1 (tpzm:0008786)" — a non-exact value is rejected with suggestions rather than run; see "Looking up --category values" below and bin/tpc_category_search.py
 --categories-and           Require ALL categories to match (default: ANY)
 --sort-by-year             Sort by year instead of relevance score
 --format text|json         Output format (default: text)
@@ -109,6 +115,11 @@ it when precision matters.
 # Basic sentence search
 python3 bin/tpc_search.py -c MaizeTest100 "flowering time"
 
+# Top N results -- --count caps how many come back (default 50, API max 200);
+# results are already ranked by relevance score by default, so this gives the
+# top N matches. --sort-by-year switches the ranking to year instead.
+python3 bin/tpc_search.py -c MaizeTest100 "flowering time" --count 5
+
 # Multiple corpora
 python3 bin/tpc_search.py -c MaizeTest100 -c SorghumBase "drought tolerance"
 
@@ -136,19 +147,26 @@ python3 bin/tpc_search.py -c MaizeTest100 "anthocyanin" --format json | jq '.[].
 python3 bin/tpc_search.py --list-corpora
 ```
 
-## `tpc_search_internal.py` — server-side search with annotation
+## `tpc_search_internal.py` — search with CAS2 ontology annotation
 
-Identical search interface to `tpc_search.py`, plus flags that read the
-local CAS2 files.
+Identical search interface to `tpc_search.py`, plus flags that read CAS2
+ontology-annotation data. By default this data is fetched over HTTP from
+`cas_annotate_server.py` (same `--url` host, `/v1/textpresso/annotate`), so
+this script works from anywhere with network access — no server-side file
+access is required, and no `--cas-root` needs to be passed.
 
-**CAS2 root paths:**
+**`--cas-root` — local-file fallback (server-side only, optional)**
+
+Pass `--cas-root PATH` to instead bypass the network endpoint and parse CAS2
+files directly from a local directory. Only useful when running directly on
+the Textpresso server/host:
 
 | Context | Path |
 |---------|------|
 | Host (outside container) | `/home/ec2-user/agr_textpresso/.data/tpcas-2` |
 | Inside the container | `/data/textpresso/tpcas-2` |
 
-The default `--cas-root` is the host path.
+Not needed for normal use — see "Architecture" below for why.
 
 ### Additional options
 
@@ -161,7 +179,9 @@ The default `--cas-root` is the host path.
 --ontology NAME         Restrict annotations to GO, PO, TO, MAIZE_GENES,
                         MAIZE_GENES_RELATED, or OTHER (repeatable;
                         default: all except MAIZE_GENES_RELATED)
---cas-root PATH         CAS2 root directory
+--cas-root PATH         Bypass the network annotation endpoint; parse CAS2
+                        files directly from this local root instead
+                        (server-side use only; unset by default)
 --exclude-type TYPE     Exclude results from this CAS section type
                         (repeatable) — see below for per-mode behavior
 ```
@@ -257,8 +277,9 @@ python3 bin/tpc_search_internal.py -c MaizeTest100 "anthocyanin" \
 
 ### `--exclude-type` — precise, CAS2-based section exclusion
 
-Unlike `tpc_search.py`'s best-effort version, this script has direct CAS2
-access and filters exactly, per mode:
+Unlike `tpc_search.py`'s best-effort version, this script has access to full
+CAS2 data (over the network by default, or a local file with `--cas-root`)
+and filters exactly, per mode:
 
 - **`--type sentence`**: filters `matched_sentences` directly. Each
   API-returned sentence is mapped to its CAS2 position by exact text match;
@@ -297,11 +318,151 @@ python3 bin/tpc_search_internal.py -c MaizeTest100 "adh1" \
     --annotate --exclude-type references --exclude-type acknowledgments
 ```
 
+## Architecture: how annotation data reaches the client
+
+Before 2026-08-12, `tpc_search_internal.py`'s `--annotate`/`--annotate-sentences`/
+precise `--exclude-type` modes worked by parsing CAS2 files directly off disk
+(`textpresso_classifiers/casannot.py`), which only worked for users with a
+filesystem-level checkout on the Textpresso host. As of 2026-08-12 that data
+is served over HTTP instead, so the script works like `tpc_search.py` --
+network access only, from anywhere:
+
+```
+tpc_search_internal.py --url <base>
+        │
+        ├─ POST {base}/search_documents      (unchanged; C++ textpressoapi, port 18080)
+        └─ GET  {base%/api → /annotate}?identifier=...   (new; cas_annotate_server.py)
+```
+
+`cas_annotate_server.py` (in the `agr_textpresso` repo, `textpressoapi/`
+directory) is a small dependency-free Python `http.server` process that runs
+alongside `textpressoapi` inside the same Docker container, binds to
+`127.0.0.1:8082` (not reachable directly), and serves parsed CAS2 data
+(`{sentences, annotations, sections}`) for a given document identifier. It
+imports a mirrored copy of this repo's `casannot.py` -- **the two copies must
+be kept in sync** if the CAS2 parsing logic changes (see the header comment
+in either file).
+
+Two proxy layers sit in front of it, both edited additively (new rules
+alongside the existing search-API ones, nothing removed or changed):
+
+1. **`agr_textpresso/lighttpd.conf`** (inside the container): a new
+   `$HTTP["url"] =~ "^(.*)/v1/textpresso/annotate"` block proxies to
+   `127.0.0.1:8082`. Deliberately a path with no substring overlap with the
+   existing `/v1/textpresso/api` rule, so the two can never match the same
+   request.
+2. **Host-level nginx** (`/etc/nginx/conf.d/textpresso.conf`, *not* in any
+   repo -- lives directly on the EC2 host in front of the container): the
+   public domain's actual entry point. It allowlists specific paths;
+   `/v1/textpresso/api/` was already routed straight to the container's
+   published `18080` port, so a new `location /v1/textpresso/annotate` block
+   was added routing through the container's published `8080` port (lighttpd)
+   instead, since `8082` isn't published to the host. This is the layer to
+   check first if the annotation endpoint ever seems unreachable from outside
+   despite `tpc_search_internal.py`/`cas_annotate_server.py` looking fine.
+
+`start_textpresso.sh` and the `Dockerfile` were also updated so a fresh image
+build/container launches `cas_annotate_server.py` automatically; on the
+currently-running container it was deployed by hand (`docker cp` + a manual
+process start, since the image wasn't rebuilt).
+
+## Looking up `--category` values
+
+`--category` matches on a Lucene phrase query against the exact stored
+`"name (ID)"` string, not a fuzzy or substring check — so historically, an
+imperfect value didn't reliably fail loudly. Depending on what else shared
+its leading word(s) in the corpus's category list, it could silently return
+the same results as the correct string, a wrong/over-broad set, or nothing
+(reproduced 2026-08-12: bare `"seed"` returned the identical result set as
+`"seed (PO:0009010)"`, purely because no other stored category happened to
+start with "seed" in that corpus — a coincidence, not a guarantee).
+
+**As of 2026-08-12, this is fixed**: both scripts check every `--category`
+value against a live ontology index before running the query, and refuse to
+run on anything that isn't an exact match — no more silent wrong-or-lucky
+matching:
+
+```
+$ python3 bin/tpc_search.py -c MaizeTest100 --category "seed" "development"
+tpc_search.py: error:
+--category "seed" does not exactly match a known category. Closest matches:
+  --category "seed (PO:0009010)"   (PO)
+  --category "seed abscission (GO:0097548)"   (GO)
+  --category "seed chalaza (PO:0006333)"   (PO)
+  ...
+Example: --category "seed (PO:0009010)"
+```
+
+A query with no close matches at all gets a plainer nudge rather than a wall
+of near-misses, including a keyword-search fallback:
+
+```
+$ python3 bin/tpc_search.py -c MaizeTest100 --category "qwxyzplant" "development"
+tpc_search.py: error:
+--category "qwxyzplant" has no matches found. Try a different word with
+bin/tpc_category_search.py "<term>", or drop --category and search by
+keyword instead, e.g.:
+  python3 bin/tpc_search.py -c MaizeTest100 "qwxyzplant"
+```
+
+This check is fail-open on infrastructure problems: if the lookup service
+itself is unreachable, it's skipped silently and the search runs as given —
+an outage in the suggestion service shouldn't block ordinary search.
+
+### `bin/tpc_category_search.py` — search the ontology directly
+
+A standalone tool for finding the right `--category` string up front,
+instead of waiting to be told it's wrong. Searches GO/PO/TO/MAIZE_GENES by
+name or synonym (the same index the `--category` check above uses) and
+prints candidates ranked by match quality (exact > name-prefix >
+synonym-exact > name-substring > synonym-substring):
+
+```bash
+# search all ontologies
+python3 bin/tpc_category_search.py "seed"
+
+# restrict to one ontology
+python3 bin/tpc_category_search.py "adh1" --ontology MAIZE_GENES
+
+# multiple ontologies, more results
+python3 bin/tpc_category_search.py "anthocyanin" --ontology GO --ontology PO --limit 10
+
+# JSON output (pipe-friendly)
+python3 bin/tpc_category_search.py "seed" --format json
+```
+
+Text output includes a copy-pasteable example using the top match:
+
+```
+Categories matching "seed":
+
+  seed (PO:0009010)             [PO, exact]
+  seed abscission (GO:0097548)  [GO, name_prefix]
+  seed chalaza (PO:0006333)     [PO, name_prefix]
+  ...
+
+Example:
+  python3 bin/tpc_search.py -c <corpus> --category "seed (PO:0009010)" "<keywords>"
+```
+
+### Architecture
+
+Both the `--category` validation and the standalone tool call a new
+`/v1/textpresso/category_search` endpoint on the same `cas_annotate_server.py`
+sidecar used for `--annotate`/`--annotate-sentences` (see "Architecture: how
+annotation data reaches the client" above) — same process, same proxy
+pattern, one more route added the same additive way. On startup the server
+builds an in-memory index from the OBO files listed in `ontology.conf`
+(`textpressoapi/category_index.py`, `agr_textpresso` repo): 67,569
+categories and 247,270 distinct synonyms as of 2026-08-12, built in a couple
+of seconds. The index is only refreshed on server restart, so a monthly
+ontology update (see `CLAUDE.md`'s `update_ontology.sh` cron) should be
+followed by a restart of `cas_annotate_server.py` to pick up new/changed
+categories -- the same "old data until restarted" caveat already noted for
+`textpressoapi`/lighttpd's `IndexReader` caching in the 2026-07-13 entry of
+`Laura_work_updates_log.md`.
+
 ## Other notes
-- **`--category` requires the exact stored string, ID suffix from the OBO file included** —
-  e.g. `"seed (PO:0009010)"`, not `"seed"`. A malformed category string
-  returns "No results" and can look like a broken endpoint rather than a
-  formatting mistake.
 - **Generic-word contamination in `MAIZE_GENES`/`MAIZE_GENES_RELATED`
   matches**: the `zmays_genes_20260708.obo` gene ontology has a known issue
   where its `locus_synonym` field contains common-English-word/jargon

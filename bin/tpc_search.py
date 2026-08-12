@@ -19,6 +19,7 @@ import json
 import sys
 import urllib.request
 import urllib.error
+import urllib.parse
 
 DEFAULT_URL = "http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api"
 # DEFAULT_URL = "http://localhost:18080/v1/textpresso/api"
@@ -105,6 +106,85 @@ def list_corpora(url=DEFAULT_URL):
     """Return the list of corpus names available on the server."""
     with urllib.request.urlopen(f"{url}/available_corpora") as resp:
         return json.loads(resp.read())
+
+
+def annotation_service_url(search_url):
+    """Base URL of the cas_annotate_server.py sidecar, derived from --url.
+
+    ".../v1/textpresso/api" -> ".../v1/textpresso" -- strips whatever the
+    last path segment is, so a custom --url still resolves to the sibling
+    /annotate and /category_search endpoints on the same host.
+    """
+    return search_url.rsplit("/", 1)[0]
+
+
+def category_search(query, url=DEFAULT_URL, ontology=None, limit=10):
+    """Look up candidate --category strings for a free-text query.
+
+    Returns the server's ranked "matches" list (each a dict with id, name,
+    category, ontology, matched_on), or None if the lookup service itself
+    couldn't be reached (network/service failure -- distinct from a query
+    that legitimately has zero matches, which returns an empty list).
+    """
+    params = [("q", query)]
+    params += [("ontology", o) for o in (ontology or ())]
+    if limit:
+        params.append(("limit", str(limit)))
+    endpoint = f"{annotation_service_url(url)}/category_search?{urllib.parse.urlencode(params)}"
+    try:
+        with urllib.request.urlopen(endpoint) as resp:
+            return json.loads(resp.read())["matches"]
+    except (urllib.error.URLError, urllib.error.HTTPError):
+        return None
+
+
+def format_category_matches(matches):
+    """Render a category_search() match list as example --category lines."""
+    return "\n".join(f'  --category "{m["category"]}"   ({m["ontology"]})' for m in matches)
+
+
+def check_categories_or_exit(categories, url, parser):
+    """Validate each --category value against the live category index.
+
+    --category requires the *exact* stored "name (ID)" string (see "Other
+    notes" in docs/TPC_SEARCH_GUIDE.md) -- a near-miss doesn't reliably fail,
+    it can silently over-match or under-match depending on what else is in
+    the corpus's category list. So rather than risk running a query on a
+    guessed string, this blocks and prints suggestions for every mismatched
+    value, requiring the user to re-run with an exact match.
+
+    Fails open (no block, no output) if the lookup service itself is
+    unreachable -- an infrastructure problem shouldn't prevent an otherwise
+    normal search from running.
+    """
+    problems = []
+    for value in categories:
+        matches = category_search(value, url, limit=8)
+        if matches is None:
+            continue  # lookup service unreachable -- don't block on it
+        if any(m["category"] == value for m in matches):
+            continue  # exact match, nothing to report
+        problems.append((value, matches))
+
+    if not problems:
+        return
+
+    lines = []
+    for value, matches in problems:
+        if matches:
+            lines.append(f'--category "{value}" does not exactly match a known category. '
+                         f'Closest matches:')
+            lines.append(format_category_matches(matches))
+            lines.append(f'Example: --category "{matches[0]["category"]}"')
+        else:
+            lines.append(f'--category "{value}" has no matches found. Try a '
+                         f'different word with bin/tpc_category_search.py "<term>", or '
+                         f'drop --category and search by keyword instead, e.g.:\n'
+                         f'  python3 bin/tpc_search.py -c <corpus> "{value}"')
+        lines.append("")
+    parser.error("\n" + "\n".join(lines).rstrip() +
+                 "\n\nTip: python3 bin/tpc_category_search.py \"<term>\" searches the "
+                 "ontology directly for candidate --category strings.")
 
 
 def apply_document_level_exclusion(results, args, corpora):
@@ -227,7 +307,11 @@ def add_search_args(parser):
     parser.add_argument("--paper-type", metavar="TYPE",
                         help="Filter by paper type (e.g. Journal_article, Review)")
     parser.add_argument("--category", action="append", metavar="CATEGORY",
-                        help="Restrict to ontology category (repeatable)")
+                        help="Restrict to ontology category (repeatable). Must be the "
+                             "exact stored \"name (ID)\" string, e.g. \"seed (PO:0009010)\" -- "
+                             "a non-exact value is rejected with suggestions rather than run "
+                             "(see check_categories_or_exit()). Use bin/tpc_category_search.py "
+                             "to look one up.")
     parser.add_argument("--categories-and", action="store_true",
                         help="Require ALL categories to match (default: ANY)")
     parser.add_argument("--sort-by-year", action="store_true",
@@ -304,6 +388,8 @@ examples:
                          "(document-level only, no per-sentence position data "
                          "available here); for sentence-level --exclude-type, use "
                          "tpc_search_internal.py instead")
+        if args.category:
+            check_categories_or_exit(args.category, args.url, parser)
         corpora = args.corpora or list_corpora(args.url)
         payload = build_query(args, corpora)
         results = search(payload, url=args.url)

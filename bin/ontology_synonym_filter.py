@@ -64,6 +64,12 @@ MANUALLY_CONFIRMED_AMBIGUOUS = {
     "ai":  "artificial intelligence",
     "bam": "BAM sequence alignment file format",
     "pod": "seed pod",
+    # Confirmed 2026-08-12 during the term-by-term OBO-attribution review:
+    # single EXACT locus_synonym on one gene (flz32/tpzm:0013684) that
+    # already has four solid identifiers on file -- "ABA" (abscisic acid,
+    # the plant hormone) reads like a stray description fragment, not a
+    # real name for this gene, and nothing is lost by removing it.
+    "aba": "abscisic acid (plant hormone) -- stray fragment on flz32, not a real gene name",
 }
 
 # USPS two-letter state codes + DC. A term that's just a state abbreviation
@@ -77,6 +83,86 @@ STATE_ABBREVIATIONS = {
     "or", "pa", "ri", "sc", "sd", "tn", "tx", "ut", "vt", "va", "wa", "wv",
     "wi", "wy", "dc",
 }
+
+# Expert-curated exclusions confirmed 2026-08-12. Unlike every rule below,
+# these override even the digit-presence "real gene ID" hard override -- a
+# maize agronomy paper's "R1"/"V6"/"chr5" is overwhelmingly the reproductive/
+# vegetative growth-stage code or chromosome-location notation, not the gene
+# synonym, regardless of what a heuristic sees in the string itself.
+GROWTH_STAGE_CODES = {f"v{i}" for i in range(1, 15)} | {"vt"} | {f"r{i}" for i in range(1, 7)}
+CHROMOSOME_NAMES = {f"chr{i}" for i in range(1, 11)}
+
+# Real transcription-factor family names, not junk -- flagged by the
+# token/case-transition rules only because no automatic rule can tell "real
+# family name" from "unresolvable abbreviation." Manually confirmed to be
+# kept findable, RELATED-only, same treatment as "bzip" (which the
+# case-transition rule already resolves to "real gene ID" on its own; these
+# additionally needed a status override out of "kept for manual review").
+FAMILY_TERM_RESOLVED = {
+    "bzip": "bZIP-family transcription factor name",
+    "bzip transcription factor": "bZIP-family transcription factor name",
+    "myb": "MYB-family transcription factor name",
+    "myb transcription factor": "MYB-family transcription factor name",
+    # Confirmed 2026-08-12: mapped to 12 distinct genes (hct16...hct31,
+    # gll1, Zm00001d002139), all already typed RELATED, never EXACT --
+    # same shape as MYB/bZIP: a real family name (hydroxycinnamoyl
+    # transferase), not a single-gene collision.
+    "hct": "HCT-family (hydroxycinnamoyl transferase) gene name",
+}
+
+# Below this many distinct papers, a term isn't producing enough noise to be
+# worth flagging even if it would otherwise read as generic/ambiguous --
+# raises the practical action threshold from the >=5 audit-reporting cutoff
+# to >=10 for removal/review specifically. Confirmed 2026-08-12. Does NOT
+# apply to EXPERT_OVERRIDES below -- those are unconditional regardless of
+# frequency, same as MANUALLY_CONFIRMED_AMBIGUOUS always was.
+MIN_DOC_FREQ_FOR_ACTION = 10
+
+
+def _build_expert_overrides():
+    """Unify every whole-term, manually-confirmed override into one
+    (filtered, reason) lookup, checked first in classify() -- before the
+    digit-presence and case-transition hard overrides, and before the
+    dictionary-based generic-word path. Consolidated 2026-08-12: previously
+    MANUALLY_CONFIRMED_AMBIGUOUS ("sra", "sam", ...) was buried inside
+    is_generic_token(), reachable only via the token loop, i.e. only if a
+    term happened to contain no digit and no case transition -- true for
+    those six terms by luck, not by design. A term added there later that
+    *did* contain a digit would have silently never been reached. Growth-
+    stage codes and chromosome names need that same top-tier precedence for
+    real reasons (r1/chr5 do contain digits), so all four expert-curated
+    sources now share one tier and one precedence rule.
+    """
+    overrides = {}
+    for term in GROWTH_STAGE_CODES:
+        overrides[term] = (True, (
+            "expert-curated exclusion: reproductive/vegetative growth-stage "
+            "code (V1-V14, VT, R1-R6) collides with agronomic staging "
+            "notation in text"
+        ))
+    for term in CHROMOSOME_NAMES:
+        overrides[term] = (True, (
+            "expert-curated exclusion: chromosome name (chr1-chr10) collides "
+            "with chromosome-location notation in text"
+        ))
+    for term, meaning in MANUALLY_CONFIRMED_AMBIGUOUS.items():
+        overrides[term] = (True, (
+            f"expert-curated exclusion: {meaning} -- manually confirmed "
+            "ambiguous abbreviation unrelated to the gene it's mapped to"
+        ))
+    for term, label in FAMILY_TERM_RESOLVED.items():
+        overrides[term] = (False, f"{label}, real term -- kept findable, RELATED-only")
+    return overrides
+
+
+# Whole-term lookup, checked first in classify(). MANUALLY_CONFIRMED_AMBIGUOUS
+# is ALSO still consulted inside is_generic_token() below -- that's a
+# different, narrower role (is this *one token* of a multi-word term
+# generic?) that this whole-term dict can't replace; a compound term like
+# "sam-like protein" needs the token-level check to recognize "sam" as one
+# generic constituent among others, which is a different question from "is
+# the entire matched term exactly 'sam'."
+EXPERT_OVERRIDES = _build_expert_overrides()
 
 DICT_PATH = "/usr/share/dict/words"
 TOKEN_SPLIT_RE = re.compile(r"[\s/;-]+")
@@ -110,32 +196,99 @@ def is_generic_token(token, dict_words):
     return False
 
 
-def classify(surface_forms, dict_words):
-    """surface_forms: list of observed surface-form strings for one term.
+def classify(term, doc_freq, surface_forms, dict_words):
+    """term: lowercased matched-term key. doc_freq: distinct-paper count.
+    surface_forms: list of observed surface-form strings for this term.
 
     Returns (filtered: bool, reason: str), matching the original CSV's
-    reason-string conventions.
+    reason-string conventions. EXPERT_OVERRIDES (growth-stage codes,
+    chromosome names, manually-confirmed-ambiguous abbreviations, resolved
+    family terms) is checked first and overrides every heuristic below,
+    including the digit-presence hard override.
     """
+    if term in EXPERT_OVERRIDES:
+        return EXPERT_OVERRIDES[term]
+
     for sf in surface_forms:
         if DIGIT_RE.search(sf):
             return False, "contains a digit in some surface form -- real gene ID"
 
+    # Token-level, not a raw substring search on the whole surface form:
+    # "mRNA" also matches [a-z][A-Z] (the "mR" transition) but is a common
+    # bio term, not a species-prefix+symbol pattern -- checking is_generic_token
+    # on the specific token that carries the transition (not the surface
+    # form as a whole) excludes it correctly while still catching "ZmUBI"/
+    # "bZIP" (whose lowercased token isn't a recognized common word).
     for sf in surface_forms:
-        if CASE_TRANSITION_RE.search(sf):
-            return False, (
-                "contains a lowercase-to-uppercase transition in some surface "
-                "form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
-            )
+        for tok in TOKEN_SPLIT_RE.split(sf):
+            if tok and CASE_TRANSITION_RE.search(tok) and not is_generic_token(tok, dict_words):
+                return False, (
+                    "contains a lowercase-to-uppercase transition in some surface "
+                    "form (species-prefix + symbol pattern, e.g. 'ZmUBI') -- real gene ID"
+                )
 
     for sf in surface_forms:
         for tok in TOKEN_SPLIT_RE.split(sf):
             if tok and not is_generic_token(tok, dict_words):
+                if doc_freq < MIN_DOC_FREQ_FOR_ACTION:
+                    return False, (
+                        f"found in only {doc_freq} papers -- below the "
+                        f"{MIN_DOC_FREQ_FOR_ACTION}-document removal/review "
+                        "threshold, kept without further review"
+                    )
                 return False, (
                     f"contains {tok!r} -- not a recognized common word/jargon "
                     "term, kept for manual review"
                 )
 
+    if doc_freq < MIN_DOC_FREQ_FOR_ACTION:
+        return False, (
+            f"found in only {doc_freq} papers -- below the "
+            f"{MIN_DOC_FREQ_FOR_ACTION}-document removal/review threshold, "
+            "kept without further review"
+        )
     return True, "all constituent words are common English/molecular-biology terms"
+
+
+def apply_curation_overlay(row):
+    """Apply only the 2026-08-12 rules (EXPERT_OVERRIDES + MIN_DOC_FREQ_FOR_ACTION)
+    on top of a row's EXISTING filtered/filter_reason, without touching the
+    rest of classify()'s generic-word/digit/case-transition path.
+
+    Deliberately narrower than "recompute via classify() for every row":
+    classify()'s dictionary-based generic-word tier is a reconstruction (see
+    the module docstring's fidelity caveat), and a full reclassify was
+    confirmed 2026-08-12 to regress several already-correct historical
+    verdicts it doesn't independently reproduce (e.g. "mRNA", "CDS", "NO",
+    the "S" in "glutathione S-transferase" -- all correctly filtered=True in
+    the 2026-08-07 CSV, but not resolvable as generic by the reconstructed
+    word lists on their own). This overlay only ever changes a row for one of
+    the EXPERT_OVERRIDES entries or the doc-frequency threshold; every other
+    row passes through byte-identical.
+
+    Returns True if the row was changed.
+    """
+    term = row["term"]
+    doc_freq = int(row["doc_freq"])
+
+    if term in EXPERT_OVERRIDES:
+        new_filtered, new_reason = EXPERT_OVERRIDES[term]
+    else:
+        old_filtered = row["filtered"] == "True"
+        old_is_review = (not old_filtered) and ("manual review" in row["filter_reason"])
+        if (old_filtered or old_is_review) and doc_freq < MIN_DOC_FREQ_FOR_ACTION:
+            new_filtered, new_reason = False, (
+                f"found in only {doc_freq} papers -- below the "
+                f"{MIN_DOC_FREQ_FOR_ACTION}-document removal/review threshold, "
+                "kept without further review"
+            )
+        else:
+            return False  # untouched
+
+    changed = (row["filtered"] != str(new_filtered)) or (row["filter_reason"] != new_reason)
+    row["filtered"] = str(new_filtered)
+    row["filter_reason"] = new_reason
+    return changed
 
 
 def main():
@@ -144,59 +297,39 @@ def main():
     ap.add_argument("input_csv")
     ap.add_argument("output_csv")
     ap.add_argument("--target-reason", default=None,
-                     help="Only recompute filtered/filter_reason for rows whose "
-                          "current filter_reason equals this exact string. "
-                          "Overrides the default (see below) if given.")
+                     help="Only recompute filtered/filter_reason (via the full "
+                          "classify() heuristic, not the narrow curation overlay) "
+                          "for rows whose current filter_reason equals this exact "
+                          "string. Use to extend classify()'s reach to rows outside "
+                          "its original scope (e.g. never-classified rows) -- NOT "
+                          "for bulk-reclassifying already-resolved rows, which "
+                          "regresses known reconstruction gaps (see "
+                          "apply_curation_overlay's docstring). Default (omitted): "
+                          "apply only the 2026-08-12 curation overlay, which never "
+                          "touches classify()'s generic-word path.")
     args = ap.parse_args()
-
-    dict_words = load_dict_words()
 
     with open(args.input_csv, newline="") as f:
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames
         rows = list(reader)
 
-    OUT_OF_SCOPE = "out of filter scope (no locus_synonym-sourced entry)"
-
-    def needs_reclassification(reason):
-        if args.target_reason is not None:
-            return reason == args.target_reason
-        # Default: reprocess anything not already resolved to True or to the
-        # digit-override False -- i.e. the out-of-scope rows and the
-        # "kept for manual review" rows, so a newly added generic-token rule
-        # (like STATE_ABBREVIATIONS) gets applied everywhere it's relevant,
-        # not just to whichever subset was targeted last run.
-        return reason == OUT_OF_SCOPE or "kept for manual review" in reason
-
-    n_reclassified = 0
     n_changed = 0
-    for row in rows:
-        old_reason = row["filter_reason"]
-        if not needs_reclassification(old_reason):
-            continue
-        surface_forms = [s.strip() for s in row["surface_forms"].split(";")]
-        filtered, reason = classify(surface_forms, dict_words)
-        n_reclassified += 1
 
-        # A row still carrying the out-of-scope placeholder was never actually
-        # classified, so any real result is new information -- apply it.
-        # A row already carrying a real "kept for manual review" reason was
-        # already classified by the original (or a prior) run; only overwrite
-        # it for an intentional bucket move: flipping to True (auto-remove),
-        # or resolving to one of the hard "-- real gene ID" overrides (digit /
-        # case-transition), which moves it out of manual-review into a
-        # confident real-ID verdict even though `filtered` stays False either
-        # way. Anything else -- i.e. it's still an unresolved "kept for manual
-        # review" case, just possibly citing a different offending token --
-        # is left untouched, since a reconstructed classifier can disagree
-        # with the original on *which* token it cites without disagreeing on
-        # the actual verdict, and that kind of drift shouldn't be applied
-        # silently.
-        is_real_id_override = reason.endswith("-- real gene ID")
-        if old_reason == OUT_OF_SCOPE or filtered or is_real_id_override:
-            if reason != old_reason:
+    if args.target_reason is not None:
+        dict_words = load_dict_words()
+        for row in rows:
+            if row["filter_reason"] != args.target_reason:
+                continue
+            surface_forms = [s.strip() for s in row["surface_forms"].split(";")]
+            filtered, reason = classify(row["term"], int(row["doc_freq"]), surface_forms, dict_words)
+            if reason != row["filter_reason"]:
                 row["filtered"] = str(filtered)
                 row["filter_reason"] = reason
+                n_changed += 1
+    else:
+        for row in rows:
+            if apply_curation_overlay(row):
                 n_changed += 1
 
     with open(args.output_csv, "w", newline="") as f:
@@ -204,7 +337,7 @@ def main():
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"Re-evaluated {n_reclassified} rows; {n_changed} got a new filtered/filter_reason")
+    print(f"{n_changed} rows changed")
     print(f"Wrote {args.output_csv}")
 
 

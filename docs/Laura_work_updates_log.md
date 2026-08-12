@@ -1925,3 +1925,925 @@ Deployed: backed up the original as `zmays_genes_20260708.obo.bak-20260807T00000
 - [x] The R fix documented above has been applied to the upstream R script directly by the user (2026-08-07), so the next monthly ontology refresh (`check_and_run_ontology_update.sh`) should regenerate the OBO with the corrected case-insensitive collision logic instead of reintroducing the bug.
 - [ ] `docs/synonym_audit_maizetest100_maizeoa_20260807_filtered_v3.csv`, `bin/ontology_synonym_filter.py`, `agr_textpresso/scripts/fix_obo_synonym_exactness.py`, and the patched OBO file are all local/uncommitted as of this entry -- commit is the next step.
 - [ ] `FORCE_RELATED` currently has exactly one entry (`bzip`). Almost certainly incomplete -- other family/domain-name abbreviations curated onto only one gene so far are likely sitting in the same blind spot; this list only grows by manual spot-check, same as `MANUALLY_CONFIRMED_AMBIGUOUS` in the filter script.
+
+---
+
+## Update log — 2026-08-12
+
+### GUI login/registration was completely non-functional; no self-registered account has ever worked
+
+#### Background
+
+The Textpresso Central GUI (`/tpc/search`, `agr-textpresso-textpresso-1` container) gates some
+functionality behind login. Clicking Login -> Register and submitting the form never produced a
+confirmation email, for any user, ever -- not a one-off delivery delay.
+
+#### Investigation
+
+- **`www-data` Postgres DB's `auth_info` / `auth_identity` / `tpcuser` tables (the Wt::Auth::Dbo
+  schema backing login) were completely empty** -- zero rows, meaning no registration attempt has
+  ever been persisted, let alone reached the email step. The failure is upstream of mail sending,
+  inside the registration-save path itself. Root cause not yet identified; needs a live browser
+  repro (form validation failing silently was the leading guess -- `Session.cpp`'s
+  `PasswordStrengthValidator` is enabled -- but this wasn't confirmed).
+- **Outbound mail is separately, structurally broken regardless of the above.** `agr_textpresso/main.cf`
+  is a symlink to `main.cf.without.relay`, so Postfix attempts direct-to-MX delivery, which AWS
+  blocks (outbound port 25) on essentially all EC2 instances. A `main.cf.with.relay` template
+  (Gmail SMTP relay) exists but its `sasl_passwd` credentials file is empty -- never completed.
+  Confirmed via `postconf -n` inside the container (no `relayhost` set) and empty `mailq` / no
+  `smtpd` connection entries in `/var/log/mail.log*` correlating with any registration attempt.
+- Wt's own mail config (`/usr/local/textpresso/conf/wt_config.xml`) sets
+  `auth-mail-sender-address = noreply@textpresso.org` but no `smtp-host` override, so it defaults
+  to `localhost:25` -- which, even if reached, still can't relay externally per the point above.
+
+#### Fix applied: verified accounts created directly in the database (workaround, not a code fix)
+
+Since the operator (Laura) needed working accounts immediately and the actual registration bug
+wasn't yet isolated, created accounts by inserting directly into `tpcuser` / `auth_info` /
+`auth_identity` in the `www-data` DB, bypassing the broken registration+email flow entirely:
+
+- Generated a real bcrypt hash (cost 7, `$2a$` prefix) via Python's `bcrypt` package
+  (`pip install --user 'bcrypt==3.2.0'` inside the container -- newer `bcrypt` needs a Rust
+  toolchain not present there) matching exactly what `Wt::Auth::BCryptHashFunction` in
+  `Session.cpp`'s `configureAuth()` uses, and confirmed round-trip verification before writing.
+- Set `email` (not `unverified_email`) directly and left `email_token` empty, so the row reads as
+  an already-completed, already-verified registration -- no pending token, `status = 0` (Normal).
+- Two accounts created this way (`provider = 'loginname'`):
+
+  | Username | Email |
+  |----------|-------|
+  | `maizegdb` | ltibbs@iastate.edu |
+  | `GDR` | sook_jung@wsu.edu |
+
+  Passwords were randomly generated and shared directly with each user out of band; not recorded
+  in this log.
+- This pattern is now known-working and repeatable for any additional collaborator accounts
+  needed before the real registration bug is fixed.
+
+#### Second, separate bug found after login worked: `/tpc/customization` still blocked
+
+After logging in with one of the accounts above, `/tpc/customization` showed "No literature is
+available because permissions have not been set." This is unrelated to login/registration --
+`PickedLiteratureContents.cpp`'s `PopulateGrid()` shows that message whenever a logged-in user's
+`pickedliterature_` map comes back empty, which happens in `UpdateLiteraturePreferences()`
+whenever neither the user's own row nor a `"default"` row in the `literaturepermissions` table
+(`www-data` DB) lists any corpus.
+
+- `literaturepermissions` (`userid text, preference text`, `|`-separated corpus list per
+  `Preference.cpp`) had **zero rows at all**, including `"default"` -- so no corpus was ever
+  granted to anyone, logged in or not. `Preference::LoadPreferencesFromDb()` even has a
+  commented-out block that would have auto-granted `"default"` all available corpora; it was
+  left disabled, and nothing else in the repo seeds this table (`grep -rl literaturepermissions`
+  across `agr_textpresso` only turns up the constant definitions, no seed script).
+- There's a real admin GUI for this (`Permissions` page, `Permissions.cpp`), but it's gated by an
+  odd non-login "root mode" check (`TCNavWeb.cpp`'s `urlparameters_->IsRoot()`): the URL needs a
+  `?tpcrootpasswd=<name>` param where `/tmp/<name>` is a file that must already exist on the
+  server containing exactly the string `tpc4ever` (`UrlParameters.cpp`). Not tied to any Textpresso
+  account -- it's a separate, server-filesystem-only backdoor.
+- Fix: inserted the missing row directly (same DB the GUI page would have written to via
+  `Preference::SavePreferences`):
+  ```sql
+  INSERT INTO literaturepermissions (userid, preference)
+  VALUES ('default', 'GDR|MaizeOA|MaizeTest|MaizeTest100|PMCOA|ReproTest062|SorghumBase');
+  ```
+  (corpus list = `IndexManager::get_available_corpora()`'s current output, i.e. everything under
+  `/data/textpresso/tpcas-2` at the time). Grants every user, current and future, access to all
+  currently-ingested corpora -- confirmed working (`/tpc/customization` now shows the picker with
+  all 7 corpora checked by default, per the `else pickedliterature_[corpus] = true` fallback in
+  `PickedLiteratureContents.cpp` since `literaturepreference` -- the separate per-user *selection*
+  table -- is still empty for every user).
+
+#### Third bug: figure/image links 404 in the GUI (`images/<corpus>/<accession>/images/<file>.jpg`)
+
+Reported as a broken link giving nginx's own 404 page. Root cause is two layered issues, confirmed
+by reproducing the exact 404 with `curl` against the host's nginx and comparing to the working path:
+
+- **`Viewer.cpp` builds figure-image URLs as bare relative strings** (`"images/" + paperdir_ + "/images/" + filename`,
+  three call sites -- lines ~621, ~837, ~951) passed straight into `Wt::WLink(Wt::WLink::Url, location)`
+  in `SetImage()`. Wt does **not** rewrite these against the app's deployment path (unlike its own
+  bundled `"resources/..."` assets, which go through a different, path-aware mechanism) -- the
+  browser resolves them as plain relative URLs against whatever the current address-bar path
+  happens to be.
+- When that current path is exactly `.../tpc` (no trailing slash -- which is literally how nginx's
+  `location = /tpc { proxy_pass http://127.0.0.1:8080/tpc/; }` block presents the URL to the
+  browser), standard relative-URL resolution drops `tpc` entirely, so the image request becomes
+  `.../images/...` instead of `.../tpc/images/...`.
+- **The host's `/etc/nginx/conf.d/textpresso.conf` had no `location` block for `/images/`** at all
+  -- only `/tpc/`, `/resources/`, and `/v1/textpresso/api/` were proxied to lighttpd (port 8080).
+  So once the URL loses its `/tpc/` prefix, nginx has nothing to route it to and serves its own
+  generic 404 -- confirmed byte-identical to the reported one via `curl -H "Host: ..." http://localhost/images/GDR/10.1007_s00122-002-1102-2/images/10.1007_s00122-002-1102-2.1.jpg`.
+- The underlying data was fine for the case checked: `tpcas-2/GDR/10.1007_s00122-002-1102-2/images`
+  is a symlink back to `tpcas-1/.../images` (the CAS-1 PDF-image-extraction output), and the actual
+  `.jpg` files are present -- once correctly routed, the request returns a real `200` JPEG. So this
+  is a pure routing bug, not a missing-figure-extraction problem (at least for this accession).
+
+**Fix 1 (applied and verified, no rebuild needed):** added a `location /images/ { proxy_pass
+http://127.0.0.1:8080/images/; ... }` block to `/etc/nginx/conf.d/textpresso.conf` (original backed
+up alongside as `textpresso.conf.bak-20260812`), validated with `nginx -t`, reloaded via
+`systemctl reload nginx`. Confirmed the exact previously-404ing URL now returns `200` with a real
+JPEG body. This alone fixes every broken figure link regardless of which internal path the browser
+was on when the relative URL got resolved.
+
+**Fix 2 (patched in source, *not yet rebuilt/deployed*):** changed all three `Viewer.cpp` call
+sites to build the URL as `"/tpc/images/..."` (absolute, rooted at the app's fixed deployment path)
+instead of `"images/..."`. This is the actual correctness fix -- makes the app resilient to the nginx
+routing gap existing at all, rather than relying on the band-aid. Deliberately left unbuilt/undeployed
+per Laura's request, to bundle into the same rebuild-and-redeploy pass as the next ontology fix
+rather than doing a separate `tpso`-style rebuild cycle just for this. When that rebuild happens,
+follow the same pattern documented in the 2026-06-25/2026-07-13 entries above (`docker cp` the
+patched `textpressocentral` source into the container at its exact deployed path -- watch for the
+nesting gotcha from 2026-07-13 if `/data/textpresso/textpressocentral` already exists there -- then
+`cmake --build` the `tpc` target specifically and redeploy the binary). No DB/data changes needed
+for this one, just a rebuild + binary swap.
+
+#### Fourth bug found while re-testing fix 1: a real subset of `MaizeTest100` figures were genuinely missing on disk (not just misrouted) -- 15 of 18 recovered from an orphaned staging directory
+
+After fix 1 went live, a second broken-image report
+(`.../images/MaizeTest100/10.3390_plants14101438/images/10.3390_plants14101438.00003.img-000.png`)
+turned out to be a **different** bug from the routing one, despite looking identical from the GUI:
+
+- `tpcas-1/MaizeTest100/<accession>/images/` (the directory `pdf2tpcas` -- see
+  `supportingscripts/pipelines/latest/incremental.pdf.2.tpcas-1st.stage.com` -- is supposed to
+  populate, and which `tpcas-2/.../images` symlinks back to) contained **only the empty
+  `cmyk.index` placeholder that `cmykinverter` writes -- zero actual image files** for 18 of 110
+  papers in the corpus, even though each paper's CAS annotation stream still references specific
+  image filenames (confirmed via `zcat ... | grep -oE '...img-[0-9]+\.(png|jpg)'`) as if they
+  existed. So `pdf2tpcas` silently produced no images for these PDFs during the original ingest.
+- Found the missing files were not actually lost: `/data/textpresso/raw_files/MaizeTest_temp/MaizeTest100/<accession>/`
+  contains per-page `.txt` files plus correctly-named `.img-NNN.{png,jpg}` files -- exact filename
+  match to what the CAS annotations expect -- for all 110 papers in the corpus, not just the 18
+  broken ones. Confirmed these are real, valid images (`file` reports a genuine PNG, correct
+  dimensions), not placeholders.
+- Traced the provenance: `~/.bash_history:783` shows `mv raw_files/pdf/MaizeTest100/ raw_files/MaizeTest_temp/`,
+  run from `agr_textpresso/docs/SPECIES_PDF_INGEST_RUNBOOK.md`-driven commands while pivoting the
+  active `$CORPUS` from `MaizeTest100` to `MaizeOA` -- i.e. `MaizeTest_temp` is `MaizeTest100`'s
+  original `raw_files/pdf/` directory, relocated out of the way of the next corpus's ingest run.
+  The per-page `.txt`/`.img-*` files inside it must have been produced by some fallback
+  extraction pass run against it afterward (dated 2026-07-14, a day after the `tpcas-1` ingest) --
+  Laura confirmed the date lines up with prior troubleshooting on this exact problem, though the
+  specific tool/command used isn't recoverable (no matching command in host or container bash
+  history; likely run inside an already-open interactive container shell). Whatever ran it
+  extracted the images correctly but its output was never copied into the `tpcas-1/images/`
+  location the app actually serves from -- that last step is what was actually missing.
+- Of the 18 empty accessions, 15 had matching images available in `MaizeTest_temp` (2 to 92 files
+  each) and 3 (`10.1016_j.xplc.2024.101046`, `10.1186_gb-2013-14-9-r103`, `10.1289_ehp.021105`) had
+  nothing there either. **Correction (see "Known issue" below): these 3 are not actually
+  figure-less** -- initially assumed so, but Laura confirmed she'd seen real figures in these
+  papers, which led to finding the real explanation: they're vector-drawn figures, a different and
+  broader problem than the other 15.
+
+**Fix applied:** copied the available `*.img-*.{png,jpg}` files from each `MaizeTest_temp/MaizeTest100/<accession>/`
+into the matching (now-populated) `tpcas-1/MaizeTest100/<accession>/images/`, then re-ran
+`/usr/local/bin/cmykinverter` on each of those 15 directories (the same CMYK-color-fix step the
+normal ingest pipeline applies to freshly-extracted images, per `incremental.pdf.2.tpcas-1st.stage.com`).
+`tpcas-2/.../images` already symlinks to `tpcas-1/.../images` for every accession, so no separate
+tpcas-2-side step was needed -- newly added files became visible there automatically. Verified: the
+originally-reported URL and two more spot-checked accessions all now return `200` with real image
+bytes through the public nginx. Corpus-wide empty-images count for `MaizeTest100` went from 18 -> 3.
+
+**Scope check (not yet acted on):** the same "images dir has zero real files despite the CAS
+referencing them" pattern exists elsewhere -- GDR (14/45 empty), MaizeOA (59/889 empty), SorghumBase
+(46/570 empty). SorghumBase also has an orphaned `raw_files/SorghumBase_pdf_temp/` staging directory
+(June 4) that's structurally similar to `MaizeTest_temp` and may hold a recovery source the same way;
+GDR and MaizeOA have no equivalent staging directory found so far, so their gaps may be genuine
+`pdf2tpcas` extraction failures rather than an orphaned-output situation -- would need the same kind
+of per-accession investigation done here before assuming a fix, not a blind copy. Not yet
+investigated further -- Laura's call whether to extend this to the other corpora.
+
+#### Known issue (not yet worked on): vector-drawn figures are invisible to the whole pipeline, not just missing/misrouted
+
+While double-checking the 3 `MaizeTest100` accessions with nothing recoverable in `MaizeTest_temp`
+(above), Laura pointed out she'd seen real figures in these papers -- worth re-checking rather than
+assuming "no images." That check surfaced a real, broader gap:
+
+- `pdfimages -list` (poppler) against the original PDFs confirms **zero embedded raster images** in
+  any of the 3 -- not a `pdf2tpcas` failure, the PDFs genuinely contain no JPEG/PNG image objects.
+- Rendered sample pages with `pdftoppm` to check visually: all 3 do have real, substantial figures
+  (a 7-panel evaluation figure with sequence alignments/bar charts/flow diagram/chromosome maps in
+  `10.1016_j.xplc.2024.101046`; a full-page heatmap-with-dendrogram in `10.1186_gb-2013-14-9-r103`)
+  -- but every element is **vector-drawn** (PDF drawing operators -- lines, filled paths, text),
+  not a rasterized image embedded in the file. This is typical output from R/matplotlib/Illustrator
+  when a figure is saved as vector PDF instead of being flattened to a bitmap first.
+- **Both extraction methods used so far -- `pdf2tpcas` and whatever fallback tool produced
+  `MaizeTest_temp` -- only pull out embedded raster image objects.** Neither does PDF page
+  rendering. A vector-only figure is invisible to both by design, not by bug: there's no raster
+  object for either tool to find, so (unlike the 15-paper case above) the CAS annotation doesn't
+  even reference an image file for these -- no broken link shows up, the figure section is just
+  silently absent.
+- This means the true scope of "papers with real figures Textpresso can't display" is larger than
+  the empty-`images/`-folder metric used elsewhere in this entry, which only catches cases where
+  an image was *referenced but missing*, not cases where no image was ever referenced because
+  nothing raster was found to reference. Not quantified yet across any corpus.
+- A real fix would be a genuinely new pipeline capability -- e.g. a fallback that rasterizes full
+  PDF pages (via `pdftoppm`, already confirmed available in the container) when `pdfimages`/`pdf2tpcas`
+  finds nothing on that page, rather than a copy/backfill operation like the fix above. Bigger scope
+  than anything done today -- logged as a known issue to scope out later, not acted on now.
+
+#### Corpus-wide image recovery: found and exploited a `pdf2tpcas` raster-extraction bug across GDR/MaizeOA/SorghumBase -- 46 more papers fixed (mostly in MaizeOA)
+
+Continuation of the same investigation, extended to the other three corpora with the same
+empty-`images/`-folder symptom (14/45 GDR, 59/889 MaizeOA, 46/570 SorghumBase). Classified every
+empty accession with `pdfimages -list` against its source PDF to split "genuinely no raster images"
+(vector-only, same as the known issue above) from "PDF has real raster images that something failed
+to extract":
+
+| Corpus | Empty | Vector-only (no raster in PDF) | Has raster, but not extracted |
+|---|---|---|---|
+| GDR | 14 | 10 | 4 |
+| MaizeOA | 59 | 10 | 49 |
+| SorghumBase | 46 | 16 | 30 |
+
+**`pdf2tpcas`'s own raster-image extraction has a real, reproducible bug**, separate from anything
+routing/staging related: re-ran `/usr/local/bin/pdf2tpcas` directly, fresh, against one of the
+"has raster, but not extracted" PDFs (`MaizeOA/10.1093_gbe_evs009`) -- it still produced zero images
+despite `pdfimages` confirming 5 real embedded JPEGs in the source PDF. Not a transient/environmental
+failure from the original ingest; the tool itself can't extract these images, at least not via
+whatever code path fires for this PDF's image encoding.
+
+**Recovery approach:** `pdfimages` (poppler, already present in the container) *can* extract these
+images correctly. Validated the exact naming convention `pdf2tpcas`/CAS annotations expect
+(`<accession>.<page, 5-digit zero-padded>.img-<per-page 0-based index, 3-digit>.<ext: jpg if
+jpeg-encoded, else png>`) against two independent already-known-correct examples (the
+`MaizeTest_temp`-recovered `10.3390_plants14101438`, and cross-checking `10.1093_gbe_evs009`'s own
+CAS-referenced filenames) -- both matched `pdfimages -list`'s page/order output exactly, 10/10 and
+5/5. Wrote `bin/ontology_synonym_audit.py`-style one-off script (not committed, scratch-only) that
+for each empty accession: runs `pdfimages -all -p`, renames output into the validated pattern, and
+-- critically -- **only copies files in if the reconstructed filename set exactly equals the set the
+CAS annotation actually references** (pulled via the same `zcat | grep -oE` used earlier). Anything
+that doesn't match exactly is left untouched and reported, not guessed at. Copied files also get
+`cmykinverter` re-run on them, same as the `MaizeTest100` fix.
+
+First pass had a bug of its own -- didn't filter out `pdfimages`' CCITT-encoded sidecar output
+(`.ccitt`/`.params`, produced for a handful of fax-style-encoded images) before the renaming step,
+corrupting the comparison for a few accessions that were otherwise real matches. Fixed by restricting
+the rename loop to `*.png`/`*.jpg` only and re-running against whatever was still empty; recovered a
+few more (e.g. `MaizeOA/10.1093_jxb_erq243`, whose 8 real referenced images matched perfectly once
+the 2 irrelevant CCITT images stopped corrupting the comparison).
+
+**Results:**
+
+| Corpus | Empty before | Empty after | Recovered |
+|---|---|---|---|
+| GDR | 14 | 14 | 0 |
+| MaizeOA | 59 | 13 | **46** |
+| SorghumBase | 46 | 46 | 0 |
+
+Verified a recovered MaizeOA image (`10.1093_plcell_koaf084`) returns `200` with real image bytes
+through the public nginx, same as the `MaizeTest100` verification earlier.
+
+**New sub-finding -- a third, distinct failure mode:** for every one of GDR's 4 and SorghumBase's 30
+"has raster, not extracted" accessions, the safety check's exact-match comparison came back with an
+**empty expected set** -- i.e. `pdf2tpcas` didn't just fail to extract the image files, it never even
+recorded an `_image` annotation referencing them in the CAS at all, despite `pdfimages` confirming the
+PDFs contain real embedded raster images. This is different from both other known issues: not
+"extracted-but-orphaned" (the `MaizeTest100` case) and not "no raster images exist" (the vector-figure
+case) -- here the source material and the extractable images both exist, but `pdf2tpcas`'s parser
+silently never noticed them, so there's nothing in the CAS for the GUI to link to even if the files
+were sitting in `images/`. Copying files for these would do nothing user-visible, so correctly
+skipped. Not investigated further, but worth noting: nearly all of the SorghumBase cases are Frontiers
+journal papers (`fpls`/`fnut`/`fgene`/`fmicb`/`fnagi` prefixes) -- plausibly all sharing a PDF
+production pipeline that embeds figures in a way (e.g. inline images via `BI`/`ID`/`EI` operators
+rather than XObject references) that `pdf2tpcas`'s content-stream walker doesn't detect, though this
+is a guess, not confirmed against the source.
+
+#### Not yet done
+
+- [ ] Root cause of the registration form never persisting a row to `auth_info` is still unknown
+      -- needs live browser reproduction (dev tools / server-side breakpoint) to pin down, since
+      nothing was logged to `/var/log/lighttpd/breakage.log.1` for any registration attempt either.
+- [ ] Mail relay is still non-functional, so self-service registration (once/if the save-path bug
+      above is fixed) still won't deliver confirmation emails until `main.cf` is switched to
+      `main.cf.with.relay` and `sasl_passwd` is populated with real SMTP credentials (a Gmail app
+      password or another relay). Nobody has supplied credentials for this yet.
+- [ ] Consider a signup path that doesn't depend on outbound email at all (e.g. an admin-approval
+      queue) given how fragile SMTP-from-EC2 is, rather than only patching the relay.
+- [ ] The `literaturepermissions` `"default"` row inserted above is a static pipe-separated list,
+      not a wildcard -- any corpus ingested after this entry (e.g. a future MOD) won't be
+      auto-granted and will need the same row updated (or the commented-out
+      auto-grant-all-available-corpora block in `Preference.cpp` re-enabled properly).
+- [ ] `Viewer.cpp`'s three `/tpc/images/...` fixes are patched in the repo source but not yet
+      rebuilt or redeployed -- queued to go out with the next ontology-fix rebuild pass. The nginx
+      `/images/` proxy band-aid covers the bug in the meantime either way.
+- [x] GDR (14 empty), MaizeOA (59 empty), and SorghumBase (46 empty) all had the same
+      empty-`images/`-folder gap `MaizeTest100` had -- investigated all three (see "Corpus-wide
+      image recovery" above). MaizeOA: fixed 46/59 via a `pdf2tpcas`-bug workaround (`pdfimages` +
+      validated renaming). GDR and SorghumBase's remaining gaps (14 and 46) are not recoverable the
+      same way -- confirmed `pdf2tpcas` never referenced any image for those accessions in the CAS
+      at all, so there's nothing to link recovered files to. `pdf2tpcas` itself needs a real fix
+      (see next item) for those to ever show images.
+- [ ] `pdf2tpcas`'s raster-image extraction is confirmed broken for at least two distinct reasons:
+      (1) it fails to extract images that objectively exist and that `pdfimages` (poppler) can pull
+      out fine -- worked around today via `pdfimages` + filename reconstruction, but the underlying
+      C++ bug in `pdf2tpcas` itself is still unfixed; (2) for a separate set of papers (mostly
+      Frontiers-journal PDFs), it doesn't even detect that an image exists on the page at all, so no
+      `_image` annotation gets written to the CAS -- suspected (not confirmed) to be inline images
+      (`BI`/`ID`/`EI` operators) that its content-stream walker doesn't handle, unlike XObject-referenced
+      images. Both would need actual `libtpc/cas-generators/pdf2tpcas` source investigation to fix
+      properly; the `pdfimages`-based workaround only helps case (1), not (2).
+- [ ] Vector-only-figure papers (see "Known issue" above) aren't counted by the empty-`images/`-folder
+      metric at all, so the real number of figure-less-in-the-GUI papers across every corpus is
+      unknown and likely higher than what's been fixed/tracked so far. Needs a `pdfimages`-based
+      scan (zero raster images in the source PDF) to actually quantify, plus a design decision on
+      whether a page-rasterization fallback is worth building.
+
+---
+
+## Update log — 2026-08-12: ingesting the first non-Sorghum, non-maize corpus (`GDR`, 45 Rosaceae papers) and generalizing the collaborator-facing runbook
+
+### Background
+
+A collaborator sent ~50 PDFs (apple/pear/rose genetics — GDR = Genome
+Database for Rosaceae) via `agr_textpresso/.data/raw_files/GDR_pdf`, with
+metadata in `sorghumbase_textpresso_implementation/metadata/GDR_papers.csv`.
+Two asks: (1) get them indexed and searchable, without maize gene
+annotation (not a maize corpus), and (2) turn the process into
+collaborator-facing documentation. New doc:
+[`TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md`](TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md)
+— a generalized (non-Sorghum-specific), verified-by-actually-running-it
+replacement for the old runbook's Mac-path-based Step 5-11 sequence. Several
+real bugs were found and fixed along the way; each is documented in that
+guide with the working command. Summarized here for the historical record.
+
+### Housekeeping: freed 4.1GB before starting
+
+Disk was at 96% used / 2.3GB free on the 50GB host volume. Found
+`/home/ec2-user/test/` — a stale, fully-clean (`git status` empty, no
+unpushed branches) duplicate checkout of both `agr_textpresso` and
+`sorghumbase_textpresso_implementation`, 3 commits behind `origin/master`,
+mostly 2GB of `sorghum_run/pdfs` scratch data. Removed it — brought free
+space to 6.4GB, enough headroom for the ~500MB the 45-paper corpus needed.
+
+### Bug 1: `generate_pdf_bib.py` not deployed to the running container
+
+The script (git-tracked at the odd path
+`agr_textpresso/Users/kchougul/development/codex_projects/Textpresso/tpctools/generate_pdf_bib.py`
+— an artifact of how the original patch was applied from a Mac checkout)
+wasn't present at `/usr/local/bin/generate_pdf_bib.py` inside the container.
+Without it, `ensure_pdf_bib_files`'s fallback silently produces
+`author|<not uploaded>` placeholder bibs instead of using the metadata CSV.
+`docker cp`'d it in and `chmod +x`. Confirmed CSV metadata (title, authors,
+journal, year, PMID→citation) populates correctly afterward.
+
+### Bug 2: ontology exclusion requires moving the `.obo` file, not just editing `ontology.conf`
+
+To keep maize gene annotations off GDR, followed the precedent from
+`install_sorghum_ontologies.sh` (edit `ontology.conf` to GO+PO+TO only,
+rebuild lexica). First attempt: `ontologymembers` still came back
+`go,po,to,zmays_genes_20260708` — `tpso` globs **every** `.obo` file
+physically present in `/data/textpresso/obofiles4production/`, ignoring
+`ontology.conf`'s explicit list entirely (that field apparently only
+carries per-ontology annotation-depth/goslim parameters, not membership).
+`install_sorghum_ontologies.sh` predates the maize gene OBO's existence
+(2026-07-08), so this never surfaced before. Fix: physically
+`mv`'d `zmays_genes_20260708.obo` to `/data/textpresso/obofilesbackup/`,
+*then* rebuilt — `ontologymembers` came back `go,po,to` as expected. Moved
+it back and rebuilt again at the end of the session; final state confirmed
+identical to the pre-session baseline (`tpontology=1099050`,
+`pcrelations=34636`, 4 members). `maize gene search ("adh1", --annotate)`
+re-verified working on `MaizeTest100` afterward.
+
+### Bug 3: the `tokenize` wrapper (`03pdf2cas4tai.sh`) silently drops sentence-boundary annotations
+
+Its internal `articles2cas` call uses `-t 4`, not `-t 1`. `-t 4` produces
+CAS1 with **zero** `<textpresso:sentence>` tags — the paper still indexes,
+`--type document` search and section-scoped search work, but the *default*
+sentence-level search (what `tpc_search.py`/the UI use unless told
+otherwise) returns "No results" for literally everything, with no error
+anywhere in the pipeline. Caught this on the 3-paper `GDRTest` validation
+run — "the", "genetic", "linkage" all returned nothing despite the corpus
+showing up correctly in `available_corpora` and document-search working.
+`run_tpc_pipeline_incremental.sh`'s own CAS1 step uses `-t 1` for fresh PDF
+input; that's the correct mode. Bypassed the wrapper (which also has an
+unreliable newer-than-file check when starting from an empty output dir)
+and called `articles2cas -t 1` directly from here on.
+
+### Bug 4: a handful of PDFs fail Textpresso's bundled PDF parser (PoDoFo 0.9.3) outright
+
+3 of 45 GDR PDFs produced `PdfInfo.cpp: ... PoDoFo encounter an error ...
+ePdfError_UnsupportedFilter` and zero CAS1 sentences, while `pdftotext`
+(Poppler, also in the container) read all three fine — PoDoFo is older and
+less tolerant of some modern PDF producers (iTextSharp-modified,
+Antenna House, Debenu). Ghostscript re-save (`gs -sDEVICE=pdfwrite
+-dCompatibilityLevel=1.4`) fixed one (`10.1093_plcell_koag134`, 0→14
+sentences, but `pdftotext` on the same file yielded 3268 lines — clearly
+still incomplete) but not the other two. Settled on a uniform fix for all
+three: extract with `pdftotext -layout` from the *original* (pre-Ghostscript)
+PDF, feed into `articles2cas -t 3` (plain text mode). Got 778/470/1
+sentences respectively for `10.1093_plcell_koag134` /
+`10.1270_jsbbs.20151` / `10.2503_jjshs.73.511`.
+
+### `10.2503_jjshs.73.511` is a genuine scanned-image PDF, not a pipeline bug
+
+Its `pdftotext` output is 9 lines of WSU-Libraries interlibrary-loan cover
+sheet, not the paper. Confirmed by checking a second copy the user sourced
+independently (`10.2503_jjshs.73.511_2.pdf`, from CiNii/NII) — same result,
+just an 8-page scan with only a repeated "NII-Electronic Library Service"
+watermark line extractable. Both available copies of "Identification of
+Parentage of Japanese Pear 'Housui'" (Sawamura et al. 2004, *J. Japanese
+Soc. Horticultural Science*) are non-OCR'd scans. Left it in the corpus
+(searchable by title/author/abstract from the CSV) but flagged to the user
+— real OCR would be needed for full-text search to find anything in its
+body.
+
+### Bug 5: `pdftotext`'s form-feed page-break character breaks CAS2 XML parsing
+
+All 3 text-fallback CAS1 files from Bug 4 failed `annotate` with
+`runAECPP::Error 5041 ... invalid character 0xC in attribute value
+'sofaString'`. `0xC` (form feed, inserted between pages by `pdftotext`) is
+invalid inside an XML attribute value and the annotator doesn't sanitize
+it. Fix: `tr -d '\014'` (or a broader C0-control-character strip — see
+below) on the extracted text before `articles2cas -t 3`. After stripping,
+all 3 annotated cleanly.
+
+### Bug 6: one paper needed the broader control-character strip, not just form-feed
+
+`10.1093_hr_uhae315` (initially processed via normal `-t 1` PDF mode, not
+one of the Bug 4/5 papers) turned out to have its own PoDoFo issue that
+didn't surface until later (see Bug 7). Re-extracting via `pdftotext` +
+form-feed-strip still failed CAS2 annotation with a *different* error:
+`invalid character 0x4 in attribute value 'sofaString'`, at a much later
+byte offset (33831) than the form-feed case. Some longer documents apparently
+carry other stray C0 control bytes beyond just form-feed. Fixed with a
+broader regex strip: `re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)`
+(all C0 controls except tab/LF/CR). Annotated cleanly afterward (888
+sentences).
+
+### Bug 7: PoDoFo mis-decodes some non-ASCII glyphs into invalid raw bytes (not caught by the sentence-count check)
+
+`10.1093_hr_uhae315`'s original `-t 1` PDF-mode CAS2 had 
+enough sentences to *look* fine, but its "Gα protein" title text had "α"
+decoded as a single raw byte `0xb1` instead of proper 2-byte UTF-8 —
+invisible until a search happened to surface that exact sentence
+(`UnicodeDecodeError` in `tpc_search.py`, traced via raw `curl` + Python
+UTF-8 validation to accession + byte offset 16103). This is a distinct
+failure mode from Bugs 4-6 (parser succeeds, produces plausible sentence
+counts, but silently corrupts specific glyphs) — a sentence-count check
+alone won't catch it. No general detection method identified this session;
+found by exercising search terms against the corpus after ingest, not by a
+pre-ingest check. Fixed the same way as Bugs 4-6: `pdftotext` + full
+control-char strip + `-t 3`.
+
+### Bug 8: `annotate`'s temp merged ontology tables don't survive between runs, and its `-P` worker split races on tiny batches
+
+Re-annotating a single already-CAS2'd file (for the Bug 7 fix) by re-running
+`annotate -c ... -P 1` and `-P 2` both failed
+(`ERROR: relation "pcrelations" does not exist`, `pqxx::undefined_table`) —
+`07cas1tocas2.sh` builds `tpontology`/`pcrelations` at the start of each
+run and drops them again at the end; a batch with only one file to process
+apparently races between workers reaching the drop-cleanup and others still
+querying. Worked around by bypassing the wrapper for one-file touch-ups:
+materialize the merged tables manually (same SQL as
+`install_sorghum_ontologies.sh`'s `materialize_base_tables()`), call
+`runAECpp /usr/local/uima_descriptors/TpLexiconAnnotatorFromPg.xml -xmi
+<in> <out>` directly, `pigz` the output, copy into place, drop the temp
+tables again. Documented as the reliable pattern for any future single-file
+re-annotation.
+
+### Bug 9: `create_single_index.sh` dedupes by accession basename across *every* corpus
+
+Left the `GDRTest` validation corpus (3 accessions, a subset of the real
+`GDR` corpus) in place after validating it, then indexed the full `GDR`
+corpus alongside it. Document-count search on `GDR` came back 42/45 — the
+3 accessions shared with `GDRTest` were silently dropped from `GDR`'s
+results (present under `GDRTest` instead; this is the same pre-existing
+basename-only dedup behavior noted for `MaizeOA` in the 2026-07-14 entry
+above, now confirmed to bite fresh ingests too, not just legacy corpora).
+Fixed by deleting `GDRTest` entirely (raw PDFs, CAS1, CAS2) and
+reindexing — `GDR` came back 45/45. Added this as an explicit "delete your
+test corpus before/after validating" step in the new guide.
+
+### Bug 10 (found, not fixed — filed for future C++ work): Lucene stored-field truncation corrupts multi-byte UTF-8 at certain lengths
+
+After fixing Bug 7's source encoding (confirmed the CAS2 XMI is 100% valid
+UTF-8, byte-for-byte, for the whole 8.4MB decompressed file), the *same*
+sentence ("Nicolás P. Jiménez...", the paper's byline) still came back
+corrupted from `search_documents` with `include_match_sentences: true` —
+this time `invalid continuation byte` at position 330, a different failure
+signature than Bug 7's `invalid start byte`. Isolated precisely: a
+document-type search for the same accession returns the author field
+correctly (`"Jiménez NP, Bjornson M, ..."`, valid UTF-8) — so the Lucene
+*stored document field* is fine. Only the sentence-level match content
+(`include_match_sentences`) is affected, for this exact sentence, and only
+via that specific query path. Since the CAS2 source is confirmed clean,
+this points to the C++ indexer (`cas2index`) or API layer truncating a
+stored/compressed field mid-character — classic multi-byte-UTF-8-split-at-
+a-length-boundary bug — not a content problem. Scoped to one sentence in
+one paper; every other search against this paper and corpus (document
+search, abstract search, `POLYGALACTURONASE`, `fruit firmness`, etc.) works
+correctly. Decided with the user not to chase a C++ indexer patch inside
+this ingest task — logged here as a known, reproducible, narrow defect for
+whoever next touches `libtpc/IndexManager.cpp` or `tpctools/cas2index/`.
+Reproduction: `curl -X POST .../search_documents` with
+`{"query":{"type":"sentence","corpora":["GDR"],"keywords":"strawberry"},
+"include_match_sentences":true}` against accession `10.1093_hr_uhae315`.
+
+### Final state
+
+- `GDR` corpus: 45/45 papers indexed, real metadata for all 45 (zero
+  `<not uploaded>` placeholders), zero `tpzm:` (maize gene) annotations
+  anywhere in the corpus (verified by grepping every CAS2 file).
+  `10.2503_jjshs.73.511` has minimal body text (scanned source, see above)
+  but is present and metadata-searchable.
+- Shared ontology lexicon restored to its exact pre-session state
+  (`tpontology=1099050`, `pcrelations=34636`, `members=go,po,to,
+  zmays_genes_20260708`) — `MaizeTest100`/`MaizeOA`/`MaizeTest` untouched
+  throughout (never re-annotated during the GDR-scoped ontology swap).
+  `adh1` maize-gene search re-verified working afterward.
+- New doc for collaborators:
+  [`TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md`](TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md)
+  — covers staging, metadata, per-corpus ontology exclusion, CAS1/CAS2/bib/
+  index steps with the actually-working commands, and a troubleshooting
+  section for every bug above.
+
+---
+
+## Update log — 2026-08-12 (continued): making `tpc_search_internal.py`'s CAS2 annotation modes work off-server
+
+### Background
+
+`tpc_search_internal.py`'s `--annotate` / `--annotate-sentences` / precise
+`--exclude-type` required local filesystem access to the CAS2 data directory
+(`textpresso_classifiers/casannot.py` reading `.tpcas.gz` files directly), so
+unlike `tpc_search.py` it only worked for users with a checkout on the
+Textpresso host. Goal: make it work the same way `tpc_search.py` does --
+network access only -- without changing any existing API behavior.
+
+### Approach
+
+Added a small annotation HTTP service rather than touching the C++
+`textpressoapi` (Crow) server, to avoid the C++ rebuild/redeploy pain
+documented in the 2026-06-25 and 2026-07-13 entries above (compiling inside
+the container, `docker cp` directory-nesting gotchas, etc.). `casannot.py`
+has zero external dependencies (stdlib `gzip`/`html`/`re` only), which made
+this practical.
+
+**New in `agr_textpresso` repo (`textpressoapi/`):**
+- `casannot.py` — mirrored copy of this repo's CAS2 parser (must be kept in
+  sync with `textpresso_classifiers/casannot.py`; both files carry a header
+  comment saying so).
+- `cas_annotate_server.py` — dependency-free `http.server` process. Binds
+  `127.0.0.1:8082` only. One endpoint, `GET /v1/textpresso/annotate
+  ?identifier=...&ontology=...&related_synonyms=...`, returns
+  `{sentences, annotations, sections}` JSON for a CAS2 document, applying the
+  same ontology/RELATED-synonym filtering `_load_annotations()` used to do
+  locally. Written for Python 3.6 compatibility (the container's system
+  Python) -- notably `socketserver.ThreadingMixIn` + `HTTPServer` instead of
+  `http.server.ThreadingHTTPServer`, which doesn't exist before 3.7.
+
+**Config changes, both additive (new path-specific rule, nothing existing
+touched or reordered in a way that could change matching for other paths):**
+- `agr_textpresso/lighttpd.conf`: new `$HTTP["url"] =~
+  "^(.*)/v1/textpresso/annotate"` block -> `127.0.0.1:8082`. Chosen
+  deliberately to share no substring with the existing `/v1/textpresso/api`
+  rule, so the two conditionals can never match the same request regardless
+  of lighttpd's block-ordering/override semantics.
+- **Host-level nginx** (`/etc/nginx/conf.d/textpresso.conf` -- lives directly
+  on the EC2 host, *not* in either repo; this was the actual public entry
+  point for `abd-textpresso.phoenixbioinformatics.org`, discovered only by
+  noticing the 404 response for the new path came back with `Server:
+  nginx/1.28.2`, not `lighttpd`). It allowlists exact paths per `location`
+  block; `/v1/textpresso/api/` was already special-cased straight to the
+  container's published port `18080`. Added `location
+  /v1/textpresso/annotate` routing through the container's published port
+  `8080` (lighttpd) instead, since `8082` is container-internal only, not
+  published to the host. A `.bak-<timestamp>` copy of the file was made
+  before editing, following a backup-naming convention already in use on
+  this host (a same-day `.bak-20260812` from an unrelated earlier `/images/`
+  location addition was already present).
+- `start_textpresso.sh` / `Dockerfile`: launches `cas_annotate_server.py`
+  alongside `textpressoapi`; `Dockerfile` copies the two new files to
+  `/usr/local/textpresso/cas_annotate/` before the existing `rm -rf
+  /data/textpresso/textpressoapi` cleanup step deletes the build-time copy.
+
+**`bin/tpc_search_internal.py` (this repo):** `_load_annotations()` now
+fetches `{sentences, annotations, sections}` from the new endpoint by
+default (derived from `--url` by replacing the last path segment,
+`.../api` -> `.../annotate`). `--cas-root` changed from a fixed default to
+`None`; passing it explicitly still takes the old local-parse code path
+(kept as a fallback for genuine on-server debugging, per user request) --
+everything downstream of `_load_annotations()` (`--exclude-type` filtering,
+`--annotate`/`--annotate-sentences` formatting) was untouched, since it only
+consumes the returned tuple, not the filesystem.
+
+### Deploying to the live container without downtime-by-surprise
+
+`service lighttpd reload` reported `...fail!` and silently no-op'd -- the
+init script's `start-stop-daemon --stop --pidfile ... --exec
+/usr/sbin/lighttpd` couldn't match the running process (`No
+/usr/sbin/lighttpd found running; none killed`), a pre-existing quirk of
+this container's process/proc setup, unrelated to this change (confirmed by
+running `start-stop-daemon` manually with the exact same arguments the init
+script uses). `kill -INT <pid>` (lighttpd's graceful-shutdown signal) *did*
+stop the listener -- but the process didn't reap and relaunch on its own the
+way a working `service reload` would, so there was a brief window (a few
+seconds) where port 80 in the container was down before
+`/usr/sbin/lighttpd -f /etc/lighttpd/lighttpd.conf` was started manually to
+replace it. Confirmed both old and new routes immediately after, from
+outside the container via the real public domain (not just container-
+internal `127.0.0.1`).
+
+### Verification
+
+Checked before/after at every layer to confirm nothing existing broke:
+`available_corpora`, `search_documents` (POST), `/tpc` GUI, `/obofiles/`
+static listing, `/images/`, `/resources/` -- all unchanged. New endpoint
+verified with a real identifier (200 + correct CAS2 data), missing
+`identifier` (400), and an unknown identifier (404). Then ran
+`tpc_search_internal.py --annotate`, `--annotate-sentences`, and
+`--exclude-type` end-to-end against the live public URL with no
+`--cas-root`, and separately re-ran `--annotate` with `--cas-root` pointing
+at the host CAS2 directory to confirm the fallback path still works
+byte-for-byte the same as before this change.
+
+See [`TPC_SEARCH_GUIDE.md`](TPC_SEARCH_GUIDE.md)'s new "Architecture: how
+annotation data reaches the client" section for the reference version of
+this writeup.
+
+---
+
+## Update log — 2026-08-12 (continued): `--category` validation + a standalone ontology search tool
+
+### Background
+
+While working through `TPC_SEARCH_GUIDE.md`'s examples for handoff (same
+session as the annotation-endpoint work above), testing the guide's own
+"malformed category" claim turned up a real bug in the guide, not in the
+tool: bare `"seed"` (no `(ID)` suffix) returned the *same* 87 results as the
+correctly-formatted `"seed (PO:0009010)"` in `MaizeTest100` -- not "No
+results" as documented. Root cause: `--category` is a Lucene phrase query
+against the stored `"name (ID)"` string, which matches on a *prefix* of that
+value, not an exact match. So an incomplete category string can silently
+return the same results as the correct one (if nothing else in the corpus's
+category list shares its leading words), a wrong/over-broad set (if
+something else does), or nothing at all -- three different outcomes with no
+reliable signal for which one happened.
+
+User asked for two things: (1) when `--category` doesn't exactly match,
+show candidate strings instead of guessing at the query's outcome, and (2) a
+standalone way to search the ontology directly for terms to use in
+`--category`. User's choice on the two open UX questions: block the query
+entirely on a non-exact match (not just warn-and-proceed), and have the new
+standalone tool search all ontologies by default (not require `--ontology`
+up front).
+
+### Design
+
+Extended the `cas_annotate_server.py` sidecar (same process/port built for
+the annotation-endpoint work above) rather than standing up a separate
+service, since it already runs alongside `textpressoapi` and the
+proxy-layer plumbing (lighttpd + host nginx) was already in place from that
+work -- just one more disjoint route to add.
+
+**New in `agr_textpresso` repo (`textpressoapi/`):**
+- `category_index.py` -- parses the OBO files listed in `ontology.conf`
+  (`go.obo`, `po.obo`, `to.obo`, `zmays_genes_20260708.obo` as of this
+  session) into an in-memory index: every `[Term]` block's `id`/`name`
+  become a category record (`"name (id)"`, matching the exact stored Lucene
+  format), and every `synonym:` line indexes that record under the synonym
+  text too, so a gene's alternate name/legacy ID also resolves to the right
+  canonical `--category` string. `[Typedef]` blocks and `is_obsolete: true`
+  terms are skipped. Regex patterns for the OBO `[Term]` format are lifted
+  from `bin/ontology_synonym_audit.py` (this repo), which already parses
+  the same format for a different purpose (generic-synonym auditing, see
+  2026-07-10 entry above). Built at server startup: 67,569 categories,
+  247,270 distinct synonyms, in a couple of seconds (largest file is
+  `go.obo` at 35MB).
+- `cas_annotate_server.py` -- added a second route,
+  `GET /v1/textpresso/category_search?q=...&ontology=...&limit=...`,
+  alongside the existing `/v1/textpresso/annotate`. Ranks matches: exact
+  name/id/category > name-prefix > synonym-exact > name-substring >
+  synonym-substring; deduplicates by category id, keeping the best rank
+  seen for each.
+
+**Proxy layers, additive again (same disjoint-path discipline as the
+annotate endpoint):**
+- `agr_textpresso/lighttpd.conf`: new `$HTTP["url"] =~
+  "^(.*)/v1/textpresso/category_search"` block, same target port (`8082`,
+  same process) as the `/annotate` block. Shares no substring with either
+  existing rule.
+- Host nginx (`/etc/nginx/conf.d/textpresso.conf`): new `location
+  /v1/textpresso/category_search`, same pattern as the `/v1/textpresso/annotate`
+  location added earlier this session -- through the container's published
+  `8080` (lighttpd), since `8082` isn't published to the host.
+
+**`bin/tpc_search.py`** (this repo) gained the shared, reusable pieces both
+scripts and the new tool build on: `annotation_service_url()`,
+`category_search()`, `format_category_matches()`, and
+`check_categories_or_exit()`. The last one is called from both
+`tpc_search.py` and `tpc_search_internal.py`'s `main()` right after
+`validate_search_args()`, for every `--category` value: an exact match is
+silent and the search proceeds; a near-miss blocks with the ranked
+candidates and a copy-pasteable `--category` example; a query with *no*
+matches at all gets a plainer message plus a keyword-search fallback
+example, rather than an empty "closest matches" list (revised after initial
+feedback that a "no close matches" framing read as blunt for what's often
+just a typo). Fails open -- skips the check silently -- if the lookup
+service itself is unreachable, so an outage there can't block ordinary
+search.
+
+**New: `bin/tpc_category_search.py`** -- the standalone "search the ontology
+directly" tool the user asked for. Thin wrapper around `tpc_search.py`'s
+`category_search()`; text or JSON output; `--ontology` optional (searches
+all four by default, per the user's stated preference).
+
+### Deployment
+
+Same procedure as the annotation-endpoint work above: `docker cp` the two
+new/changed server files in, `py_compile` to catch syntax errors before
+running, kill and restart the `cas_annotate_server.py` process (plain
+`kill`/relaunch, not the broken `service` path), then the same manual
+lighttpd restart (`kill -INT` on the master PID + immediate relaunch, since
+`service lighttpd reload`'s `start-stop-daemon` PID-matching is still
+broken in this container) and `nginx -t && nginx -s reload` for the host
+layer. Verified at every step: the annotate endpoint and the plain search
+API both still worked after each change, and the new `category_search`
+endpoint worked both directly on `127.0.0.1:8082` and through the full
+public-domain path before moving to client-side changes.
+
+### Verification
+
+- `bin/tpc_category_search.py "seed"` / `"adh1" --ontology MAIZE_GENES` /
+  nonsense query / `--format json` -- all correct.
+- `tpc_search.py --category "seed (PO:0009010)"` (exact) -- runs normally,
+  no output change.
+- `tpc_search.py --category "seed"` (near-miss) -- blocks, prints 8 ranked
+  candidates headed by the correct one, exit code 2.
+- `tpc_search.py --category "zzzznonexistentzzz"` (no matches) -- blocks
+  with the plainer keyword-search-fallback message.
+- Multiple `--category` values, one exact one not -- only the mismatched
+  one is reported.
+- `tpc_search_internal.py --category "adh1 (tpzm:0008786)" --annotate` --
+  exact match runs normally through the annotation path too, confirming the
+  shared check doesn't interfere with `--annotate`/`--annotate-sentences`.
+
+### Note for next ontology update
+
+The category index is built once at `cas_annotate_server.py` startup and
+not refreshed afterward. After the monthly `update_ontology.sh` cron (or
+any manual OBO swap, per the 2026-07-10 entries above) changes the active
+OBO files, `cas_annotate_server.py` needs a restart to pick up the new
+categories/synonyms -- same "stale until restarted" caveat already known for
+`textpressoapi`/lighttpd's cached `IndexReader`s (2026-07-13 entry above).
+
+---
+
+## Update log — 2026-08-12 (continued): purging stale `tpzma:` (legacy gene ontology) annotations from CAS2 files
+
+### Background
+
+While spot-checking the new `--annotate` tooling, the user found what looked
+like a GUI/API discrepancy: the paper "Allelic diversity of the maize-B
+regulatory gene..." (`10.1101_gad.6.11.2152`, `MaizeTest` corpus) showed only
+`tpzma:` categories in the GUI's annotation view, no `tpzm:`, while
+`tpc_search_internal.py --annotate --ontology MAIZE_GENES` printed
+`MAIZE_GENES: A1, A2, Bz2` with no indication of which OBO generation those
+came from.
+
+**Investigated and found not a bug** -- both were correct, just different
+levels of detail. Pulling the raw CAS2 annotations for that identifier
+confirmed all three matches (`A1`, `A2`, `Bz2`) are genuinely sourced from
+`tpzma:` categories (e.g. `"NA (tpzma:0000031)"`), zero `tpzm:` matches
+exist for that paper -- exactly what the GUI showed. `casannot.py`'s
+`_ONTOLOGY_PREFIXES` deliberately buckets both `tpzma:` (legacy
+`classical_maize_genes.obo`) and `tpzm:` (current `zmays_genes_20260708.obo`
+and later) under one `MAIZE_GENES` label (`\btpzma?:\d+`, the trailing `a`
+optional -- see 2026-07-10 entry above), so `--annotate`'s summary doesn't
+distinguish them. `--annotate-sentences` (JSON) does, via the raw `category`
+field on each annotation.
+
+### User's ask: get rid of `tpzma:` entirely, keep only `tpzm:`
+
+User noted `tpzma` "had a lot of issues" -- visible right in that example,
+where one of the three matched genes has no real name at all
+(`"NA (tpzma:0000031)"`, a placeholder/missing-name entry in the old
+curated OBO).
+
+**Checked whether this needs an ontology-config change first: it doesn't.**
+`ontologymembers` in Postgres already only lists `go, po, to,
+zmays_genes_20260708` -- `classical_maize_genes` and its
+`tpontology_classical_maize_genes_0` / `pcrelations_classical_maize_genes`
+tables are already fully dropped (this must have happened as part of the
+2026-07-10 OBO-swap session above, though that entry only documents doing it
+for tables tied to a *specific* old stem being replaced -- worth noting
+`classical_maize_genes` itself apparently got the same treatment at some
+point without an explicit log entry for it). Confirmed via
+`07cas1tocas2.sh` (the `annotate` binary) source: it dynamically rebuilds
+its internal `tpontology`/`pcrelations` working tables from *whatever*
+`tpontology_*`/`pcrelations_*` tables currently exist in Postgres, every
+time it runs -- so any CAS2 file that gets re-annotated will automatically
+stop producing `tpzma:` matches, with zero Postgres changes needed. The only
+thing keeping `tpzma:` visible anywhere was CAS2 files nobody had
+re-annotated since the table was dropped.
+
+### Scoping the actual problem
+
+Grepped every corpus's CAS2 files for `tpzma:` to find out how many papers
+were actually affected, rather than assuming a full-corpus problem:
+
+```
+ReproTest062: 0 / 1
+MaizeTest:    2 / 3
+MaizeTest100: 0 / 110   (already clean -- reannotated 2026-07-13, see above)
+MaizeOA:      0 / 500
+SorghumBase:  2 / 570
+GDR:          0 / 45
+```
+
+Only **4 files total**, across `MaizeTest` and `SorghumBase`:
+- `MaizeTest/10.1007_s00709-025-02116-3`
+- `MaizeTest/10.1101_gad.6.11.2152` (the paper from the original report)
+- `SorghumBase/10.1007_978-1-4939-9039-9_2`
+- `SorghumBase/10.1007_s00122-016-2844-6`
+
+### Two-step pipeline, and why only half of it ran today
+
+- **`annotate` (CAS-1 -> CAS-2) can be scoped narrowly.** Built a symlinked
+  staging CAS-1 tree containing only these 4 accessions (same technique
+  `install_sorghum_ontologies.sh`'s `reannotate_sorghum_corpus()` uses for a
+  whole corpus, just narrowed further to individual accessions), and ran
+  `annotate -c <staging> -C /data/textpresso/tpcas-2 -t /data/textpresso/tmp
+  -P 2`. No `touch` step needed -- `07cas1tocas2.sh` compares the staging
+  dir's mtime against the existing CAS2 output dir's mtime
+  (`[[ "$i" -nt "${CAS2_DIR}/$i" ]]`), and a freshly-`mkdir`'d staging dir is
+  already newer than old output.
+- **`index` (CAS-2 -> Lucene) cannot be scoped down.** `tpctools/12index.sh`
+  and every call site of it (including `install_sorghum_ontologies.sh`'s
+  `reindex_corpora()`) always rebuild from the *entire* `/data/textpresso/tpcas-2`
+  tree -- there's no per-corpus or per-paper indexing mode. Fixing 4 papers'
+  search results means one full reindex of all ~1,229 papers across every
+  corpus (the same operation the weekly `incremental_build.sh` cron already
+  runs routinely, so not exotic, but still a live-index-affecting operation
+  the user wanted to batch with other pending changes rather than run
+  immediately).
+
+**Decision: ran the `annotate` step now (safe, scoped, no effect on live
+search since the Lucene index is untouched), left `index` for whenever the
+next batched reindex happens.** The 4 CAS2 files are already correct on disk
+and will pick up the fix automatically the next time anyone runs a reindex
+for any reason -- no separate action needed then.
+
+### What was done
+
+1. Backed up the 4 pre-purge CAS2 files to
+   `/data/textpresso/backups/tpzma-purge-20260812T182458Z/` before touching
+   anything.
+2. Built the symlinked staging tree under
+   `/data/textpresso/tmp/tpzma-purge/cas1/` (including each accession's
+   `images/` symlink, matching the CAS-1 layout exactly).
+3. Ran `annotate` scoped to that staging tree. All 4 accessions processed
+   successfully (`runAECpp finished processing` / `processing finished
+   sucessfully!` for each). Postgres table rebuild during the run confirmed
+   only `tpontology_po_0`, `tpontology_zmays_genes_20260708_0`,
+   `tpontology_go_0`, `tpontology_to_0` were inserted -- no `tpzma` table,
+   as expected.
+
+### Gotcha: trailing `images/` copy step failed for the two SorghumBase papers
+
+```
+cp: cannot overwrite directory '.../SorghumBase/10.1007_978-1-4939-9039-9_2/./images' with non-directory
+cp: cannot overwrite directory '.../SorghumBase/10.1007_s00122-016-2844-6/./images' with non-directory
+```
+
+Happened *after* both papers' CAS2 XMI had already been written out
+successfully -- only the pipeline's final images-sync step failed, because
+the staging tree's `images` entry was a symlink (`ln -sfn ... images`,
+following the same pattern `reannotate_sorghum_corpus()` uses) and something
+downstream tried to `cp` it over the real `images/` directory already
+present in production `tpcas-2`, which `cp` refuses to do onto a
+non-directory. Did *not* reproduce for the two `MaizeTest` papers in the
+same run -- unclear why the two corpora's images-copy step behaved
+differently; not investigated further since the outcome was safe either
+way. Net effect: harmless. `cp` refusing to overwrite means the real
+`images/` directories in production were left completely untouched (not
+deleted, not replaced with a dangling symlink) -- verified both still
+contain their original files afterward.
+
+### Verification
+
+- All 4 CAS2 files: fresh mtime matching the run, zero `tpzma:` substring
+  matches remaining (confirmed via `zcat | grep -c tpzma:` -> 0 for all 4).
+- Content still healthy, not emptied out: 239-1002 annotations and
+  542-751 sentences per paper afterward, spanning GO/PO/(TO)/MAIZE_GENES
+  (queried live via `cas_annotate_server.py`'s `/v1/textpresso/annotate`,
+  which reads CAS2 directly and so already reflects this change even though
+  the Lucene index/GUI/search API won't until the deferred reindex).
+- Re-checked the original `10.1101_gad.6.11.2152` paper specifically:
+  `MAIZE_GENES` matches are no longer `A1`/`A2`/`Bz2` (the new
+  genome-scale OBO doesn't match those exact classical symbols in this
+  paper's text) -- instead mostly `promoter`/`mRNA`/`Expression`/`AI`, the
+  already-documented `zmays_genes_20260708.obo` generic-word contamination
+  issue from the 2026-07-10 entries above. Not a new problem introduced by
+  this purge, just more visible now that the cleaner (if `NA`-riddled)
+  legacy matches are gone for this paper. No action taken on it here --
+  tracked separately in `TPC_SEARCH_GUIDE.md`'s "Other notes".
+- `images/` directories for all 4 papers confirmed intact post-run.
+
+### Still to do (next time a reindex is run, for this or any other reason)
+
+Run a full `index -C /data/textpresso/tpcas-2 -i /data/textpresso/luceneindex`
+(back up `/data/textpresso/luceneindex` first, so the existing
+error-path rollback in `reindex_corpora()`-style scripts has something to
+restore from if it fails) to make the search API/GUI reflect these 4
+already-fixed CAS2 files. No further `annotate` work needed for this issue
+specifically -- re-verify with the same `tpzma:` grep sweep across all
+corpora afterward in case anything else regressed.
