@@ -2847,3 +2847,140 @@ restore from if it fails) to make the search API/GUI reflect these 4
 already-fixed CAS2 files. No further `annotate` work needed for this issue
 specifically -- re-verify with the same `tpzma:` grep sweep across all
 corpora afterward in case anything else regressed.
+
+---
+
+## Update log — 2026-08-13: finalizing the generic-synonym removal audit; `zmays_genes_20260813.obo` shipped
+
+Closes out the generic-word/ambiguous-synonym thread running since 2026-07-10
+(audit method) and 2026-08-07 (filter reconstruction + `EXACT`/`RELATED`
+mistyping fix). Every one of the 352 terms the audit flagged (`filtered=True`
+or "kept for manual review") has now been individually resolved through an
+interactive term-by-term pass, and the decisions have been written back into
+both the tracking data and, for the first time, the live OBO file itself.
+
+### Method additions since 2026-08-07
+
+- **`MIN_DOC_FREQ_FOR_ACTION = 10`**: a term found in fewer than 10 of the
+  110-paper `MaizeTest100` corpus isn't producing enough noise to act on
+  even if it would otherwise read as generic -- moved ~80 borderline rows
+  straight to "keep" without individual review.
+- **`EXPERT_OVERRIDES`**: unified every manually-curated, whole-term
+  override (growth-stage codes `V1`-`V14`/`VT`/`R1`-`R6`, chromosome names
+  `chr1`-`chr10`, `MANUALLY_CONFIRMED_AMBIGUOUS`, `FAMILY_TERM_RESOLVED`,
+  `CONFIRMED_SPECIFIC`) into one lookup checked first in `classify()`,
+  before the digit-presence and case-transition hard overrides. Previously
+  `MANUALLY_CONFIRMED_AMBIGUOUS` was buried inside the token-level
+  generic-word check and only worked by accident for terms with no digit/
+  case-transition; growth-stage codes like `R1`/`chr5` need to *beat* those
+  checks, which is what forced the consolidation.
+- **Bug found and fixed**: a blanket reclassify-everything pass (tried
+  once, reverted) silently flipped `mRNA`, `CDS`, `NO`, and the `S` in
+  `glutathione S-transferase` from correctly-flagged-for-removal to "keep,"
+  because `mRNA`'s internal `mR` case transition false-triggers the
+  species-prefix "real gene ID" rule, and the reconstructed dictionary
+  lists don't independently know `CDS`/`NO`/`S` are generic. Fixed the
+  case-transition check to be token-level (excludes tokens that are
+  themselves recognized generic words) and rebuilt `main()`'s apply logic
+  in `bin/ontology_synonym_filter.py` as a narrow overlay that only ever
+  touches rows affected by an explicit, documented rule -- never a full
+  recompute -- specifically to avoid this class of silent regression.
+- **References-section exclusion for example sentences**: when pulling
+  real matched-sentence examples per term to read for the manual-review
+  pass, excluding hits inside a paper's References section (via
+  `casannot.exclude_sections`) removed 600 of 2,230 raw matches (27%) for
+  the last 22-term batch -- almost all author-initials citation collisions
+  (e.g. "Dooner HK", "Christova PK", "Voetberg GS").
+
+### Term-by-term review findings worth remembering
+
+- **"Multi-gene + all-RELATED" is a decent screening signal, not a
+  verdict.** Terms matching >=2 genes, all typed `RELATED` (never
+  `EXACT`), were mostly real family/domain names (`hct`, `chs`, `gst`,
+  `pal`, `cct`, `pepc`, `ccr`, `lob`, alongside the already-known
+  `myb`/`bhlh`/`bzip`) -- but the same shape also caught `tga` (false
+  positive: the *TGA stop codon* in primer sequences, not the TGA-class
+  bZIP family), `anr` (collides with ANR, the French national research
+  funding agency), and several 2-letter author-initials collisions
+  (`hk`, `pk`, most of `gs`). Reading actual example sentences was
+  necessary in every case; the pattern alone wasn't sufficient.
+- **Single-gene `EXACT` terms can still be real family/category names** --
+  `NAC`, `HSP`, `ARF`, `ABC transporter`, `SAUR`,
+  `UDP-glycosyltransferase`, and `WRKY transcription factor` are each
+  curated onto only one gene in this OBO (so the frequency-based
+  `RELATED` heuristic never had a reason to touch them), but the term
+  itself names a whole family. Demoted to `RELATED` by hand
+  (`PENDING_OBO_RETYPE` in the filter script) rather than left `EXACT`.
+- Other single-gene-`EXACT` false positives resolved this pass, each for
+  a different reason: `cv` ("cultivar"), `bb` (mathematical/formula
+  notation), `gt` (ambiguous between a TF and a glucosyltransferase, not
+  specific to its one attributed gene), `sec` ("seconds"), `taa` (a stop
+  codon, like `tga`), `pol` (usually "polymerase" in running text, not
+  the specific attributed gene `mgs1`), and `rs`/`cs`/`pr`/`ea`/`rg`/
+  `nr`/`gr`/`td` (sampled examples simply didn't refer to the attributed
+  gene). `nadp-me` was the one confirmed-correct-as-is finding in this
+  batch (`CONFIRMED_SPECIFIC`) -- specific, unambiguous, no change needed.
+
+### Final tally (352 terms audited, `MaizeTest100` + `MaizeOA`, 610 papers)
+
+| Outcome | Count |
+|---|---|
+| Kept as-is (real gene ID, or below the doc-freq action threshold) | 254 |
+| Removed entirely | 98 |
+| **All terms resolved -- review queue is empty** | |
+
+Full per-term reasoning lives in `bin/ontology_synonym_filter.py`
+(`MANUALLY_CONFIRMED_AMBIGUOUS`, `FAMILY_TERM_RESOLVED`,
+`PENDING_OBO_RETYPE`, `CONFIRMED_SPECIFIC`) and
+`docs/synonym_audit_maizetest100_maizeoa_20260812_curated.csv` (the
+generated, row-per-term output of that script).
+
+### `zmays_genes_20260813.obo` built and swapped in
+
+Applied the 98 removals and 7 `EXACT`->`RELATED` retypes directly to a
+**new** copy of the OBO file, rather than editing `zmays_genes_20260708.obo`
+in place, so the original stays available for reference/rollback:
+
+```
+/home/ec2-user/agr_textpresso/.data/obofiles4production/zmays_genes_20260708.obo   (unmodified, kept for reference)
+/home/ec2-user/agr_textpresso/.data/obofiles4production/zmays_genes_20260813.obo   (new -- 214 synonym lines removed, 7 retyped)
+```
+
+Verified: same `[Term]` block count (24,970) in both files -- no genes
+added or dropped, only specific `synonym:` lines pruned or retyped;
+spot-checked `ABA` (removed), `NAC` (`EXACT`->`RELATED`), and `bZIP`/`MYB`
+(untouched, already correct from the 2026-08-07 fix) directly in the new
+file.
+
+`ontology.conf` updated to point at the new file, both copies (each backed
+up alongside as `ontology.conf.bak-<timestamp>` before editing):
+
+```
+sorghumbase_textpresso_implementation, agr_textpresso repo copy:
+  /home/ec2-user/agr_textpresso/textpressocentral/etc/ontology.conf
+deployed copy inside the running container:
+  agr-textpresso-textpresso-1:/usr/local/etc/ontology.conf
+```
+
+Both now read `/data/textpresso/obofiles4production/zmays_genes_20260813.obo 3`
+(was `..._20260708.obo`). Confirmed the new file is visible at that same
+container path (bind-mounted, no `docker cp` needed for the `.obo` file
+itself).
+
+### Not yet done
+
+- [ ] **The ingest pipeline has not been re-run.** `ontology.conf` now
+  points at the new file, but `CreateLexica.bash`/`tpso` (repopulate
+  `tpontology_*`/`ontologymembers` from the new OBO), `annotate` (CAS-1 ->
+  CAS-2), and `index` (CAS-2 -> Lucene) have not been executed against it.
+  The live search API/GUI and all existing CAS2 files still reflect
+  `zmays_genes_20260708.obo`'s synonym set until that runs. Follow the
+  checklist in the 2026-07-10 entry above ("Checklist for adding/replacing
+  a large (>200-term) OBO file") when ready.
+- [ ] Per the 2026-07-14/2026-08-07 entries' still-open item: retroactively
+  reprocessing the ~609+ already-ingested `MaizeTest100`/`MaizeOA` papers
+  once the new OBO is live is a real, not-yet-scoped-for-time/disk-cost
+  operation, not a simple touch-and-reindex.
+- [ ] `docs/synonym_audit_maizetest100_maizeoa_20260812_curated.csv` and
+  the updated `bin/ontology_synonym_filter.py` are local/uncommitted as of
+  this entry.

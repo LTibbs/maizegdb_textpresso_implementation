@@ -64,12 +64,38 @@ MANUALLY_CONFIRMED_AMBIGUOUS = {
     "ai":  "artificial intelligence",
     "bam": "BAM sequence alignment file format",
     "pod": "seed pod",
-    # Confirmed 2026-08-12 during the term-by-term OBO-attribution review:
-    # single EXACT locus_synonym on one gene (flz32/tpzm:0013684) that
-    # already has four solid identifiers on file -- "ABA" (abscisic acid,
-    # the plant hormone) reads like a stray description fragment, not a
-    # real name for this gene, and nothing is lost by removing it.
-    "aba": "abscisic acid (plant hormone) -- stray fragment on flz32, not a real gene name",
+    "aba": "abscisic acid (plant hormone)",
+    # Confirmed 2026-08-12 during the term-by-term OBO-attribution review.
+    # All eight matched >=2 genes as RELATED (the same surface shape as the
+    # real family terms in FAMILY_TERM_RESOLVED), but reading actual matched
+    # sentences showed each is dominated by a different, unrelated collision:
+    "tga":  "TGA stop codon in primer/splice-site sequences, not the TGA transcription factor family (all 4 sampled examples were codon/primer notation)",
+    "hk":   "author initials -- H.K. Dooner, a maize geneticist (all 4 sampled examples were citations of 'Dooner HK')",
+    "pk":   "author initials -- common surname-initial collision (Christova PK, Bajpai PK, Pati PK, Shah PK in the 4 sampled examples)",
+    "met":  "common English word ('met' the verb), not the gene (3 of 4 sampled examples; one was even a 'metabolic' line-break artifact)",
+    "glu":  "glutamate (amino acid) in ordinary biochemistry text, not the specific genes it's mapped to",
+    "gs":   "mostly author-initials collisions (Voetberg GS, Downs GS, Johal GS in 3 of 4 sampled examples), despite one real glutamine synthetase usage",
+    "f-box protein": "generic protein structural class spanning many unrelated genes, same as protein kinase/zinc finger -- not a specific named family",
+    "anr":  "collides with ANR, the French National Research Agency (Agence Nationale de la Recherche), a common funding acknowledgment",
+    # Confirmed 2026-08-12, single-gene/EXACT batch (references-section hits
+    # excluded before this review -- see MIN_DOC_FREQ_FOR_ACTION's sibling
+    # exclusion in bin/ontology_synonym_audit.py's --exclude-type). Each
+    # sampled-example set showed the matched sentences don't refer to the
+    # attributed gene at all:
+    "rs":  "sampled examples didn't refer to the attributed gene",
+    "cs":  "sampled examples didn't refer to the attributed gene",
+    "pr":  "sampled examples didn't refer to the attributed gene",
+    "ea":  "sampled examples didn't refer to the attributed gene",
+    "rg":  "sampled examples didn't refer to the attributed gene",
+    "nr":  "sampled examples didn't refer to the attributed gene",
+    "gr":  "sampled examples didn't refer to the attributed gene",
+    "td":  "sampled examples didn't refer to the attributed gene",
+    "cv":  "used for 'cultivar' in running text, not the gene",
+    "bb":  "used in writing out formulas/mathematical notation, not the gene",
+    "gt":  "ambiguous between two distinct real meanings (a transcription factor and a glucosyltransferase), neither specific to the one gene it's mapped to",
+    "sec": "used for 'seconds' (the time unit), not the gene",
+    "taa": "TAA stop codon, not the gene",
+    "pol": "usually refers to a DNA/RNA polymerase in running text, not the specific attributed gene (mgs1)",
 }
 
 # USPS two-letter state codes + DC. A term that's just a state abbreviation
@@ -108,6 +134,57 @@ FAMILY_TERM_RESOLVED = {
     # same shape as MYB/bZIP: a real family name (hydroxycinnamoyl
     # transferase), not a single-gene collision.
     "hct": "HCT-family (hydroxycinnamoyl transferase) gene name",
+    # Confirmed 2026-08-12, same review pass as hct: each mapped to
+    # multiple genes, all RELATED, and sampled example sentences confirmed
+    # genuine on-topic family/enzyme/domain mentions (not a citation,
+    # codon, or generic-word collision -- see the ones that FAILED this
+    # check in MANUALLY_CONFIRMED_AMBIGUOUS instead: tga/hk/pk/met/glu/gs/
+    # f-box protein/anr).
+    "chs":  "CHS-family (chalcone synthase) gene name",
+    "gst":  "GST-family (glutathione S-transferase) gene name",
+    "pal":  "PAL-family (phenylalanine ammonia-lyase) gene name",
+    "cct":  "CCT-domain gene name",
+    "pepc": "PEPC-family (phosphoenolpyruvate carboxylase) gene name",
+    "ccr":  "CCR-family (cinnamoyl-CoA reductase) gene name",
+    "lob":  "LOB-domain (LATERAL ORGAN BOUNDARIES) gene name",
+    # Confirmed 2026-08-12, single-gene/EXACT batch: unlike every entry
+    # above (already RELATED-only in the live OBO by luck of the case-
+    # collision fix or the original curation), these seven are each
+    # attached EXACT to exactly one gene today even though the term itself
+    # names a whole family/category -- see PENDING_OBO_RETYPE below. The
+    # decision here only fixes this repo's tracking CSV/table; the actual
+    # zmays_genes_20260708.obo file still needs those seven lines demoted
+    # EXACT->RELATED (extend FORCE_RELATED in
+    # agr_textpresso/scripts/fix_obo_synonym_exactness.py and re-run it,
+    # same mechanism used for "bzip" on 2026-08-07) before this is true on
+    # the live file.
+    "nac":  "NAC-family transcription factor name",
+    "hsp":  "HSP-family (heat shock protein) gene name",
+    "arf":  "ARF-family (auxin response factor) gene name",
+    "abc transporter": "ABC-transporter-family gene name",
+    "saur": "SAUR-family (Small Auxin Up RNA) gene name",
+    "udp-glycosyltransferase": "UDP-glycosyltransferase-family gene name",
+    "wrky transcription factor": "WRKY-family transcription factor name",
+}
+
+# Confirmed 2026-08-12: the seven FAMILY_TERM_RESOLVED entries above that are
+# still typed EXACT on the live OBO (not yet true RELATED-only, unlike every
+# earlier FAMILY_TERM_RESOLVED entry). Tracked separately so this gap is
+# visible/actionable rather than silently implied by the reason text above.
+PENDING_OBO_RETYPE = {
+    "nac", "hsp", "arf", "abc transporter", "saur",
+    "udp-glycosyltransferase", "wrky transcription factor",
+}
+
+# Confirmed real, specific, single-gene matches -- reviewed and judged
+# correct as-is, no EXACT/RELATED change needed. Distinct from
+# FAMILY_TERM_RESOLVED (which asserts "this is a family name, demote to
+# RELATED") -- these are the opposite finding: the term genuinely, uniquely
+# names this one gene.
+CONFIRMED_SPECIFIC = {
+    # Confirmed 2026-08-12: NADP-malic enzyme -- specific real enzyme name,
+    # not a generic collision or a family-wide abbreviation.
+    "nadp-me": "NADP-ME (NADP-malic enzyme), specific real match",
 }
 
 # Below this many distinct papers, a term isn't producing enough noise to be
@@ -152,6 +229,8 @@ def _build_expert_overrides():
         ))
     for term, label in FAMILY_TERM_RESOLVED.items():
         overrides[term] = (False, f"{label}, real term -- kept findable, RELATED-only")
+    for term, label in CONFIRMED_SPECIFIC.items():
+        overrides[term] = (False, f"{label} -- confirmed correct as-is, no retyping needed")
     return overrides
 
 
