@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
-"""Search a Textpresso corpus with CAS2 ontology annotation.
+"""Search a Textpresso corpus, with optional CAS2 ontology annotation.
 
-REDUNDANT: kept only so existing callers don't break. New work should use
-bin/tpc_search_combined.py instead, which is the same functionality as a
-single standalone script -- that is the file being maintained going forward.
-See docs/TPC_SEARCH_GUIDE.md.
+This is the single, standalone entry point for Textpresso search: plain
+keyword/metadata/section search plus the CAS2 annotation modes below, all in
+one script with no dependency on the older tpc_search.py / tpc_search_internal.py
+pair (see the top of those files -- they're kept only for compatibility).
 
-Extends tpc_search.py with two annotation modes backed by CAS2 data. By
-default this data is fetched over HTTP from the cas_annotate_server.py
-endpoint on the Textpresso server (same --url host, /v1/textpresso/annotate),
-so -- like tpc_search.py -- this script works from anywhere with network
-access; no server-side file access is required. Pass --cas-root to instead
-parse CAS2 files directly from a local directory (server-side use only).
+By default all data -- search results and CAS2 annotations alike -- is
+fetched over HTTP, so this script works from anywhere with network access; no
+server-side file access is required. Pass --cas-root to instead parse CAS2
+files directly from a local directory (server-side use only).
+
+API notes (search):
+  - The 'corpora' list must be nested inside 'query', not at the top level.
+  - 'include_match_sentences' is only valid when type == 'sentence'; sending it
+    with any other type causes a 401 response (an API quirk, not an auth error).
+  - Section-scoped types (abstract, result, etc.) return document-level hits;
+    matched sentence text is only available with type == 'sentence'.
+
+Annotation modes (CAS2-backed):
 
   --annotate
       After each result, append an ontology term summary showing all terms found
@@ -45,6 +52,10 @@ parse CAS2 files directly from a local directory (server-side use only).
       fix; a no-op on older CAS2 files with no section data.
 
 examples:
+  %(prog)s -c MaizeTest100 "flowering time"
+  %(prog)s -c MaizeTest100 --type abstract "drought"
+  %(prog)s -c MaizeTest100 --exclude "Arabidopsis" "kernel weight"
+  %(prog)s -c MaizeTest100 --author "Buckler" --year 2022 "GWAS"
   %(prog)s -c MaizeTest100 "anthocyanin" --annotate
   %(prog)s -c MaizeTest100 "anthocyanin" --annotate --format json
   %(prog)s -c MaizeTest100 "anthocyanin" --annotate-sentences
@@ -56,12 +67,14 @@ examples:
   %(prog)s -c MaizeTest100 --type sentence "MARK" --exclude-type references
   %(prog)s -c MaizeTest100 --type document "MARK" --exclude-type references
   %(prog)s -c MaizeTest100 "adh1" --annotate --exclude-type references --exclude-type acknowledgments
+  %(prog)s --list-corpora
 """
 
 import argparse
 import importlib.util
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -70,11 +83,36 @@ import urllib.request
 _BIN  = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_BIN, "..")
 
+DEFAULT_URL = "http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api"
+# DEFAULT_URL = "http://localhost:18080/v1/textpresso/api"
+
 # --cas-root fallback only (server-side, local-file parsing). Not used by the
 # default HTTP path.
 # Host-side path to the CAS2 files (the container mounts this at /data/textpresso).
 # Pass --cas-root /data/textpresso/tpcas-2 when running inside the container.
 DEFAULT_CAS_ROOT = "/home/ec2-user/agr_textpresso/.data/tpcas-2"
+
+SEARCH_TYPES = [
+    "sentence",
+    "document",
+    "abstract",
+    "title",
+    "introduction",
+    "materials and methods",
+    "result",
+    "discussion",
+    "conclusion",
+    "background",
+    "design",
+    "acknowledgments",
+    "references",
+]
+
+# Valid --exclude-type values: SEARCH_TYPES minus the ones that are query
+# scopes rather than CAS section types ("sentence"/"document" describe what
+# to search, not a section; "title" is a dedicated bib-info field, not
+# produced by section detection at all).
+SECTION_TYPES = [t for t in SEARCH_TYPES if t not in ("sentence", "document", "title")]
 
 
 def _load_module(name, rel_path):
@@ -92,18 +130,207 @@ def _load_module(name, rel_path):
     return mod
 
 
-# Load search helpers from the public script and the CAS2 parsing library.
-_search = _load_module("tpc_search", "bin/tpc_search.py")
-_ca     = _load_module("casannot",   "textpresso_classifiers/casannot.py")
+# Load only the CAS2 parsing library -- everything else this script needs is
+# defined below, so this file has no dependency on tpc_search.py.
+_ca = _load_module("casannot", "textpresso_classifiers/casannot.py")
 
-build_query           = _search.build_query
-search                = _search.search
-list_corpora          = _search.list_corpora
-add_search_args       = _search.add_search_args
-validate_search_args  = _search.validate_search_args
-check_categories_or_exit = _search.check_categories_or_exit
-DEFAULT_URL           = _search.DEFAULT_URL
-SEARCH_TYPES          = _search.SEARCH_TYPES
+
+# ---------------------------------------------------------------------------
+# Search (search_documents / available_corpora)
+# ---------------------------------------------------------------------------
+
+def build_query(args, corpora):
+    """Build the JSON payload for the search_documents endpoint.
+
+    args    — argparse Namespace; only the standard search attributes are read.
+    corpora — list of corpus names (already resolved from --corpus or the API).
+    """
+    query = {
+        "type": args.type,
+        "corpora": corpora,   # must be inside 'query', not at top level
+    }
+    if args.keywords:
+        query["keywords"] = args.keywords
+    if args.exclude:
+        query["exclude_keywords"] = args.exclude
+    if args.author:
+        query["author"] = args.author
+        query["exact_match_author"] = args.exact_author
+    if args.journal:
+        query["journal"] = args.journal
+        query["exact_match_journal"] = args.exact_journal
+    if args.year:
+        query["year"] = args.year
+    if args.accession:
+        query["accession"] = args.accession
+    if args.paper_type:
+        query["paper_type"] = args.paper_type
+    if args.category:
+        query["categories"] = args.category
+        query["categories_and_ed"] = args.categories_and
+    if args.case_sensitive:
+        query["case_sensitive"] = True
+    if args.sort_by_year:
+        query["sort_by_year"] = True
+
+    payload = {"query": query, "count": args.count}
+    if args.type == "sentence":
+        # include_match_sentences is only valid for sentence-type queries
+        payload["include_match_sentences"] = True
+    return payload
+
+
+def search(payload, url=DEFAULT_URL):
+    """POST a search payload and return the parsed JSON result list."""
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        f"{url}/search_documents",
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())
+
+
+def list_corpora(url=DEFAULT_URL):
+    """Return the list of corpus names available on the server."""
+    with urllib.request.urlopen(f"{url}/available_corpora") as resp:
+        return json.loads(resp.read())
+
+
+def annotation_service_url(search_url):
+    """Base URL of the cas_annotate_server.py sidecar, derived from --url.
+
+    ".../v1/textpresso/api" -> ".../v1/textpresso" -- strips whatever the
+    last path segment is, so a custom --url still resolves to the sibling
+    /annotate and /category_search endpoints on the same host.
+    """
+    return search_url.rsplit("/", 1)[0]
+
+
+def category_search(query, url=DEFAULT_URL, ontology=None, limit=10):
+    """Look up candidate --category strings for a free-text query.
+
+    Returns the server's ranked "matches" list (each a dict with id, name,
+    category, ontology, matched_on), or None if the lookup service itself
+    couldn't be reached (network/service failure -- distinct from a query
+    that legitimately has zero matches, which returns an empty list).
+    """
+    params = [("q", query)]
+    params += [("ontology", o) for o in (ontology or ())]
+    if limit:
+        params.append(("limit", str(limit)))
+    endpoint = f"{annotation_service_url(url)}/category_search?{urllib.parse.urlencode(params)}"
+    try:
+        with urllib.request.urlopen(endpoint) as resp:
+            return json.loads(resp.read())["matches"]
+    except (urllib.error.URLError, urllib.error.HTTPError):
+        return None
+
+
+def format_category_matches(matches):
+    """Render a category_search() match list as example --category lines."""
+    return "\n".join(f'  --category "{m["category"]}"   ({m["ontology"]})' for m in matches)
+
+
+def check_categories_or_exit(categories, url, parser):
+    """Validate each --category value against the live category index.
+
+    --category requires the *exact* stored "name (ID)" string (see "Other
+    notes" in docs/TPC_SEARCH_GUIDE.md) -- a near-miss doesn't reliably fail,
+    it can silently over-match or under-match depending on what else is in
+    the corpus's category list. So rather than risk running a query on a
+    guessed string, this blocks and prints suggestions for every mismatched
+    value, requiring the user to re-run with an exact match.
+
+    Fails open (no block, no output) if the lookup service itself is
+    unreachable -- an infrastructure problem shouldn't prevent an otherwise
+    normal search from running.
+    """
+    problems = []
+    for value in categories:
+        matches = category_search(value, url, limit=8)
+        if matches is None:
+            continue  # lookup service unreachable -- don't block on it
+        if any(m["category"] == value for m in matches):
+            continue  # exact match, nothing to report
+        problems.append((value, matches))
+
+    if not problems:
+        return
+
+    lines = []
+    for value, matches in problems:
+        if matches:
+            lines.append(f'--category "{value}" does not exactly match a known category. '
+                         f'Closest matches:')
+            lines.append(format_category_matches(matches))
+            lines.append(f'Example: --category "{matches[0]["category"]}"')
+        else:
+            lines.append(f'--category "{value}" has no matches found. Try a '
+                         f'different word with bin/tpc_category_search.py "<term>", or '
+                         f'drop --category and search by keyword instead, e.g.:\n'
+                         f'  python3 bin/tpc_search_combined.py -c <corpus> "{value}"')
+        lines.append("")
+    parser.error("\n" + "\n".join(lines).rstrip() +
+                 "\n\nTip: python3 bin/tpc_category_search.py \"<term>\" searches the "
+                 "ontology directly for candidate --category strings.")
+
+
+def add_search_args(parser):
+    """Add the standard search arguments to an argparse parser."""
+    parser.add_argument("keywords", nargs="?",
+                        help="Search keywords (AND/OR supported, e.g. \"maize AND drought\")")
+    parser.add_argument("-c", "--corpus", dest="corpora", action="append", metavar="CORPUS",
+                        help="Corpus to search (repeatable). Default: all available.")
+    parser.add_argument("--count", type=int, default=50,
+                        help="Max results (default: 50, API hard max: 200)")
+    parser.add_argument("--type", default="sentence", metavar="TYPE",
+                        choices=SEARCH_TYPES,
+                        help="Search scope (default: sentence).")
+    parser.add_argument("--exclude", metavar="KEYWORDS",
+                        help="Keywords to exclude from results")
+    parser.add_argument("--case-sensitive", action="store_true",
+                        help="Case-sensitive keyword matching")
+    parser.add_argument("--author", metavar="NAME",
+                        help="Filter by author name")
+    parser.add_argument("--exact-author", action="store_true",
+                        help="Require exact author match (default: substring)")
+    parser.add_argument("--journal", metavar="NAME",
+                        help="Filter by journal name")
+    parser.add_argument("--exact-journal", action="store_true",
+                        help="Require exact journal match (default: substring)")
+    parser.add_argument("--year", metavar="YEAR",
+                        help="Filter by publication year (e.g. 2022)")
+    parser.add_argument("--accession", metavar="ID",
+                        help="Filter by accession / DOI")
+    parser.add_argument("--paper-type", metavar="TYPE",
+                        help="Filter by paper type (e.g. Journal_article, Review)")
+    parser.add_argument("--category", action="append", metavar="CATEGORY",
+                        help="Restrict to ontology category (repeatable). Must be the "
+                             "exact stored \"name (ID)\" string, e.g. \"seed (PO:0009010)\" -- "
+                             "a non-exact value is rejected with suggestions rather than run "
+                             "(see check_categories_or_exit()). Use bin/tpc_category_search.py "
+                             "to look one up.")
+    parser.add_argument("--categories-and", action="store_true",
+                        help="Require ALL categories to match (default: ANY)")
+    parser.add_argument("--sort-by-year", action="store_true",
+                        help="Sort results by year instead of relevance score")
+    parser.add_argument("--format", choices=["text", "json"], default="text",
+                        help="Output format (default: text)")
+    parser.add_argument("--url", default=DEFAULT_URL,
+                        help=f"API base URL (default: {DEFAULT_URL})")
+    parser.add_argument("--list-corpora", action="store_true",
+                        help="List available corpora and exit")
+
+
+def validate_search_args(args, parser):
+    """Require at least one filtering criterion (keyword or metadata field)."""
+    if not args.keywords and not args.author and not args.journal \
+            and not args.year and not args.accession and not args.category:
+        parser.error("provide at least one of: keywords, --author, --journal, "
+                     "--year, --accession, --category")
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +403,70 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
 
 def _normalize_text(s):
     return " ".join(s.split())
+
+
+_CATEGORY_ID_RE = re.compile(r"\(([A-Za-z]+:\d+)\)")
+
+
+def _gene_category_onto_ids(categories):
+    """Return the onto_ids from --category values that are maize-gene categories.
+
+    Only MAIZE_GENES/MAIZE_GENES_RELATED categories have an EXACT-vs-RELATED
+    distinction (see casannot.py's _ONTOLOGY_PREFIXES) -- GO/PO/TO categories
+    don't, so those are left alone by filter_gene_category_results() below.
+    """
+    ids = []
+    for cat in categories or []:
+        m = _CATEGORY_ID_RE.search(cat)
+        if m and re.match(r"tpzma?:", m.group(1)):
+            ids.append(m.group(1))
+    return ids
+
+
+def filter_gene_category_results(results, args):
+    """Work around a known --category bug (see Laura_work_updates_log.md,
+    2026-08-17): the underlying Lucene search can't distinguish EXACT from
+    RELATED gene-synonym matches, because the query phrase never includes the
+    'EXACT:'/'RELATED:' prefix stored in the index -- so a plain
+    --category "cct1 (tpzm:0010325)" search silently includes RELATED-only
+    matches (e.g. papers only mentioning "ZmCCT10") even without
+    --related-synonyms, contrary to the documented EXACT-by-default design.
+
+    This is a client-side patch, not a real fix: it re-checks each result's
+    actual annotations (the same data --annotate reads) and drops any whose
+    only match to a requested gene category is RELATED, unless
+    --related-synonyms was passed. The proper fix belongs in the search
+    query itself (agr_textpresso's DataStructures.cpp), which would avoid
+    the extra --annotate lookup per result this requires -- see the log
+    entry for why that wasn't done today.
+
+    Only applies to maize-gene categories (tpzm:/tpzma: IDs); GO/PO/TO
+    categories have no EXACT/RELATED distinction and are returned as-is.
+    Known limitation: with multiple --category values mixing gene and
+    non-gene categories under --categories-and, this only re-checks the gene
+    ones -- the non-gene ones are trusted as already correctly matched by
+    search.
+    """
+    gene_ids = _gene_category_onto_ids(args.category)
+    if not gene_ids:
+        return results
+
+    ontology_filter = ({"MAIZE_GENES", "MAIZE_GENES_RELATED"}
+                        if args.related_synonyms else {"MAIZE_GENES"})
+    require_all = args.categories_and
+
+    kept = []
+    for doc in results:
+        _, annotations, _ = _load_annotations(
+            doc, args, ontology_filter=ontology_filter, include_related=args.related_synonyms)
+        if annotations is None:
+            kept.append(doc)  # can't verify -- keep rather than risk dropping a real match
+            continue
+        matched_ids = {a["onto_id"] for a in annotations}
+        hits = [gid in matched_ids for gid in gene_ids]
+        if all(hits) if require_all else any(hits):
+            kept.append(doc)
+    return kept
 
 
 def _filter_matched_sentences(raw_sentences, cas_sentences, sections, exclude_types):
@@ -371,12 +662,12 @@ def print_results(results, args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Search Textpresso with CAS2 ontology annotation.",
+        description="Search Textpresso, with optional CAS2 ontology annotation.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
 
-    # Reuse all standard search arguments from the public script
+    # Standard search arguments
     add_search_args(parser)
 
     ann = parser.add_argument_group(
@@ -430,6 +721,8 @@ def main():
         corpora = args.corpora or list_corpora(args.url)
         payload = build_query(args, corpora)
         results = search(payload, url=args.url)
+        if args.category:
+            results = filter_gene_category_results(results, args)
         print_results(results, args)
 
     except urllib.error.HTTPError as e:

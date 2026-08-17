@@ -2984,3 +2984,1250 @@ itself).
 - [ ] `docs/synonym_audit_maizetest100_maizeoa_20260812_curated.csv` and
   the updated `bin/ontology_synonym_filter.py` are local/uncommitted as of
   this entry.
+
+---
+
+## Update log — 2026-08-13 (continued): rolling out `zmays_genes_20260813.obo` to the maize corpora
+
+### Background
+
+Start of the "fix everything at once" pass: went through every "still to
+do"/"not yet done" item logged above, checked each against the live system
+(not just against later log entries — two items had actually been resolved
+*since* their entry was written, only visible via `git log`: `bin/
+ontology_synonym_filter.py` and `agr_textpresso/scripts/
+fix_obo_synonym_exactness.py`, both flagged uncommitted above, are already
+committed as `82adda6`/`a131028`). Disk was at **5.1GB free / 90% used** —
+tighter than any prior full-corpus operation recorded in this log (the
+smallest comparable one, the 500-paper `MaizeOA` retokenize, needed the host
+cleaned from 433MB to 11GB free first). Decided to scope this session to the
+lowest-risk, highest-value piece — getting the new OBO actually live — and
+defer everything disk-heavy (the 609-paper retroactive retokenize, section
+detection for the other corpora) to a session with more headroom. Further
+narrowed mid-session, per direct request, to just the maize corpora
+(`MaizeTest100`, `MaizeOA`) rather than also `MaizeTest`/`ReproTest062`.
+
+### What was done
+
+1. **Backup.** `pg_dump` of `tpontology*`/`pcrelations*`/`ontologymembers` to
+   `backups/ontology-20260813T192415Z/` (290MB), following the existing
+   convention.
+
+2. **`CreateLexica.bash` loaded both OBO generations at once — new bug,
+   same root cause as the 2026-08-12 GDR entry.** `tpso` globs every `.obo`
+   file physically present in `obofiles4production/`, ignoring
+   `ontology.conf` entirely. `zmays_genes_20260708.obo` had been kept there
+   "for reference/rollback" per the 2026-08-13 entry above, so the first
+   `CreateLexica` run loaded *both* generations into `ontologymembers`.
+   Fixed the same way as GDR: moved `zmays_genes_20260708.obo` to
+   `obofilesbackup/`, re-ran `CreateLexica.bash`. `ontologymembers` came back
+   `go, po, to, zmays_genes_20260813` as expected; spot-checked `ABA` (should
+   be gone) and `bZIP` (should be `RELATED`) directly against
+   `tpontology_zmays_genes_20260813_0` — both correct.
+
+3. Dropped the now-orphaned `tpontology_zmays_genes_20260708_0` /
+   `pcrelations_zmays_genes_20260708` tables.
+
+4. **Re-annotated `MaizeTest100`** (110 papers) via the symlinked
+   staging-tree pattern (fresh `mkdir`, so mtime beats the existing CAS2
+   output — same technique as the 2026-08-12 `tpzma`-purge entry, generalized
+   to a whole corpus). Exit 0, no error-signature matches in the log,
+   `ABA` confirmed gone from a sample re-annotated CAS2 file.
+
+5. **Re-annotated `MaizeOA`** — found `tpcas-1/MaizeOA` actually has **889**
+   accession dirs, not 500: the other 389 are orphaned leftovers from the
+   2026-07-13/07-14 stalled overnight run (no matching `tpcas-2`), still
+   never cleaned up. Scoped the staging tree to just the 500 accessions
+   present in `tpcas-2/MaizeOA` (the real, already-indexed set) rather than
+   all 889, to avoid running expensive annotation on cruft. All 500
+   confirmed staged with zero `MISSING tpcas-1` warnings; annotate exit 0,
+   no errors, all 500 files got a fresh mtime, `ABA` confirmed gone from a
+   sample.
+
+6. **Mid-session instruction: "make sure the maize gene OBO is only used
+   for the maize corpora."** Checked live and found it already wasn't true:
+   the 2026-08-12 `tpzma`-purge session's `annotate` step for 2 `SorghumBase`
+   papers (`10.1007_978-1-4939-9039-9_2`, `10.1007_s00122-016-2844-6`) ran
+   *without* excluding the maize OBO the way the same day's `GDR` onboarding
+   session did — so purging their `tpzma:` (legacy ontology) annotations
+   simultaneously introduced fresh `tpzm:` (current ontology) ones, 297
+   matches confirmed in one file. `GDR` (0/45) and `ReproTest062` (0/1)
+   confirmed clean by the same grep sweep; `MaizeTest`'s `tpzm:` matches are
+   legitimate (it's a real maize corpus).
+
+   **Fix, and a correction to the 2026-08-12 GDR entry's implied
+   procedure:** moved `zmays_genes_20260813.obo` out of
+   `obofiles4production/`, re-ran `CreateLexica.bash` (`ontologymembers` ->
+   `go, po, to` only) — but the first re-annotate attempt on the 2
+   `SorghumBase` accessions only *reduced* the `tpzm:` count (297 -> 83/102),
+   didn't zero it. **Moving the `.obo` file and rebuilding `ontologymembers`
+   is not sufficient by itself** — the previously-created
+   `tpontology_zmays_genes_20260813_0`/`pcrelations_zmays_genes_20260813`
+   tables aren't dropped just because the source file is gone and
+   `ontologymembers` no longer lists the stem; `annotate`'s blind
+   table-union (`select tablename from pg_tables where tablename like
+   'tpontology%'`) still finds and includes them regardless. Explicitly
+   dropped both tables, re-ran `annotate` for just the 2 accessions ->
+   `tpzm:` count 0/0 in both, confirmed via direct CAS2 grep *and* the live
+   `--annotate` API. Content still healthy (GO/PO annotation counts
+   unchanged, `images/` directories intact — same harmless `cp: cannot
+   overwrite directory .../images` gotcha from 2026-08-12 reappeared for
+   both files, no actual effect). Restored `zmays_genes_20260813.obo` to
+   `obofiles4production/` and re-ran `CreateLexica.bash` once more to bring
+   the maize corpora's ontology back (`ontologymembers` -> `go, po, to,
+   zmays_genes_20260813`, no duplicates).
+
+7. **Full reindex** (`index -C tpcas-2 -i luceneindex`) — required since,
+   per the 2026-08-12 finding, indexing can't be scoped per-corpus. Used the
+   same disk-safety wrapper pattern as `install_sorghum_ontologies.sh`'s
+   `reindex_corpora()` (check the log for error signatures / bad exit
+   status, roll back to `.bk` if either fires) rather than a bare call.
+   `12index.sh`'s own behavior — build fresh into `luceneindex_new`, then
+   swap the old index to `luceneindex.bk` — already *is* the "back up
+   luceneindex first" step, so no separate manual copy was needed. ~18 min,
+   exit 0, no error signatures, fresh `luceneindex` (869M, was 875M),
+   `luceneindex.bk` present as the pre-reindex snapshot. This reindex also
+   picked up the already-annotated (2026-08-12) `tpzma`-purge fix for
+   `MaizeTest`'s 2 papers for free, clearing that entry's own lingering
+   "still to do" reindex debt too.
+
+8. Restarted `textpressoapi` (reaped defunct PID, relaunched via `docker
+   exec -d` per the standard command) and `cas_annotate_server.py` (same
+   pattern) — both required per the 2026-07-13/2026-08-12 stale-cache
+   findings (`IndexReader` caching and the in-memory category index,
+   respectively).
+
+### Verification
+
+- `tpc_search.py --list-corpora`: all 6 corpora with ingested content present
+  (`ReproTest062`, `MaizeTest`, `SorghumBase`, `MaizeTest100`, `MaizeOA`,
+  `GDR`); `PMCOA` absent, consistent with it having no ingested files
+  currently — not a regression.
+- `tpc_category_search.py "ABA" --ontology MAIZE_GENES`: no longer returns
+  `ABA` as its own category (only turns up as a substring inside unrelated
+  gene IDs like `B6TL27`); plain keyword search for `"ABA"` still returns
+  results — full-text search is correctly unaffected by the curation.
+- `tpc_search_internal.py --annotate "adh1"` on `MaizeTest100`: correct
+  `MAIZE_GENES` set (`Ct2, GRMZM2G135019, a1, adh1, bz2, gl4, gl8,
+  glossy4, hcf106, la1, lazy plant1, liguleless1, sk1`).
+- `tpc_search_internal.py --annotate` on both fixed `SorghumBase` papers:
+  empty `MAIZE_GENES`/`MAIZE_GENES_RELATED` sections, confirmed via the live
+  `cas_annotate_server.py` API (not just a raw CAS2 grep).
+- Regression checks unaffected: plain `"flowering time"` search on
+  `MaizeTest100`, `--category "seed (PO:0009010)"`.
+- Disk held stable at **4.5GB free / 92% used** throughout (started at
+  5.1GB free before the Postgres backup).
+
+### New operational lesson for the standing OBO-swap checklist
+
+When physically moving an `.obo` file out of `obofiles4production/` to scope
+an `annotate` run away from it (the technique introduced in the 2026-08-12
+GDR entry), **also explicitly `drop table tpontology_<stem>_0` /
+`pcrelations_<stem>` for that stem before running `annotate`.** Moving the
+file and rebuilding `ontologymembers` alone is not enough — the
+previously-created tables persist in Postgres and `annotate`'s table-union
+logic will still pick them up. This corrects the impression left by the
+2026-08-12 GDR entry that moving the file alone was sufficient; confirmed
+today that both the `MaizeTest100`/`MaizeOA` OBO swap and the `SorghumBase`
+leak-fix needed the explicit drop the first time through, not just the file
+move.
+
+### Not yet done (tomorrow: disk cleanup, then the memory/disk-intensive rollout)
+
+- [ ] **Free disk before attempting anything else.** 4.5GB free / 92% used
+  is tighter than any prior successful full-corpus operation recorded in
+  this log. Worth an investigation pass like the 2026-07-13 entry's own
+  disk-cleanup section (what's grown usage from 42/50 on 2026-07-14 to
+  46/50 now).
+- [ ] The 389 orphaned `tpcas-1/MaizeOA` accession dirs (no matching
+  `tpcas-2`, leftovers from the 2026-07-13/07-14 stalled overnight run) are
+  still on disk, untouched this session — a disk-cleanup candidate worth
+  revisiting tomorrow.
+- [ ] `MaizeTest`'s section-detection retokenize is blocked on a real
+  prerequisite gap, not just deferred for disk: its raw PDFs live at
+  `raw_files/maize_pdf/MaizeTest` in a **flat** layout (`<accession>.pdf`
+  directly, no per-accession subdirectory), not the pipeline-standard
+  `raw_files/pdf/<corpus>/<accession>/<accession>.pdf` structure the direct
+  `articles2cas` retokenize recipe (2026-07-13/2026-08-12 entries) expects.
+  Needs restaging before it can be retokenized the same way
+  `MaizeTest100`/`MaizeOA` were.
+- [ ] `ReproTest062` was explicitly descoped this session and also turns out
+  to have been originally ingested from **XML**
+  (`raw_files/xml/ReproTest062`), not PDF — the PDF-mode retokenize recipe
+  validated elsewhere in this log may not even apply to it as-is. Needs its
+  own investigation if it's ever prioritized.
+- [ ] `SorghumBase` (570 papers) and `PMCOA` (no files currently ingested)
+  still have zero section annotations, per the 2026-07-13 entry's still-open
+  item — untouched this session.
+- [ ] The 609-paper `MaizeTest100`+`MaizeOA` retroactive full retokenize (to
+  pick up the lowercase-section-heading fix from 2026-07-14) is still not
+  done — today's session only re-annotated (CAS-1 -> CAS-2 -> index) with
+  the new ontology, which doesn't touch or require retokenizing CAS-1. This
+  remains exactly as open as it was after the 2026-08-07/2026-08-13 entries.
+- [ ] Everything else surfaced during the pre-session review remains open,
+  untouched today: the registration/auth save-path bug, the mail relay,
+  `literaturepermissions`'s static "default" row, the unbuilt `Viewer.cpp`
+  `/tpc/images/...` fix, the `pdf2tpcas` raster-extraction C++ bugs, the
+  unquantified vector-only-figure scope, the 8 `MaizeOA` basename-collision
+  papers, and `add_cas_file_to_index`'s missing-`.bib` early-return.
+- [ ] `docs/synonym_audit_maizetest100_maizeoa_20260812_curated.csv` is
+  still untracked in git — the only item from the previous entry's
+  "uncommitted files" list that wasn't already committed by the time this
+  session started (`bin/ontology_synonym_filter.py` and
+  `fix_obo_synonym_exactness.py` were — see Background above).
+
+---
+
+## Update log — 2026-08-14: disk cleanup, closing the 609-paper retokenize debt, discovering the `-t1` tokenizer has no section-detection code, and onboarding `GrainGenes`
+
+Follow-up to 2026-08-13's "tomorrow: disk cleanup, then the memory/disk-intensive
+rollout." Session touched five corpora (`MaizeTest`, `MaizeTest100`, `MaizeOA`,
+`SorghumBase`, and new corpus `GrainGenes`) and produced a real change to the
+tokenizer-mode recommendation in `TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md`.
+
+### Disk cleanup: found and removed genuine duplication, not just old scratch
+
+Starting point: 3.8GB free / 93% used (tighter than the 4.5GB the previous
+entry ended on — background drift). Investigated `raw_files/` rather than
+assuming the 2026-07-13-style cleanup was already exhaustive, and found real,
+verified-redundant duplication that had accumulated silently:
+
+- **`SorghumBase`'s raw PDFs existed in three copies** (~6GB total,
+  confirmed byte-identical via `diff -rq`/`md5sum`): the pipeline-standard
+  `raw_files/pdf/SorghumBase` didn't exist at all — the real content was
+  split across `raw_files/pdf_hold/SorghumBase` (nested, pipeline-standard
+  layout), `raw_files/SorghumBase_pdf_temp` (identical byte-for-byte to the
+  above), and `raw_files/pdf_hold/pdfs_flat` (same 570 files, flat layout).
+  Same underlying pattern as `MaizeTest100`'s `MaizeTest_temp` situation
+  from 2026-08-12/13 — a corpus's raw PDFs got relocated out of the standard
+  path at some point and never consolidated back.
+- **`raw_files/maize_pdf/MaizeTest100`** (370M, flat) — confirmed
+  byte-identical (`md5sum` spot check) to the PDFs already sitting correctly
+  in `raw_files/MaizeTest_temp/MaizeTest100` (nested). Redundant flat copy,
+  same shape as the `MaizeOA` duplicate deleted in 2026-07-13.
+  `raw_files/maize_pdf/MaizeTest` (15M, 3 papers, flat) was **not**
+  redundant — the only surviving copy of `MaizeTest`'s raw PDFs — restaged
+  rather than deleted (see below).
+- **389 orphaned `tpcas-1/MaizeOA` accession dirs** (1.1G, no matching
+  `tpcas-2`) — the leftovers from the 2026-07-13/07-14 stalled overnight run
+  flagged but not cleaned up in the 2026-08-13 entry. Deleted; the real 500
+  accessions (matched against `tpcas-2/MaizeOA`) were untouched.
+- **`libtpc/` build tree** (229M) — confirmed via matching mtime that
+  `/usr/local/lib/TdTokenizer.so` is exactly this build; source/build tree
+  no longer needed post-deployment, same pattern as 2026-07-13's own
+  cleanup entry.
+- **`luceneindex.bk`/`db.bk`** (900M) — yesterday's pre-reindex snapshot,
+  superseded by today's own reindex regardless; freed early for headroom.
+- Empty `raw_files/pdf_hold/C. elegans` / `C. elegans Supplementals` dirs
+  (legacy, unrelated to Sorghum work) — deleted.
+
+Net: **freed ~3.9GB** (3.8GB → 7.7GB free) before touching any pipeline
+step. Restaged the surviving unique copies to pipeline-standard paths:
+`pdf_hold/SorghumBase` → `raw_files/pdf/SorghumBase`,
+`MaizeTest_temp/MaizeTest100` → `raw_files/pdf/MaizeTest100`,
+`maize_pdf/MaizeTest` (flat) → `raw_files/pdf/MaizeTest` (converted to
+nested, 3 papers).
+
+### Closing the 609-paper retroactive retokenize (`MaizeTest`, `MaizeTest100`, `MaizeOA`)
+
+With PDFs correctly staged, retokenized via the established `-t4` recipe
+(`pdf2txtimg` synchronous parallel extraction, then
+`articles2cas -t4 -p`, run directly rather than via the unreliable wrapper
+script) — the item that had been "still open" since 2026-07-14/2026-08-07:
+
+| Corpus | Papers | Result |
+|---|---|---|
+| `MaizeTest` | 3 | 7–9 sections/paper, clean |
+| `MaizeTest100` | 110 | Clean; sample paper (`10.1101_gr.277459.122`) went from 7 → 8 sections, the lowercase-heading fix picking up one more than the 2026-07-13 rollout found |
+| `MaizeOA` | 500 (of 889 dirs — the other 389 were the orphaned cruft above) | Clean, sample section counts sane |
+
+Disk held stable through all three (retokenize overwrites CAS1 in place,
+doesn't need double the space) — stayed around 7.5–7.9GB free throughout.
+
+### Mid-session: a collaborator's upload landed in the wrong place, recovered cleanly
+
+A new ~120-paper wheat/grain-genetics corpus (`GrainGenes`, from GrainGenes
+database) arrived mid-session. First attempt: the collaborator's PDFs landed
+in `raw_files/GDR_pdf` (the flat staging dir from the original `GDR`
+onboarding) instead of `raw_files/pdf/GrainGenes`, mixed in with the
+original ~45 `GDR` files — 165 files total in `GDR_pdf` where ~46 was
+expected. Recovery: cross-referenced every DOI in the freshly-added
+`metadata/GrainGenes_papers.csv` (119 rows) against `GDR_pdf`'s filenames,
+moved the 119 matches out to `raw_files/pdf/GrainGenes/<accession>/<accession>.pdf`
+(nested, pipeline-standard layout) by exact filename match, leaving
+everything else untouched. **119/119 found, 0 missing.** Confirmed
+throughout: the live, already-ingested `raw_files/pdf/GDR` corpus (the
+actual pipeline source, separate from the `GDR_pdf` staging dir) was never
+touched by the mixup — only the flat staging area got polluted, not
+production data.
+
+### Discovery: the `-t1` tokenizer has no section-detection code at all — not a bug, a missing feature
+
+Attempted `SorghumBase`'s section-detection retokenize using its original
+ingest mode, `-t1` (confirmed via CAS2: no per-page `.txt` sidecars, and
+pre-existing non-zero sentence counts — the signature of `-t1`, unlike the
+maize corpora's `-t4`/tai-mode history). Result: retokenize succeeded
+(sentences fine, one new PoDoFo failure surfaced — see below) but
+**0/570 papers got any section annotation**, despite the raw sofa text
+containing the exact `<_pdf _fsc=+14/> References <_pdf _cr/>` pattern the
+2026-07-13 `CleanPdfTagsForSectionSearch()` fix was built to clean.
+
+Root cause, traced via `libtpc/CASManager.h`: **`-t1` and `-t4` use
+completely different UIMA tokenizer annotators**, not just different input
+handling —
+
+```cpp
+static const std::string PDF2TPCAS_DESCRIPTOR("/usr/local/uima_descriptors/TpTokenizer.xml");   // -t1
+static const std::string TAI2TPCAS_DESCRIPTOR("/usr/local/uima_descriptors/TdTokenizer.xml");    // -t4
+```
+
+The entire section-detection fix from 2026-07-13/07-14 was written and
+built only into `TdTokenizer.cpp` (backing `-t4`). `TpTokenizer.cpp`
+(backing `-t1`) has **zero section-detection code of any kind** — confirmed
+by `grep`, not one match for `sectionReferences`/`trieSection_`/anything
+section-related in that file. This isn't a regression or something the
+July fixes missed — `-t1`-tokenized corpora never had section detection
+available to them, full stop, and porting it would mean writing new C++
+for `TpTokenizer.cpp`, not patching existing logic.
+
+This directly blocks the guide's own recommended default: as of the
+2026-08-12 entry, `TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md` told new-corpus
+onboarders to use `-t1`, specifically to *avoid* `-t4` (which the GDR
+session had seen produce zero sentence-boundary annotations). **That advice
+was based on an incomplete diagnosis** — see the guide update below.
+
+Asked directly: switch `SorghumBase` and the not-yet-ingested `GrainGenes`
+to `-t4` instead of continuing with `-t1`/porting the fix/investigating
+further mid-session.
+
+### `SorghumBase` re-retokenized via `-t4`
+
+Same recipe as the maize corpora (`pdf2txtimg` parallel extraction, then
+`articles2cas -t4 -p`). Result:
+
+- **493/570 now have section annotations**, up from 0/570 under `-t1`.
+  Remaining 77 zero-section papers not individually investigated — likely a
+  mix of genuinely nonstandard heading conventions (one confirmed case: a
+  "Methods in Molecular Biology" book chapter,
+  `10.1007_978-1-4939-9039-9_2`, one of the two 2026-08-12 `tpzma`-purge
+  test papers, still 0 sections under `-t4` too) and cases worth a closer
+  look later.
+- **Side effect: fixed 2 of 4 pre-existing PoDoFo parse failures.**
+  `-t1`'s retokenize attempt surfaced 4 papers with `ePdfError_InvalidPredictor`
+  (0 sentences) — confirmed via the *old*, untouched `tpcas-2` that these
+  were pre-existing failures, not something introduced this session.
+  Switching to `-t4` (which reads `pdf2txtimg`'s extraction rather than
+  parsing the PDF directly via PoDoFo) fixed 2 of the 4
+  (`10.17912_micropub.biology.001772`: 103 sentences,
+  `10.31083_j.fbl2702055`: 671 sentences) as an incidental benefit, not a
+  targeted fix. The other 2 (`10.7717_peerj.12628`, `10.7717_peerj.14156`)
+  still have 0 sentences under `-t4` too — not chased further this session,
+  candidates for the guide's existing `pdftotext`+control-char-strip
+  fallback if prioritized later.
+
+### `GrainGenes` onboarded as a new corpus (119 papers)
+
+Followed `TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md`, with `-t4` substituted for
+the guide's then-current `-t1` recommendation (see below):
+metadata CSV validated 1:1 against staged PDFs (119/119 matched, 0 missing
+either direction) and copied into `imports/metadata/`; `generate_pdf_bib.py`
+already deployed; `pdf2txtimg` + `articles2cas -t4 -p` — **0/119
+zero-sentence failures**, 115/119 with section annotations; maize gene OBO
+excluded during `annotate` (wheat corpus, not maize — see next section);
+`.bib` sidecars generated for all 119 with real title/author/journal/year
+(spot-checked, no `<not uploaded>` placeholders). No `<CorpusName>Test`
+validation-subset corpus was created this session (skipped given the
+`-t4` recipe was already validated at scale across four other corpora
+today) — nothing to clean up per the guide's Step 10 as a result.
+
+### Ontology scoping: re-confirmed and extended the "moving the file isn't enough" lesson from 2026-08-13
+
+Per direct instruction to keep the maize gene OBO scoped to maize corpora
+only, batched today's `annotate` runs in two groups against the *current*
+live ontology state rather than toggling per corpus:
+
+- **Batch A** (`MaizeTest`, `MaizeTest100`, `MaizeOA` — maize OBO included,
+  no toggling needed, current live state already correct): re-annotated
+  together in one `annotate` call (613 papers) to pick up both today's
+  retokenize (new CAS1) and stay current with `zmays_genes_20260813.obo`.
+  Exit 0, no errors; fresh CAS2 mtimes and section counts confirmed for all
+  three.
+- **Batch B** (`SorghumBase`, `GrainGenes` — maize OBO excluded): moved
+  `zmays_genes_20260813.obo` out **and immediately dropped
+  `tpontology_zmays_genes_20260813_0`/`pcrelations_zmays_genes_20260813`
+  explicitly** before rebuilding lexica — applying the exact lesson from
+  yesterday's `SorghumBase` leak-fix rather than re-discovering it. Verified
+  `ontologymembers` = `go, po, to` only before annotating. `annotate` ran
+  clean (689 papers, exit 0); **0 `tpzm:` matches confirmed in both
+  corpora** via full-corpus grep sweep, not just a sample. Moved the OBO
+  back and rebuilt lexica once more afterward; verified `ontologymembers`
+  back to `go, po, to, zmays_genes_20260813` with no duplicate/orphaned
+  stems.
+
+### Full reindex and verification
+
+One combined reindex (`index -C tpcas-2 -i luceneindex`, safety-wrapped per
+the established pattern) covering all five touched corpora plus the
+already-fixed-but-undeployed `tpzma`-purge papers from 2026-08-12. Exit 0,
+fresh `luceneindex` (1.1G, up from 869M with `GrainGenes` added),
+`luceneindex.bk` preserved automatically by the swap. `textpressoapi`
+restarted cleanly; `cas_annotate_server.py` needed a `kill -9` — a plain
+`kill`/`pkill -TERM` left the old process listed as still running (same PID)
+after the usual restart sequence, unlike every prior restart in this log —
+not investigated further, but worth a note if it recurs.
+
+Verified via the live API afterward: `GrainGenes` appears in
+`--list-corpora`, is searchable with real metadata, and
+`--type references` returns real results; `MaizeTest100`/`MaizeOA` plain
+search, `adh1` gene annotation, and section search all still work
+(regression-clean); both `SorghumBase` `tpzma`-purge-test papers and a
+`GrainGenes` paper show empty `MAIZE_GENES`/`MAIZE_GENES_RELATED` via
+`--annotate` (no leak, confirmed live, not just on disk).
+
+### Disk cleanup, round 2: per-page extraction intermediates
+
+After all tokenizing was done, the `pdf2txtimg` per-page `.txt`/image
+intermediates it leaves behind in `raw_files/pdf/<corpus>/` (needed only
+transiently, already fully consumed into CAS1) totaled **~2.9GB** across
+the five corpora touched today. Deleted (source PDFs, the actual durable
+input, confirmed untouched by count before/after). Final disk state:
+**5.9GB free / 89% used**, up from the session's starting 3.8GB free / 93%.
+
+### `TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md` updated — `-t4` is now the default recommendation
+
+Flipped Step 5's guidance from "use `-t1`, not `-t4`" to "use `-t4`, not
+`-t1`, done directly (not via the wrapper)." The old advice wasn't wrong
+about what was observed (the GDR session really did see `-t4` produce zero
+sentences) — it misattributed the cause. `-t4` needs `pdf2txtimg`'s
+per-page text pre-extracted first; the packaged `tokenize` wrapper
+backgrounds that step with no final `wait` (the same bug documented for
+`convert_text`/`tai.sh` in the 2026-07-13 entry above) and silently
+produces incomplete extraction. Run `pdf2txtimg` synchronously first, as
+validated today across `MaizeTest`/`MaizeTest100`/`MaizeOA`/`SorghumBase`/
+`GrainGenes` (0 zero-sentence failures out of 1,232 papers processed this
+way), and `-t4` works completely normally — while also being the only mode
+that can ever produce section-scoped search, since `-t1`'s tokenizer has no
+section-detection code at all (see Discovery section above). Added the
+full corrected recipe, an explanation of why the old advice was wrong, a
+note that `-t1` is still valid when section search isn't needed, and a
+Step 9 verification check for section-detection working post-ingest.
+
+### Not yet done
+
+- [x] **77 zero-section `SorghumBase` papers** and **4 zero-section
+  `GrainGenes` papers** — audited same-day, see the continuation entry
+  below (score-gate fix recovered 55/81).
+- [ ] **2 `SorghumBase` papers still have 0 sentences**
+  (`10.7717_peerj.12628`, `10.7717_peerj.14156`) even under `-t4` — the
+  guide's `pdftotext`+control-char-strip fallback would need to be applied
+  per-paper if these are prioritized.
+- [x] **`TpTokenizer.cpp` has no section-detection code** — a real gap, not
+  a bug, and **deliberately left as-is**: `-t4` (the guide's new default)
+  works, and porting section-detection logic into `TpTokenizer.cpp` would be
+  real new C++ work with no corpus currently depending on `-t1` specifically.
+  Not planned unless something forces a corpus back onto `-t1`.
+- [ ] `cas_annotate_server.py`'s restart needing `kill -9` (a plain
+  `kill`/`pkill -TERM` left it running under the same PID) is new and
+  unexplained — every prior restart in this log worked with a plain kill.
+  Worth watching for a repeat.
+- [x] `literaturepermissions`'s static "default" row updated to include
+  `GrainGenes` (same manual-update pattern as every prior new corpus —
+  the underlying static-list limitation from 2026-08-12 is unchanged, just
+  applied again here).
+- [x] **`ReproTest062` and `PMCOA`**: confirmed with Laura these are from
+  previous tests and can be safely ignored going forward — no longer
+  tracked as open items. (`ReproTest062`'s XML-sourced ingest path and
+  `PMCOA`'s empty/never-ingested state, both noted in earlier entries, are
+  closed out on this basis rather than investigated.)
+- [x] `docs/synonym_audit_maizetest100_maizeoa_20260812_curated.csv`:
+  confirmed with Laura she's done with this file — no longer needed going
+  forward, dropped from the uncommitted-files tracking.
+- [ ] **Deliberately deferred by Laura, not blocked**: the registration/auth
+  save-path bug and the mail relay (2026-08-12 entry) — leaving both for a
+  later session by choice.
+- [ ] Everything else from the 2026-08-13 entry not touched today remains
+  open: the unbuilt `Viewer.cpp` `/tpc/images/...` fix, the `pdf2tpcas`
+  raster-extraction C++ bugs, the unquantified vector-only-figure scope,
+  the 8 `MaizeOA` basename-collision papers, and
+  `add_cas_file_to_index`'s missing-`.bib` early-return.
+- [ ] `GrainGenes_papers.csv` and any other new files from today
+  (`docs/TEXTPRESSO_ADD_NEW_CORPUS_GUIDE.md` changes,
+  `metadata/GrainGenes_papers.csv`) are local/uncommitted as of this entry.
+
+---
+
+## Update log — 2026-08-14 (continued): auditing and fixing the zero-section papers — found and fixed a second, more consequential `TdTokenizer.cpp` bug
+
+Same-day follow-up, at Laura's request to look at section detection next.
+Investigated the 77 zero-section `SorghumBase` + 4 zero-section
+`GrainGenes` papers from the entry above rather than leaving them as an
+unaudited pile.
+
+### Root cause: an all-or-nothing scoring gate, not a heading-matching bug
+
+Traced `TdTokenizer.cpp`'s section-annotation logic past the trie search
+covered in every prior section-detection entry (2026-07-13/07-14) and found
+a second mechanism downstream that none of those sessions touched or
+mentioned: raw heading matches (written internally as `rawsection`
+annotations, never serialized to output) are scored into 5 category-groups
+(intro/background, discussion/conclusion, results, materials-and-methods/
+design, references), and **the final `section` annotations — the only type
+`--type references`/`--type abstract`/etc. actually read — are only written
+at all if the paper scores > 3, i.e. hits at least 4 of the 5 categories.**
+Below that, *everything* is suppressed, including categories that matched
+correctly.
+
+Confirmed directly against `GrainGenes`'s `10.1007_s00122-025-05053-0` (a
+review article): raw text search showed `Introduction` (1 occurrence) and
+`References` (2 occurrences) present in exactly the clean, isolated-heading
+form that works elsewhere in this deployment — but zero `Background`,
+`Discussion`/`Conclusion`, `Result`, or `Materials and Methods` headings, since
+review articles don't structurally have those sections. Score = 2 (using
+the plain-word proxy below; the real trie's exact score turned out to be 3,
+see next paragraph) → below the gate → 0 sections written, despite
+`Introduction` and `References` both being genuinely, correctly detected
+internally.
+
+Ruled out a parallelism/batch artifact first: re-ran `articles2cas -t4` for
+this one paper in complete isolation (single file, single thread) — still
+0 sections, confirming the cause was the gate, not batch contention. (First
+isolated-test attempt gave a false 0-sentence result because the per-page
+`.txt` intermediates had already been deleted in the earlier disk cleanup
+pass — `pdf2txtimg` had nothing to read. Re-ran `pdf2txtimg` for that one
+file first before repeating the isolated test properly.)
+
+### Quantifying the scope before touching anything
+
+Built a Python auditor (`bin/tpc_search.py`-adjacent scratch script, not
+committed) that pulls each zero-section paper's CAS1 sofa text, XML-entity-decodes
+it (first version of the script forgot this step and silently scored
+everything 0 — caught by sanity-checking against the one paper already
+manually confirmed to have `Introduction`/`References`), and checks for the
+literal heading strings from `uimaglobaldefinitions.h`'s five category sets
+(all case variants, not just plain English). Result across all 81
+zero-section papers combined:
+
+| Score | Count | % |
+|---|---|---|
+| 0 | 10 | 12% |
+| 1 | 18 | 22% |
+| 2 | 25 | 31% |
+| 3 | 28 | 35% |
+
+**65% (53/81) scored 2 or 3 — one or two categories short of the >3 gate**,
+almost all already carrying a correct `references` match plus at least one
+other real category. Only 10/81 (12%) scored 0 (genuinely unstructured/
+unusual documents no threshold would help). This data — not just the single
+review-article case — is what the threshold decision below was based on.
+
+### Fix: lowered the gate from `score > 3` to `score > 1`
+
+Discussed the tradeoff explicitly with Laura (a looser gate risks a single
+spurious isolated-line match producing a full, wrong set of section
+boundaries) before changing anything. Decision: lower to `> 1` (still
+requires 2 independently-matched categories, just not 4) rather than `> 0`
+(any single category) or leaving it alone.
+
+`libtpc/uima-annotators/TdTokenizer/TdTokenizer.cpp`:
+
+```cpp
+// Threshold lowered 2026-08-14: >3 (4-of-5 categories) suppressed
+// section detection for 65% of a sampled 81-paper zero-section set
+// (score 2-3, one/two categories short), even when categories that
+// did match (typically references + one other) were correct. >1
+// still requires 2 independently-matched categories, guarding against
+// a single spurious isolated-line match, while recovering the
+// majority of legitimately-structured papers the old threshold blocked.
+if (score > 1) {
+```
+
+Rebuilt/redeployed `TdTokenizer.so` via the same hot-swap process used all
+week (`docker cp` source in, `cmake --build` the `TdTokenizer` target only,
+backup the old `.so`, copy the new one to `/usr/local/lib/`, `ldconfig`).
+
+### Rollout: scoped to just the 81 affected papers, not a full corpus retokenize
+
+Since the fix only changes behavior for papers that were already failing
+the gate — passing papers are unaffected by a *lower* threshold — retokenized
+only the 81 accessions rather than redoing all of `SorghumBase`/`GrainGenes`
+again: regenerated per-page text (`pdf2txtimg`, since the intermediates for
+these had been cleaned up already), `articles2cas -t4` scoped via `-l` to
+just the 81-accession list, re-annotated via the usual scoped symlink
+staging tree (maize OBO excluded and restored around it, same as the
+morning's `SorghumBase`/`GrainGenes` batch — `ontologymembers` verified
+`go, po, to` only during, back to including `zmays_genes_20260813` after,
+0 `tpzm:` matches confirmed in all 81 files).
+
+**Result: 55/81 recovered.**
+
+| Corpus | Before | After |
+|---|---|---|
+| `SorghumBase` | 0/77 | 51/77 (26 still zero) |
+| `GrainGenes` | 0/4 | 4/4 |
+
+Quality-checked, not just counted: the review article
+(`10.1007_s00122-025-05053-0`) now shows exactly `abstract`, `beginning of
+article`, `conclusion`, `references` — no spurious `result`/`materials and
+methods`, correctly absent for a review. A newly-passing `SorghumBase`
+paper's `references` span content-checked directly: genuine bibliography
+text (`"1. Wu C (2011) VisualSFM: a visual structure from motion
+system..."`), not a false-positive isolated match. Verified live via the
+API afterward: both papers findable through `--type references`, maize
+corpora (`MaizeTest100`) regression-checked unaffected.
+
+Full reindex (safety-wrapped, as usual) + restarted both `textpressoapi`
+and `cas_annotate_server.py` (the latter again needed an explicit `kill -9`
+by PID rather than `pkill -f` — second time in one day this has happened,
+see "not yet done" below).
+
+### Not yet done
+
+- [ ] **26 `SorghumBase` papers still score 0 or 1 even after the threshold
+  change** — genuinely below the new, more permissive `>1` bar. Not
+  individually triaged; likely includes real edge cases (unusual heading
+  conventions, or the 2 already-known 0-sentence PoDoFo/extraction failures
+  among them) rather than gate-suppression artifacts.
+- [ ] The `score > 1` threshold is a judgment call, not a provably-correct
+  value — chosen from the observed 2026-08-14 distribution, not derived
+  from first principles. Worth revisiting if it turns out to introduce
+  visible false-positive section boundaries in practice (nothing found in
+  today's spot checks, but only a couple of papers were checked closely).
+- [ ] `cas_annotate_server.py` has now needed `kill -9` (plain `kill`/`pkill
+  -TERM` insufficient) on its last two restarts today — worth investigating
+  if a third recurrence happens, rather than continuing to work around it.
+- [ ] The Python score-auditor script used for the 81-paper investigation
+  is scratch-only, not committed anywhere — would need to be rebuilt from
+  this entry's description if a similar audit is needed again later (e.g.
+  for the 26 still-zero `SorghumBase` papers).
+
+## Update log — 2026-08-14 (continued): search GUI "Literature: ?" fix; consolidated `tpc_search_combined.py`
+
+### What was done
+
+Two smaller items, not yet deployed:
+
+**1. Consolidated the two CLI search scripts into one.** Added
+`bin/tpc_search_combined.py` — a fully standalone script (no runtime import
+of `tpc_search.py`) combining plain search with all CAS2 annotation modes,
+so callers no longer need to know which of the two old scripts a given flag
+lives in. `bin/tpc_search.py` and `bin/tpc_search_internal.py` are kept for
+backward compatibility, marked redundant in their docstrings, and are no
+longer being maintained. `docs/TPC_SEARCH_GUIDE.md` was rewritten around the
+combined script (including fixing a doc inaccuracy this surfaced: the old
+`--exclude-type` docs described `tpc_search.py`'s crude "requires `--type
+document`" approximation, which doesn't apply to the combined script's
+always-precise CAS2-based filtering). New `docs/TPC_API_TUTORIAL.md` added
+alongside it — the raw-`curl` equivalent for callers who don't want the
+Python wrapper.
+
+**2. Root-caused the search GUI's "Literature: ?" display bug** (in
+`agr_textpresso`, not this repo): each search result was showing an empty
+value next to the literature/corpus info-icon instead of the corpus
+name(s). Traced to `textpressocentral/TpC/Search.cpp`: the two calls to
+`IndexManager::get_documents_details()` that back the results table and the
+TSV export both omit `"corpus"` from their `include_doc_fields` list, so the
+Lucene `corpus` field is never loaded for a result document and
+`update_document_details()`'s `corpus` branch (`libtpc/IndexManager.cpp`)
+never runs — leaving `doc_details.corpora` empty. Other display fields
+(title, author, journal, etc.) have the same field omitted but are masked by
+a bib-file fallback that "Literature" doesn't have, which is why only this
+one field shows the bug.
+
+Fixed by adding `"corpus"` to `include_doc_fields` at both call sites.
+While doing so, also guarded a related latent crash this fix would have
+newly exposed: `update_document_details()`'s `corpus` branch did
+`raw_lit.substr(2, raw_lit.length() - 4)` with no length check — harmless
+while the field was never loaded, but a `size_t` underflow / thrown
+`std::out_of_range` waiting to happen on any document with a short/empty
+`corpus` value once the field actually gets loaded. Added a length guard.
+
+### Not yet done
+
+- [ ] **Come back to this and actually deploy the `Search.cpp` /
+  `IndexManager.cpp` fix** — `textpressocentral` needs to be recompiled
+  (`./initialize.sh -t` per `agr_textpresso/CLAUDE.md`) and the webserver
+  restarted inside the container for the "Literature: ?" fix to take
+  effect. Not done yet — flagging to revisit rather than leaving it
+  silently uncommitted-and-undeployed.
+
+---
+
+## Update log — 2026-08-14 (continued): auditing the remaining zero-section/zero-sentence papers — one real fix landed, several dead ends documented honestly
+
+Same-day follow-up to the score-gate entry above, per Laura's request to
+look at the 26 still-zero-section `SorghumBase` papers and the 2
+zero-sentence papers together.
+
+### The 2 zero-sentence papers
+
+- **`10.7717_peerj.12628`**: `pdfimages -list` shows exactly one page, one
+  embedded raster image, **17995×6516 pixels** — an unusually large single
+  image, no text layer at all. Genuinely scanned (or a
+  misfiled poster/supplementary figure standing in for the main paper) —
+  same category as the `10.2503_jjshs.73.511` case from the 2026-08-12
+  GDR entry. Not fixable without real OCR; left as metadata-only searchable.
+- **`10.7717_peerj.14156`**: `.bib` says this should be "Genome-wide
+  identification and characterization of the KCS gene family in sorghum"
+  (PeerJ 2022) with a normal prose abstract. Tried four separate extraction
+  paths — `-t1` (PoDoFo), `-t4` (`pdf2txtimg`), `-t3` from `pdftotext
+  -layout`, `-t3` from plain `pdftotext` — and **all four** only recover a
+  multi-page amino-acid sequence-alignment table (gene IDs like
+  `AtKCS1`...`SbKCS25`, alignment blocks, a trailing block of bare numbers),
+  never the actual body prose, despite the PDF being a normal 4-page
+  article. Likely a font/encoding issue specific to this PDF's body text
+  that none of the available extractors can decode — the same practical
+  outcome as a scanned PDF, different root cause. Reverted the scratch
+  `-t3` attempt cleanly (removed the stray uncompressed `.tpcas`, left the
+  original `-t4` `.tpcas.gz` — still 0 sentences, but consistent, not a
+  mixed state) rather than leave a half-applied fix on disk.
+
+### Auditing the 26 zero-section `SorghumBase` papers
+
+Reused the score-auditor script from the prior entry, scoped to just these
+26. Distribution matched the earlier prediction exactly (no score ≥2 papers
+remained after the `>1` threshold fix): 10 at score 0, 16 at score 1.
+Individually inspected all 26 rather than treating the distribution as the
+whole story, and found four distinct categories:
+
+**Two are genuine data-quality bugs — wrong PDF staged, unrelated to section
+detection:**
+- `10.3791_57932`: `.bib` says this should be "Isolation and Analysis of
+  Microbial Communities in Soil, Rhizosphere, and Roots in Perennial Grass
+  Experiments" (JoVE, 2018). The staged PDF's actual extracted text is
+  Claude Shannon's 1948 "A Mathematical Theory of Communication."
+- `10.7717_peerj.10617`: `.bib` says this should be the full "Genome-wide
+  identification and analysis of cystatin family genes in Sorghum" paper.
+  The staged PDF's entire extracted text is 148 characters: `"Fig. S1.
+  Amino acid sequence of conserved motifs in SbCys proteins..."` — a lone
+  supplementary-figure caption, not the paper.
+
+  Neither is fixable from here — would need the correct source PDF
+  re-staged at `raw_files/pdf/SorghumBase/<accession>/<accession>.pdf` and
+  re-tokenized/re-annotated/reindexed the normal way.
+
+**Thirteen are genuinely non-IMRAD document types — correctly have no/minimal
+sections, not bugs:** 4 editorials (`10.1007_s00425-022-03866-7`,
+`10.3389_fnut.2024.1349757`, `10.3389_fpls.2022.851970`,
+`10.3389_fpls.2023.1170103`), 1 meeting report
+(`10.1186_s13059-018-1427-z`), 1 author-correction notice
+(`10.1038_s41598-023-45098-z` — not a research paper at all, just a
+correction notice), 3 "Data Note"-format papers (`10.1186_s12863-024-01198-x`,
+`10.1186_s13104-023-06653-z`, `10.1186_s13104-025-07407-9`), 1 technical
+specification document masquerading as a corpus entry
+(`10.12688_f1000research.109080.2` — the VCF/BCF file-format spec, not
+empirical research), 1 agricultural-extension fact sheet
+(`10.7717_peerj.17274`, "Sorghums, Sudangrasses, and Sorghum-Sudan Hybrids"
+by Dan Undersander — not a peer-reviewed paper), plus 2 short protocol/data
+notes already covered above via the zero-sentence investigation
+(`10.17912_micropub.biology.001772`) or the `tpzma`-purge history
+(`10.1007_978-1-4939-9039-9_2`, the "Methods in Molecular Biology" book
+chapter first flagged back on 2026-08-12).
+
+**A real, fixable heading-synonym gap — found, fixed, but it didn't move any
+papers past the gate (see below):** `10.1038_nature07723` (the Paterson et
+al. 2009 Sorghum genome paper — a major, legitimate, fully-structured paper)
+uses `"METHODS SUMMARY\n"`, and five Nature Genetics/Nature Methods papers
+(`10.1038_ng.2281`, `10.1038_ng.2309`, `10.1038_ng.2313`, `10.1038_ng.2725`,
+`10.1038_nmeth.4197`, plus `10.1038_s41586-023-06053-0` and
+`10.1038_s41588-022-01283-w`) consistently use `"ONLINE METHODS\n"` — neither
+was in `sectionMaterialsMethods()`. Added both (plus case variants,
+following the file's established convention) to
+`uimaglobaldefinitions.h`, rebuilt/redeployed `TdTokenizer.so` the same way
+as the morning's fix.
+
+**Result: 0 additional papers recovered, and the reason why is itself worth
+recording.** `"METHODS\n"` (bare) was already a registered phrase, and it
+is a literal substring of `"ONLINE METHODS\n"` — the `mm_design` category
+was almost certainly already being satisfied via that containment before
+this fix, not genuinely missing. Confirmed by re-checking scores after
+rebuild: identical (`score=1, present=['mm_design']`) for every affected
+paper, unchanged before and after. The *real* blocker for the five
+Nature-letters-format papers, checked directly against
+`10.1038_ng.2281`'s raw text: **its 30 references are a bare numbered list
+(`"1. ... 2. ... 30. ..."`) with no `"References\n"` heading text anywhere
+in the document** — Nature's older "letters" format didn't print one, the
+numbered list was visually distinguished by typography that doesn't survive
+text extraction as a distinct heading string. No synonym addition can match
+text that isn't there; this is a structural dead end for the trie-based
+approach, not a coverage gap. `10.1038_nature07723` (the one paper where
+"Methods Summary" registration might have mattered on its own) still didn't
+reach score >1 either — has `mm_design` and needs one more category, and
+its own references section apparently uses a similarly bare/unmatched
+format (not traced further).
+
+The heading additions are still a correct, worthwhile fix on their own
+terms (any paper that only had `mm_design` via "Methods Summary"/"Online
+Methods" — with no coincidental bare "METHODS" substring — would have been
+missing that category entirely before this change), just not the fix that
+happened to unblock anyone in this particular 26-paper sample.
+
+### Rollout
+
+Re-tokenized (`-t4`, same recipe) and re-annotated (maize OBO
+excluded/restored, 0 `tpzm:` leak confirmed) all 26 for CAS1/CAS2
+consistency even though the section outcome didn't change for any of
+them — leaving CAS1 newer than CAS2 with no corresponding reannotation
+would have been a stale-state footgun for later. Full reindex, both
+services restarted (`cas_annotate_server.py` needed an explicit `kill -9`
+by PID again — third time today; `pkill -9 -f cas_annotate_server.py`
+still didn't match/kill it, same as the two earlier restarts today).
+Verified via live API afterward: no regressions.
+
+### Not yet done
+
+- [ ] **The 2 wrong-PDF cases need the correct source files.** Not
+  something fixable from this environment — `10.3791_57932` needs the real
+  JoVE "Isolation and Analysis of Microbial Communities..." PDF,
+  `10.7717_peerj.10617` needs the real full cystatin-gene-family PDF (not
+  just its Fig. S1 caption), both re-staged and re-run through the normal
+  ingest pipeline once sourced.
+- [ ] `10.1038_nature07723` (a major, legitimate, correctly-structured
+  paper) still doesn't pass the section gate — has `mm_design` via
+  "Methods Summary" now, needs a second category; its references-section
+  heading format wasn't traced. Worth a closer look if this specific paper
+  matters enough to prioritize.
+- [ ] No further attempt made to detect References sections that lack a
+  literal heading (e.g. via a numbered-list pattern at the end of the
+  document) — would be a structurally different detection mechanism, not a
+  synonym-expansion-style fix, real new engineering.
+- [ ] `10.7717_peerj.14156`'s body-text extraction failure (real prose
+  exists per the `.bib` abstract, but no tool recovers it — only the
+  sequence-alignment supplementary content extracts) not root-caused
+  further; flagged as a known, unexplained defect.
+- [ ] `cas_annotate_server.py` has now needed an explicit `kill -9` by PID
+  on all three restarts today; `pkill -9 -f cas_annotate_server.py` hasn't
+  worked once. Past due for a look at why, rather than continuing to work
+  around it — possibly worth checking whether its own process name/argv
+  is somehow not what `pkill -f` expects to match.
+
+---
+
+## Update log — 2026-08-14 (continued): detecting Nature-style headingless numbered reference lists — real new detection logic added to `TdTokenizer.cpp`
+
+Follow-up to the prior entry's dead end: five Nature Genetics/Nature
+Methods "letters"-format papers were blocked on a missing `references`
+category because their bibliographies are bare numbered lists (`"1.
+Author... 2. Author..."`) with no `"References\n"` (or any registered
+synonym) heading text anywhere in the document — a structural gap no
+synonym addition can close, since there's no heading text to match at all.
+Asked directly whether to build detection for this. Clarified first,
+since it mattered for the decision: the core `--type references` search is
+a Lucene field built from the real `org.apache.uima.textpresso.section`
+annotations `TdTokenizer.cpp` writes — a fix in this repo's own
+`casannot.py` alone could only help `--exclude-type` filtering client-side,
+never make `--type references` actually find these papers via the API,
+GUI, or `tpc_search_combined.py`. Decided: core C++ fix, `casannot.py`
+needs no matching change (it already just reads whatever section
+annotations exist in CAS2).
+
+### Design: `DetectImplicitReferencesSpan()`
+
+Added to `libtpc/uima-annotators/TdTokenizer/TdTokenizer.cpp`, alongside
+the existing `CleanPdfTagsForSectionSearch()`. Runs only when the normal
+trie search found no `References`-family heading at all
+(`if (!hasReferences)`), scanning the same PDF-tag-cleaned buffer the
+heading trie already uses (for the same reason that cleanup exists — a
+marker between the newline and the digit would break the match).
+
+Pattern: newline, 1–3 digits, `.`, ≥1 space/tab, an uppercase letter — the
+literal start of `"\n26. Lander, E.S. et al. MAPMAKER..."`. Two guards
+against false positives, both load-bearing:
+- **Requires ≥5 matches.** A single stray numbered item (a numbered figure
+  caption, a lone footnote) shouldn't be mistaken for a bibliography; a
+  real reference list of this style runs for many consecutive entries.
+- **Requires the first match to fall in the back half of the document.**
+  Numbered lists earlier in a paper (protocol steps, supplementary item
+  lists) are common and unrelated to the bibliography, which is always
+  near the end.
+
+If both hold, the span runs from the first qualifying match to the next
+`"\nEnd of Article"` marker (always present, inserted by the ingest
+pipeline itself — a reliable right-hand bound), mapped back through the
+same `sectionPosMap` the heading trie uses. Sets a local `hasReferences =
+true` too, so it also counts toward the score-gate fix from the entry
+above. Inside the existing `if (score > 1)` block, writes a real
+`org.apache.uima.textpresso.section` annotation directly (`content` field
+set to a fixed marker string, `"(implicit: numbered-list reference block,
+no heading text found)"`, so anyone reading the CAS2 later can tell this
+span came from the fallback, not a literal heading match) — bypassing
+`combineSectionAnnotations()`'s adjacent-heading-pair mechanism entirely,
+since there's no second heading to pair against.
+
+### Testing: caught a real bug in my own test setup before trusting the result
+
+Built and deployed (same hot-swap process as every other fix this week).
+First isolated test, against the clearest case
+(`10.1038_ng.2281`) — worked immediately: correct `references` type
+written, span verified byte-for-byte against the sofa text (`begin`/`end`
+land exactly on `"1. Doebley, J.F...."` through `"...30. Broman,
+K.W....(2003)."`, nothing before or after leaking in).
+
+Batch-tested against all 26 still-zero papers to check for false
+positives — first run showed only the one already-confirmed paper
+recovered, 25 unaffected. **That result was invalid**: forgot to re-run
+`pdf2txtimg` for the other 25 before the batch `articles2cas -t4` call, so
+they had no per-page text to read at all (confirmed: their CAS1 sofa text
+was 38 characters, just the `Beginning of Article`/`End of Article`
+markers) — a false "no false positives" signal from missing input, not a
+real negative result. Re-ran properly with the per-page text actually
+extracted first, and got a meaningfully different, better answer.
+
+### Result: 7/26 recovered, 0 false positives
+
+`10.1038_nature07723` (the Paterson et al. 2009 Sorghum genome paper — a
+major, legitimate, correctly-structured paper flagged as suspicious in the
+prior entry), `10.1038_nature08800`, and the five Nature Genetics/Methods
+"letters" papers (`10.1038_ng.2281`, `10.1038_ng.2309`, `10.1038_ng.2313`,
+`10.1038_ng.2725`, `10.1038_nmeth.4197`) all correctly gained a
+`references` section. The other 19 — the wrong-PDF cases, the genuinely
+non-IMRAD documents, the unrecoverable extraction failures, and the two
+more-modern Nature papers that apparently use a different, still-unmatched
+references format (`10.1038_s41586-023-06053-0`,
+`10.1038_s41588-022-01283-w`) — correctly showed no spurious detection.
+
+### Rollout
+
+Retokenized all 26 in production (per-page text already sat in the right
+place from the corrected test), re-annotated (maize OBO excluded via the
+same move-file-and-drop-tables sequence from every prior entry today, 0
+`tpzm:` leak confirmed), full reindex, both services restarted.
+`cas_annotate_server.py` needed an explicit `kill -9` by PID yet again —
+this time caught *why* the combined `pgrep -f cas_annotate_server.py`-based
+kill attempt failed: `pgrep -f` matches against the **full command line**
+of every process, including the very `bash -lc "... pgrep -f
+cas_annotate_server.py ..."` invocation doing the searching, since that
+command line also contains the literal string being searched for — it
+returned multiple self-matched PIDs alongside the real target, and killing
+that combined, confused set didn't reliably reach the real one. Killing
+the real, already-known PID directly (not re-discovered via `pgrep -f`)
+worked immediately.
+
+Verified live: `10.1038_nature07723` and `10.1038_ng.2281` both correctly
+findable via `--type references` (with a keyword genuinely present in
+their reference text — an initial "no results" check against
+`nature07723` with the keyword `"genome"` was a bad keyword choice, not a
+bug — confirmed by retrying with `"the"`); regression-clean elsewhere.
+
+### Not yet done
+
+- [ ] **This is now a shared-binary change affecting every corpus**, not
+  just `SorghumBase` — only tested/rolled out there today. Other corpora
+  (`MaizeTest100`, `MaizeOA`, `MaizeTest`, `GrainGenes`, `GDR`) will pick
+  it up automatically the next time any of them get retokenized, but
+  haven't been deliberately swept for headingless-numbered-reference cases
+  of their own.
+- [ ] The two more-modern Nature papers
+  (`10.1038_s41586-023-06053-0`, `10.1038_s41588-022-01283-w`) still don't
+  reach the gate — didn't trace their actual references format; possibly a
+  third convention, possibly something else entirely, not investigated.
+- [ ] **The likely explanation for `pkill -f cas_annotate_server.py`'s
+  unreliability all day** (self-matching its own search command's command
+  line) is now understood but not fixed anywhere reusable — future
+  restarts should kill by a PID captured via `ps aux | grep` (a fixed
+  string that doesn't describe itself) rather than `pgrep -f`/`pkill -f`
+  against this specific process, or the same failure will recur.
+- [ ] `DetectImplicitReferencesSpan()`'s thresholds (5 matches minimum,
+  back-half-of-document requirement) were chosen conservatively and
+  validated only against this 26-paper sample — not stress-tested against
+  a broader, more adversarial set (e.g., a paper with a long numbered
+  supplementary-methods list in its back half that isn't a bibliography).
+
+---
+
+## Update log — 2026-08-14 (continued): generalizing `DetectImplicitReferencesSpan()` — position-gating replaced with a content signal, plus a real span-boundary bug caught before it shipped
+
+Same-day follow-up, per Laura's request, to the two modern Nature papers
+(`10.1038_s41586-023-06053-0`, `10.1038_s41588-022-01283-w`) that the
+first version of the implicit-references detector (previous entry) didn't
+recover.
+
+### Root cause: the back-half position gate was wrong for this journal layout, and the number/author split across lines
+
+Traced `10.1038_s41586-023-06053-0` directly: 25-page PDF, references sit
+on pages 6–7 (~25% through the document — confirmed via a real
+bibliography signature, 10 and 9 `"et al."` occurrences respectively),
+followed by the full Methods and ~13 pages of Extended Data figures. The
+original detector's `matchPositions.front() < len/2` guard — written
+against the classic "letters" format, where references really are the
+last thing in the document — rejected this outright regardless of format.
+Separately, this paper's citation numbers are inconsistently split across
+lines by `pdftotext`'s column reconstruction — `"2.\nRich-Griffin, C. et
+al...."` for some entries, `"11. Zhang, Y. et al...."` (same line) for
+others — which the original single-line-only pattern also wouldn't match
+for the split ones.
+
+### Fix: replace position with a per-entry content signal, add clustering to keep the span correctly bounded
+
+Two changes to `DetectImplicitReferencesSpan()` in `TdTokenizer.cpp`:
+
+1. **Format**: the whitespace after the number+period may now include up
+   to one newline (covers the split-line case) in addition to
+   spaces/tabs.
+2. **Position → content**: dropped the back-half requirement entirely.
+   Replaced it with a requirement that a parenthesized 4-digit year
+   (`"(2006)"`, `"(2020)"`) appear within 400 characters after each
+   candidate match — close to universal for a real citation entry, and
+   essentially never true of an unrelated numbered list (protocol steps,
+   supplementary items). This is a stronger, format-independent signal
+   that works regardless of where in the document references happen to
+   sit.
+
+**Caught before shipping**: dropping the position gate on its own would
+have reintroduced a real bug — a modern paper's reference span would
+previously have been bounded by "run until `\nEnd of Article`," which is
+exactly what the old back-half gate was protecting against without my
+realizing it: for a paper with references at 25% through the document
+followed by 15 more pages of unrelated Methods/Extended Data, that
+boundary rule would have labeled all of it as "references." Fixed by
+clustering matches by proximity (breaks between entries wider than 600
+characters split the cluster) and using only the largest tight cluster,
+bounded to ~500 characters past its own last entry — not the document end.
+
+### Testing: reused the 26-paper batch, same rigor as the first version
+
+Re-ran the full 26-paper `SorghumBase` batch (properly this time — the
+per-page text was already correctly re-extracted from the prior entry's
+corrected test). Result: **8/26 recovered** (up from 7), the original 7
+still recovered (no regression from the rewrite), **zero new false
+positives** among the other 18. Verified the newly-recovered paper's span
+directly against the sofa text: starts exactly at `"1.\n\nWoodhouse, M. R.
+& Hufford, M. B. Parallelism and convergence..."`, ends ~150–500 characters
+past the last real citation (a small amount of trailing copyright/license
+boilerplate gets included — a minor imprecision, not a correctness
+problem, and a large improvement over the alternative of swallowing 15
+pages of unrelated content).
+
+**`10.1038_s41588-022-01283-w` still doesn't recover — traced why, and
+it's not this mechanism's problem.** It has a completely normal
+`"References\n"` heading and a real, correctly-matched reference list —
+confirmed the *original* heading trie already found it (this was visible
+in the very first score-audit table, `score=1, present=['references']`,
+from earlier today's session). It's stuck at exactly one category and
+needs a *second* one to pass the `score > 1` gate — the same shape of
+problem as the "Methods Summary"/"Online Methods" case from the
+score-gate entry, just for a different paper. `DetectImplicitReferencesSpan()`
+correctly never runs for it at all, since it only fires when
+`!hasReferences`.
+
+### Rollout
+
+Same recipe as every fix today: retokenized all 26 in production,
+re-annotated (maize OBO excluded/restored, 0 `tpzm:` leak), full reindex,
+both services restarted — this time killing by a PID captured via `ps aux
+| grep` rather than `pgrep -f`, per the previous entry's diagnosis of why
+`pgrep -f cas_annotate_server.py` kept self-matching; both restarts
+succeeded cleanly on the first try. One process hiccup during rollout:
+`set -e` combined with a bare `grep -c` (no `|| true`) aborted a
+verification loop partway through when it hit a paper with zero matches,
+silently skipping the `pigz` compression step — caught immediately by
+comparing the `.tpcas.gz` count against the expected 26 rather than
+trusting the script's own "success" output, redone correctly.
+
+Verified live via the API: `10.1038_s41586-023-06053-0` and
+`10.1038_nature07723` both correctly findable via `--type references`;
+plain search on `SorghumBase`/`MaizeTest100` unaffected.
+
+### Not yet done
+
+- [ ] `10.1038_s41588-022-01283-w` needs a second category to pass the
+  score gate (has `references` already) — separate from everything in
+  this entry, not investigated further.
+- [ ] The span-trailing-boilerplate imprecision (a few hundred characters
+  of copyright/license text sometimes included after the real last
+  citation) is cosmetic, not chased further.
+- [ ] Same shared-binary caveat as the previous entry: only tested/rolled
+  out against `SorghumBase`. Other corpora will pick up the generalized
+  detector automatically on their next retokenize, not swept deliberately
+  yet.
+- [ ] The clustering/content-signal thresholds (600-char max gap within a
+  cluster, 400-char year-lookahead window, 500-char trailing buffer) are
+  reasoned choices, not tuned against a large corpus — same caveat as the
+  first version's thresholds.
+
+---
+
+## Update log — 2026-08-14 (continued): a third wrong-PDF case caught by inspection, not analysis, plus rolling today's fixes out to `MaizeTest100`/`MaizeOA`
+
+### `10.1038_s41588-022-01283-w` is not a detection problem — it's the wrong PDF, and this one was harder to spot
+
+Was about to add `"Additional Methods:\n"` as a new heading-synonym variant
+(same pattern as the "Methods Summary"/"Online Methods" fix) to get this
+paper its second category. Laura caught it first by actually looking at
+the paper: she could see Results, Discussion, References, and Methods all
+clearly labeled — which shouldn't have been possible to miss if the
+`references`-only diagnosis were the real story. Checked the raw
+extracted text properly instead of trusting the targeted heading search:
+the document opens with `"...In the format provided by the authors and
+unedited\n\nSupplementary Information\nSupplementary Note:\nAdditional
+Methods:..."` — confirmed against the actual PDF's first page directly
+(`pdftotext -f 1 -l 1`), 17 pages total. **This accession has Nature's
+Supplementary Information PDF staged, not the main article** — the title
+line matches the real paper exactly, which is exactly what made this
+harder to catch than the Shannon-paper/cystatin-figure cases from earlier
+today (those had obviously wrong titles; this one's title is correct, only
+the body content is wrong). `"Additional Methods:"` is a real heading, just
+the supplement's own, not the main paper's. Withdrew the synonym addition
+before applying it — would not have fixed anything, since the actual
+Results/Discussion/Methods sections a reader sees in the real paper
+aren't in this file at all.
+
+**Third wrong-PDF case today**, alongside `10.3791_57932` (Shannon's 1948
+paper instead of a JoVE protocol) and `10.7717_peerj.10617` (a lone
+supplementary-figure caption) from the earlier entry — all three need the
+correct source file re-staged, not fixable from this environment.
+
+**Lesson for future zero-section/zero-category audits**: a targeted
+heading search (or an automated score-audit table) can look like a clean,
+specific diagnosis and still be wrong if the underlying assumption — that
+the document actually contains the paper it claims to be — doesn't hold.
+Worth reading the actual start of the extracted text, not just grepping
+for the specific pattern being chased, before proposing a fix.
+
+### Checked today's fixes against the other corpora, per direct request
+
+The score-gate (`>1`) and implicit-references detector are both in the
+shared `TdTokenizer.so`, so every corpus benefits automatically the next
+time it's retokenized — but only `SorghumBase`/`GrainGenes` had actually
+been retokenized against them so far today. Swept the rest:
+
+| Corpus | Zero-section | Note |
+|---|---|---|
+| `MaizeTest` | 0/3 | Clean |
+| `GrainGenes` | 0/119 | Clean (today's earlier work) |
+| `MaizeTest100` | 12/110 | Already `-t4`, never re-run against today's fixes |
+| `MaizeOA` | 101/500 | Same |
+| `GDR` | 45/45 | **100% zero** — confirmed still `-t1`-tokenized (0 per-page `.txt` files, real sentence counts present) from its original 2026-08-12 onboarding, before today's guide flip to `-t4`. Structurally can't have section detection at all until fully retokenized via `-t4` -- this isn't a threshold problem, it's the same TpTokenizer-has-no-section-code gap from earlier today. |
+
+Asked how to scope this given `GDR`'s situation is a bigger, different-shaped
+job (whole-corpus `-t4` switch, not a targeted zero-section subset).
+Decided: `MaizeTest100`/`MaizeOA` now, `GDR` deferred to its own pass.
+
+### Rollout: `MaizeTest100` + `MaizeOA`
+
+Same recipe as every retokenize today (`pdf2txtimg` synchronous parallel
+extraction, `articles2cas -t4` scoped via `-l` to just the zero-section
+accessions, `annotate` via the scoped symlink staging tree — maize OBO
+stays included this time, no exclusion needed for maize corpora). Result:
+
+| Corpus | Before | After |
+|---|---|---|
+| `MaizeTest100` | 12/110 zero | 5/110 zero (7 recovered) |
+| `MaizeOA` | 101/500 zero | 19/500 zero (82 recovered) |
+
+**89/113 recovered** in this pass. All 113 confirmed with fresh CAS2
+mtimes post-annotate. Full reindex, both services restarted (killed by
+PID captured via `ps aux | grep`, per the established fix from earlier
+today — clean on the first try). Verified live: a recovered `MaizeOA`
+paper (`10.1002_cpz1.70210`) correctly findable via `--type references`;
+`MaizeTest100`/`MaizeOA` plain search unaffected.
+
+### Not yet done
+
+- [ ] **`GDR`** still needs a full `-t4` retokenize (all 45 papers, not a
+  subset) to gain section detection at all — deferred by request, not a
+  small job like the others today.
+- [ ] The remaining 5 `MaizeTest100` + 19 `MaizeOA` zero-section papers
+  weren't individually triaged the way the `SorghumBase` 26 were (wrong-PDF
+  bugs vs. genuinely non-IMRAD documents vs. extraction failures vs.
+  needs-a-second-category cases) — worth the same treatment if prioritized.
+- [ ] `10.1038_s41588-022-01283-w` (`SorghumBase`) still needs the correct
+  main-article PDF re-staged — third wrong-PDF case, unresolved.
+- [ ] Given three wrong-PDF cases surfaced today purely as a side effect of
+  auditing zero-section papers, worth wondering how many more exist
+  *without* a section-detection symptom to flag them — no systematic check
+  for this across any corpus exists yet.
+
+## Update log — 2026-08-17: `--category` silently included RELATED gene synonyms by default — client-side patch shipped, real fix deferred
+
+### What was done
+
+While updating the search tutorial's gene-search walkthrough (`cct1`
+example), found that `--category "cct1 (tpzm:0010325)"` was returning
+papers with **no EXACT or RELATED `cct1` match at all** in their live
+`--annotate` output. Root-caused it (not an OBO data problem — the
+`ZmCCT10`-under-both-`cct1`-and-`cct10` synonym sharing turned out to be
+intentional, confirmed by Laura): the underlying Lucene search genuinely
+can't distinguish EXACT from RELATED gene-synonym matches at all.
+
+The CAS2 pipeline stores each category match prefixed with its type —
+`EXACT:cct1 (tpzm:0010325)`, `RELATED:cct1 (tpzm:0010325)`, and the PTCAT
+parent-propagated variants — and that prefix is faithfully carried into the
+`fulltext_cat`/`sentence_cat` Lucene index field
+(`Tpcas2SingleIndex.cpp`'s `collectCategoryMapping()`/`getCatString()`, in
+`agr_textpresso`). But the query side never uses it: `add_categories_to_text()`
+(`libtpc/DataStructures.cpp`) builds a bare phrase query, `fulltext_cat:
+"cct1 (tpzm:0010325)"`, with no `EXACT:`/`RELATED:` in the query text.
+Lucene's standard analyzer tokenizes `RELATED:cct1` into separate tokens
+(`related`, `cct1`), so the phrase match on `cct1 tpzm 0010325` succeeds
+regardless of what prefix precedes it — `--category` was never actually
+wired to respect the EXACT/RELATED distinction the way `--annotate` is
+(see `textpresso_classifiers/casannot.py`'s `_ONTOLOGY_PREFIXES`, added
+2026-06-18 per the entry near the top of this log).
+
+This contradicts the originally intended, documented design (see the
+2026-06-18-era entry above describing `--related-synonyms`/`--ontology
+MAIZE_GENES_RELATED`): EXACT-only was supposed to be the default for gene
+categories, with RELATED as an explicit opt-in — exactly the behavior
+`--annotate` already has, but `--category` never did.
+
+**Shipped today: a client-side patch in `bin/tpc_search_combined.py`**
+(`filter_gene_category_results()`, called from `main()` right after the
+raw `--category` search, before `--exclude-type`/`--annotate` processing).
+For any `--category` value that's a maize-gene category (has a `tpzm:`/
+`tpzma:` ID), it re-checks each result document's real annotations — the
+same data `--annotate` reads, via the existing `_load_annotations()`
+helper — and drops any document whose only match to that category is
+RELATED, unless `--related-synonyms` was passed. GO/PO/TO categories have
+no EXACT/RELATED distinction in this scheme and are left untouched.
+
+Verified live against `cct1 (tpzm:0010325)`:
+
+| | Before fix | After fix (no flag) | After fix + `--related-synonyms` |
+|---|---|---|---|
+| Result count | 17 | 8 | 17 |
+
+`10.1093_nar_gkac1195` (`cct1`-tagged only via a RELATED `ZmCCT10` mention,
+no EXACT match anywhere) is correctly dropped by default and correctly
+restored with `--related-synonyms`. Non-gene category search (`seed
+(PO:0009010)`) spot-checked unaffected — same 3 results as before.
+
+This is explicitly a workaround, not the real fix: it adds one `/annotate`
+HTTP call per `--category` result document, which is fine for the small
+test corpora here but wouldn't scale gracefully to a `--category` search
+returning hundreds of documents. It also only handles the common case of
+a single (or all-gene) `--category` value cleanly — with
+`--categories-and` mixing gene and non-gene categories, it only re-checks
+the gene ones and trusts the non-gene ones as already correctly matched
+(documented as a known limitation in the function's docstring).
+
+Also updated `docs/TPC_SEARCH_TUTORIAL.md`'s gene-search section (`cct1`
+walkthrough) to match the corrected behavior: the default `--category`
+result count and the specific papers listed both changed (17 → 8 by
+default, 17 with `--related-synonyms`), and the surrounding prose now
+explains that `--related-synonyms` actually matters for `--category`
+now, not just for `--annotate`.
+
+### Not yet done
+
+- [ ] **The real fix belongs in the search query itself**
+  (`agr_textpresso/libtpc/DataStructures.cpp`'s `add_categories_to_text()`),
+  not in the Python CLI. Since the `EXACT:`/`RELATED:` prefix data is
+  already present in the index, this doesn't need a reindex — just:
+  add a `categories_related` bool to the `Query` struct and the
+  `textpressoapi/main.cpp` JSON payload; change the query phrase to
+  include the `EXACT:`/`RELATED:` prefix explicitly; wire
+  `tpc_search_combined.py`'s existing `--related-synonyms` flag through to
+  search as well as annotate. Needs a product decision on `PTCAT`-prefixed
+  (parent-propagated) categories — `casannot.py` currently drops all
+  `PTCAT*` unconditionally, so the least-surprising default is probably to
+  exclude those from `--category` too, in both modes. Requires a C++
+  rebuild + `textpressoapi` redeploy; today's client-side patch was chosen
+  specifically to avoid that today.
+- [ ] Once the real fix lands, `filter_gene_category_results()` in
+  `tpc_search_combined.py` should be removed (the backend will do this
+  correctly and faster on its own) — don't let the client-side patch
+  become permanent load-bearing logic.
+- [ ] The `--categories-and` + mixed gene/non-gene category limitation
+  noted above isn't tested against any real query — worth a real test
+  case if `--categories-and` combined with a gene category turns out to
+  matter in practice.

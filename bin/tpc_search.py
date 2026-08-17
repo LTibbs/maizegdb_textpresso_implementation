@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Search a Textpresso corpus and print matched sentences with reference metadata.
 
+REDUNDANT: kept only so existing callers don't break. New work should use
+bin/tpc_search_combined.py instead, which covers this script's functionality
+plus CAS2 ontology annotation in one standalone script -- that is the file
+being maintained going forward. See docs/TPC_SEARCH_GUIDE.md.
+
 Talks to the Textpresso REST API at DEFAULT_URL.  No local file access required,
 so this script works for any user with network access to the public server.
 

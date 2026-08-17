@@ -1,24 +1,29 @@
-# `tpc_search.py` / `tpc_search_internal.py` — usage guide
+# `tpc_search_combined.py` — usage guide
 
-Reference for the two Textpresso search command-line tools in
-`bin/` as of 2026-08-12.
+Reference for `bin/tpc_search_combined.py`, the Textpresso search
+command-line tool, as of 2026-08-14.
 
 ## Overview
 
-Both scripts search a Textpresso corpus over the REST API and now require
-**only network access** — neither needs to run on the Textpresso server.
-`tpc_search_internal.py` is a superset that adds ontology-annotation modes,
-backed by a small annotation service (`cas_annotate_server.py`, in the
-`agr_textpresso` repo) that runs alongside the Textpresso API and serves CAS2
-data over HTTP. Before 2026-08-12, those modes required direct filesystem
-access to the CAS2 data directory and could only run on the server; see
+`tpc_search_combined.py` is the single entry point for Textpresso search:
+plain keyword/metadata/section search plus CAS2 ontology-annotation modes
+(`--annotate`, `--annotate-sentences`, `--related-synonyms`, `--ontology`,
+`--cas-root`, precise `--exclude-type`), all in one standalone script. It
+requires **only network access** — it does not need to run on the
+Textpresso server. The annotation modes are backed by a small annotation
+service (`cas_annotate_server.py`, in the `agr_textpresso` repo) that runs
+alongside the Textpresso API and serves CAS2 data over HTTP; see
 "Architecture: how annotation data reaches the client" below.
 
-| | `tpc_search.py` | `tpc_search_internal.py` |
-|---|---|---|
-| Requires | network access to the public API only | network access to the public API only (or, with `--cas-root`, direct server-side CAS2 file access) |
-| Who can run it | anyone with network access | anyone with network access |
-| Adds | — | `--annotate`, `--annotate-sentences`, `--related-synonyms`, `--ontology`, `--cas-root`, precise `--exclude-type` |
+**History:** this used to be two scripts, `tpc_search.py` (search only) and
+`tpc_search_internal.py` (search + annotation, originally requiring
+server-side file access before the CAS2 data was served over HTTP). Both
+still exist in `bin/` and still work, but are redundant now that
+`tpc_search_combined.py` covers everything in one script with no need to
+remember which tool a given flag lives in — they're kept only so existing
+callers don't break, and are no longer being maintained going forward. All
+examples below use `tpc_search_combined.py`; substitute one of the old
+scripts only if you have a specific reason to.
 
 The Textpresso instance runs inside a Docker container
 (`agr-textpresso-textpresso-1`); its search API and the CAS2 annotation
@@ -29,12 +34,12 @@ http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api/        (searc
 http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/annotate    (CAS2 annotation data)
 ```
 
-## `tpc_search.py`
+## Basic search
 
 ### Usage
 
 ```
-python3 bin/tpc_search.py [options] [keywords]
+python3 bin/tpc_search_combined.py [options] [keywords]
 ```
 
 ### Search types (`--type`)
@@ -91,66 +96,58 @@ keywords                  Search keywords
 --format text|json         Output format (default: text)
 --url URL                  API base URL
 --list-corpora              List available corpora and exit
---exclude-type TYPE        Drop a document-level result if the excluded section is the only named section it matches in (repeatable). Requires --type document — errors otherwise, pointing at tpc_search_internal.py.
+--exclude-type TYPE        Exclude a CAS section type from results (repeatable). Precise,
+                           CAS2-based exclusion (not limited to --type document) — see
+                           "--exclude-type — precise, CAS2-based section exclusion" below.
 ```
 
 **`--exclude` vs. `--exclude-type`** — these are unrelated: `--exclude` drops
 results containing given *keywords*; `--exclude-type` drops results whose
-match falls only inside a given CAS *section* (e.g. bibliography).
-
-### `--exclude-type` — known gap in this script
-
-`tpc_search.py` has no local CAS2 access, so it can't check section
-boundaries directly. It approximates by re-running the query once per *other*
-named section type and keeping the document if it matches in any of them —
-proof of a match outside the excluded section. **This misses a match sitting
-in prose not covered by any detected section boundary**, which could cause a
-document to be dropped incorrectly. `tpc_search_internal.py`'s
-`--type sentence`-based check does not have this gap (see below), so prefer
-it when precision matters.
+match falls only inside a given CAS *section* (e.g. bibliography). See the
+dedicated section below for exactly how each `--type` mode filters.
 
 ### Examples
 
 ```bash
 # Basic sentence search
-python3 bin/tpc_search.py -c MaizeTest100 "flowering time"
+python3 bin/tpc_search_combined.py -c MaizeTest100 "flowering time"
 
 # Top N results -- --count caps how many come back (default 50, API max 200);
 # results are already ranked by relevance score by default, so this gives the
 # top N matches. --sort-by-year switches the ranking to year instead.
-python3 bin/tpc_search.py -c MaizeTest100 "flowering time" --count 5
+python3 bin/tpc_search_combined.py -c MaizeTest100 "flowering time" --count 5
 
 # Multiple corpora
-python3 bin/tpc_search.py -c MaizeTest100 -c SorghumBase "drought tolerance"
+python3 bin/tpc_search_combined.py -c MaizeTest100 -c SorghumBase "drought tolerance"
 
 # Section-scoped
-python3 bin/tpc_search.py -c MaizeTest100 --type abstract "drought"
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type abstract "drought"
 
 # Metadata filters
-python3 bin/tpc_search.py -c MaizeTest100 --author "Buckler" --year 2014 "GWAS"
-python3 bin/tpc_search.py -c MaizeOA --journal "Nature" --exact-journal "maize"
+python3 bin/tpc_search_combined.py -c MaizeTest100 --author "Buckler" --year 2014 "GWAS"
+python3 bin/tpc_search_combined.py -c MaizeOA --journal "Nature" --exact-journal "maize"
 
 # Keyword modifiers
-python3 bin/tpc_search.py -c MaizeTest100 --exclude "Arabidopsis" "kernel weight"
-python3 bin/tpc_search.py -c MaizeOA --case-sensitive "ZmMADS"
+python3 bin/tpc_search_combined.py -c MaizeTest100 --exclude "Arabidopsis" "kernel weight"
+python3 bin/tpc_search_combined.py -c MaizeOA --case-sensitive "ZmMADS"
 
 # Category search (ID suffix required)
-python3 bin/tpc_search.py -c MaizeTest100 --category "seed (PO:0009010)" "development"
+python3 bin/tpc_search_combined.py -c MaizeTest100 --category "seed (PO:0009010)" "development"
 
 # Drop bibliography-only document hits
-python3 bin/tpc_search.py -c MaizeTest100 --type document "MARK" --exclude-type references
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type document "MARK" --exclude-type references
 
 # JSON output (pipe-friendly)
-python3 bin/tpc_search.py -c MaizeTest100 "anthocyanin" --format json | jq '.[].title'
+python3 bin/tpc_search_combined.py -c MaizeTest100 "anthocyanin" --format json | jq '.[].title'
 
 # List available corpora
-python3 bin/tpc_search.py --list-corpora
+python3 bin/tpc_search_combined.py --list-corpora
 ```
 
-## `tpc_search_internal.py` — search with CAS2 ontology annotation
+## CAS2 ontology annotation
 
-Identical search interface to `tpc_search.py`, plus flags that read CAS2
-ontology-annotation data. By default this data is fetched over HTTP from
+On top of the search options above, `tpc_search_combined.py` has flags that
+read CAS2 ontology-annotation data. By default this data is fetched over HTTP from
 `cas_annotate_server.py` (same `--url` host, `/v1/textpresso/annotate`), so
 this script works from anywhere with network access — no server-side file
 access is required, and no `--cas-root` needs to be passed.
@@ -192,7 +189,7 @@ Appends a grouped list of all ontology terms found anywhere in the paper to
 each result. Works with text output (default) or JSON (`--format json`).
 
 ```bash
-python3 bin/tpc_search_internal.py -c MaizeTest100 "anthocyanin" --annotate
+python3 bin/tpc_search_combined.py -c MaizeTest100 "anthocyanin" --annotate
 ```
 
 Text output adds an "Ontology annotations" block after each paper's matched
@@ -216,13 +213,13 @@ see the RELATED-synonym matches.
 
 ```bash
 # default: EXACT locus synonyms only
-python3 bin/tpc_search_internal.py -c MaizeTest100 "adh1" --annotate
+python3 bin/tpc_search_combined.py -c MaizeTest100 "adh1" --annotate
 
 # include RELATED locus synonyms too
-python3 bin/tpc_search_internal.py -c MaizeTest100 "adh1" --annotate --related-synonyms
+python3 bin/tpc_search_combined.py -c MaizeTest100 "adh1" --annotate --related-synonyms
 
 # RELATED-only
-python3 bin/tpc_search_internal.py -c MaizeTest100 "adh1" --annotate --ontology MAIZE_GENES_RELATED
+python3 bin/tpc_search_combined.py -c MaizeTest100 "adh1" --annotate --ontology MAIZE_GENES_RELATED
 ```
 
 ### `--annotate-sentences` — full sentence-level annotation JSON
@@ -264,22 +261,21 @@ one annotation. Add `--full-text` to include all sentences in the paper.
 
 ```bash
 # Annotated sentences only (default)
-python3 bin/tpc_search_internal.py -c MaizeTest100 "anthocyanin" --annotate-sentences
+python3 bin/tpc_search_combined.py -c MaizeTest100 "anthocyanin" --annotate-sentences
 
 # All sentences
-python3 bin/tpc_search_internal.py -c MaizeTest100 "anthocyanin" \
+python3 bin/tpc_search_combined.py -c MaizeTest100 "anthocyanin" \
     --annotate-sentences --full-text
 
 # Filter to GO and PO only
-python3 bin/tpc_search_internal.py -c MaizeTest100 "anthocyanin" \
+python3 bin/tpc_search_combined.py -c MaizeTest100 "anthocyanin" \
     --annotate-sentences --ontology GO --ontology PO
 ```
 
 ### `--exclude-type` — precise, CAS2-based section exclusion
 
-Unlike `tpc_search.py`'s best-effort version, this script has access to full
-CAS2 data (over the network by default, or a local file with `--cas-root`)
-and filters exactly, per mode:
+This script has access to full CAS2 data (over the network by default, or a
+local file with `--cas-root`) and filters exactly, per mode:
 
 - **`--type sentence`**: filters `matched_sentences` directly. Each
   API-returned sentence is mapped to its CAS2 position by exact text match;
@@ -299,39 +295,40 @@ and filters exactly, per mode:
 
 ```bash
 # sentence-level: drop bibliography-only matches
-python3 bin/tpc_search_internal.py -c MaizeTest100 --type sentence \
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type sentence \
     --accession 10.1101_gr.277459.122 "Wickham" --exclude-type references
 
 # document-level: precise drop -- "HelitronScanner" appears in exactly one
 # MaizeTest100 paper, and only inside its bibliography (a citation of the
 # HelitronScanner tool's own paper), so excluding references drops it to zero:
-python3 bin/tpc_search.py -c MaizeTest100 --type document "HelitronScanner"              # -> 1 result
-python3 bin/tpc_search_internal.py -c MaizeTest100 --type document \
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type document "HelitronScanner"              # -> 1 result
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type document \
     "HelitronScanner" --exclude-type references                                          # -> No results (correct)
 
 # strip bibliography-sourced false positives out of an ontology summary
-python3 bin/tpc_search_internal.py -c MaizeTest100 --type document \
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type document \
     --accession 10.1101_gr.277459.122 --annotate --exclude-type references
 
 # multiple excluded types
-python3 bin/tpc_search_internal.py -c MaizeTest100 "adh1" \
+python3 bin/tpc_search_combined.py -c MaizeTest100 "adh1" \
     --annotate --exclude-type references --exclude-type acknowledgments
 ```
 
 ## Architecture: how annotation data reaches the client
 
-Before 2026-08-12, `tpc_search_internal.py`'s `--annotate`/`--annotate-sentences`/
-precise `--exclude-type` modes worked by parsing CAS2 files directly off disk
-(`textpresso_classifiers/casannot.py`), which only worked for users with a
-filesystem-level checkout on the Textpresso host. As of 2026-08-12 that data
-is served over HTTP instead, so the script works like `tpc_search.py` --
-network access only, from anywhere:
+Before 2026-08-12, the `--annotate`/`--annotate-sentences`/precise
+`--exclude-type` modes (then only in `tpc_search_internal.py`) worked by
+parsing CAS2 files directly off disk (`textpresso_classifiers/casannot.py`),
+which only worked for users with a filesystem-level checkout on the
+Textpresso host. As of 2026-08-12 that data is served over HTTP instead, so
+these modes work the same as plain search -- network access only, from
+anywhere:
 
 ```
-tpc_search_internal.py --url <base>
+tpc_search_combined.py --url <base>
         │
         ├─ POST {base}/search_documents      (unchanged; C++ textpressoapi, port 18080)
-        └─ GET  {base%/api → /annotate}?identifier=...   (new; cas_annotate_server.py)
+        └─ GET  {base%/api → /annotate}?identifier=...   (cas_annotate_server.py)
 ```
 
 `cas_annotate_server.py` (in the `agr_textpresso` repo, `textpressoapi/`
@@ -359,7 +356,7 @@ alongside the existing search-API ones, nothing removed or changed):
    was added routing through the container's published `8080` port (lighttpd)
    instead, since `8082` isn't published to the host. This is the layer to
    check first if the annotation endpoint ever seems unreachable from outside
-   despite `tpc_search_internal.py`/`cas_annotate_server.py` looking fine.
+   despite `tpc_search_combined.py`/`cas_annotate_server.py` looking fine.
 
 `start_textpresso.sh` and the `Dockerfile` were also updated so a fresh image
 build/container launches `cas_annotate_server.py` automatically; on the
@@ -377,14 +374,14 @@ the same results as the correct string, a wrong/over-broad set, or nothing
 `"seed (PO:0009010)"`, purely because no other stored category happened to
 start with "seed" in that corpus — a coincidence, not a guarantee).
 
-**As of 2026-08-12, this is fixed**: both scripts check every `--category`
-value against a live ontology index before running the query, and refuse to
-run on anything that isn't an exact match — no more silent wrong-or-lucky
-matching:
+**As of 2026-08-12, this is fixed**: `tpc_search_combined.py` checks every
+`--category` value against a live ontology index before running the query,
+and refuses to run on anything that isn't an exact match — no more silent
+wrong-or-lucky matching:
 
 ```
-$ python3 bin/tpc_search.py -c MaizeTest100 --category "seed" "development"
-tpc_search.py: error:
+$ python3 bin/tpc_search_combined.py -c MaizeTest100 --category "seed" "development"
+tpc_search_combined.py: error:
 --category "seed" does not exactly match a known category. Closest matches:
   --category "seed (PO:0009010)"   (PO)
   --category "seed abscission (GO:0097548)"   (GO)
@@ -397,12 +394,12 @@ A query with no close matches at all gets a plainer nudge rather than a wall
 of near-misses, including a keyword-search fallback:
 
 ```
-$ python3 bin/tpc_search.py -c MaizeTest100 --category "qwxyzplant" "development"
-tpc_search.py: error:
+$ python3 bin/tpc_search_combined.py -c MaizeTest100 --category "qwxyzplant" "development"
+tpc_search_combined.py: error:
 --category "qwxyzplant" has no matches found. Try a different word with
 bin/tpc_category_search.py "<term>", or drop --category and search by
 keyword instead, e.g.:
-  python3 bin/tpc_search.py -c MaizeTest100 "qwxyzplant"
+  python3 bin/tpc_search_combined.py -c MaizeTest100 "qwxyzplant"
 ```
 
 This check is fail-open on infrastructure problems: if the lookup service
@@ -442,7 +439,7 @@ Categories matching "seed":
   ...
 
 Example:
-  python3 bin/tpc_search.py -c <corpus> --category "seed (PO:0009010)" "<keywords>"
+  python3 bin/tpc_search_combined.py -c <corpus> --category "seed (PO:0009010)" "<keywords>"
 ```
 
 ### Architecture

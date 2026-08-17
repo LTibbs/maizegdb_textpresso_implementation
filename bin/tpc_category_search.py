@@ -78,7 +78,7 @@ def main():
     for m in matches:
         print(f'  {m["category"]:<{width}}  [{m["ontology"]}, {m["matched_on"]}]')
 
-    print(f'\nExample:\n  python3 bin/tpc_search.py -c <corpus> --category "{matches[0]["category"]}" "<keywords>"')
+    print(f'\nExample:\n  python3 bin/tpc_search_combined.py -c <corpus> --category "{matches[0]["category"]}" "<keywords>"')
 
 
 if __name__ == "__main__":
