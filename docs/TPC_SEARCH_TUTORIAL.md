@@ -346,8 +346,7 @@ curl -s -X POST -H "Content-Type: application/json" \
 one you already have, showing the ontology's EXACT-synonym matches for it:
 the gene mentions the OBO file recognizes as `cct1` itself, not a relative.
 Checking one of the two keyword hits confirms `cct1` is tagged there as an
-EXACT match, alongside `cct1`'s other exact aliases (`constans1`, `conz1`,
-`cry3`, `gigantea1`, ...) picked up in the same paper:
+EXACT match, alongside other loci and EXACT synonyms picked up in the same paper:
 
 ```bash
 python3 bin/tpc_search_combined.py --type document --accession 10.1101_gr.279027.124 --annotate --ontology MAIZE_GENES
@@ -387,7 +386,7 @@ Same idea, different papers: these two are among the results the
 literally, and neither has `cct1` as an EXACT match. `--annotate
 --ontology MAIZE_GENES_RELATED` shows why they're still tagged with the
 `cct1` category — each mentions a curated synonym that's used for this
-gene but also has some ambiguity. For example, `ZmCCT`, `ZmCCT9`, `ZmCCT10`
+gene but also has some ambiguity. For example, `ZmCCT` and `ZmCCT10`
 are found in the literature as RELATED synonyms of `cct1`, but aren't
 one-to-one EXACT synonyms the way `--annotate --ontology MAIZE_GENES`
 requires:
@@ -478,8 +477,7 @@ python3 bin/tpc_search_combined.py --type document --category "cct1 (tpzm:001032
 ```
 
 8 papers — more than the keyword search (2), because it also catches
-`cct1`'s other EXACT aliases (`constans1`, `conz1`, `cry3`, `gigantea1`,
-`stiff2`, ...) that a plain `"cct1"` keyword search would miss entirely,
+`cct1`'s other EXACT aliases that a plain `"cct1"` keyword search would miss entirely,
 but it does *not* include `10.1093_nar_gkac1195` or `10.1093_plcell_koae090`
 from the RELATED example above — those only have a RELATED `cct1` match, so
 they're correctly excluded by default.
