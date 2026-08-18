@@ -3,7 +3,7 @@
 A walkthrough of the Textpresso search CLI. Every command below
 was run against the live server and its real output is shown
 (long outputs are trimmed with `...` where noted). For the full reference for the python helper script, see [TPC_SEARCH_GUIDE.md](https://github.com/LTibbs/maizegdb_textpresso_implementation/blob/master/docs/TPC_SEARCH_GUIDE.md); for the raw HTTP API underneath it (no Python required), see
-[TPC_API_TUTORIAL.md](https://github.com/LTibbs/maizegdb_textpresso_implementation/blob/master/docs/TPC_API_TUTORIAL.md). For the python script, see [tpc_search_combined.py](https://github.com/LTibbs/maizegdb_textpresso_implementation/blob/master/bin/tpc_search_combined.py)
+[TPC_API_GUIDE.md](https://github.com/LTibbs/maizegdb_textpresso_implementation/blob/master/docs/TPC_API_GUIDE.md). For the python script, see [tpc_search_combined.py](https://github.com/LTibbs/maizegdb_textpresso_implementation/blob/master/bin/tpc_search_combined.py)
 
 Each example also shows the equivalent API call (`curl`), for callers
 not using Python. These use three base URLs, exported once for the rest of
