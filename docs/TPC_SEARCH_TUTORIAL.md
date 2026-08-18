@@ -223,6 +223,186 @@ curl -s -X POST -H "Content-Type: application/json" \
 ]
 ```
 
+## 4b. Expanding `--category` to include related ontology terms
+
+Section 4's `--category` matches only the *exact* term you give it — a
+search for `"seed (PO:0009010)"` finds papers annotated with `seed` itself,
+not papers annotated only with a more specific child term like `hypocotyl`
+or `seed coat`, and not papers annotated only with a broader parent term
+either. This is a different axis from the gene EXACT/RELATED distinction in
+section 6 below: that's about synonym ambiguity for one locus, while this
+is about walking the GO/PO/TO ontology *graph* — parent and child terms
+connected by typed relationships such as `is_a` and `part_of`.
+
+Two repeatable flags cover the two directions:
+
+- `--expand-relationship-type` walks *down* to descendants (child/more-specific
+  terms).
+- `--expand-ancestor-relationship-type` walks *up* to ancestors (parent/more-general
+  terms) — the mirror.
+
+```bash
+# descendants: also match papers annotated only with a child of "seed"
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type document \
+  --category "seed (PO:0009010)" --expand-relationship-type part_of "development" --count 3
+```
+
+```
+[1] Barrero C, Royo J, Grijota-Martinez C, Faye C, Paul W, Sanz S, Steinbiss HH, Hueros G. (2009). The promoter of ZmMRP-1, a maize transfer cell-specific transcriptional activator, is induced at solute exchange surfaces and responds to transport demands.. Planta. [10.1007_s00425-008-0823-0]
+
+[2] Paulsmeyer MN, Juvik JA. (2023). Increasing aleurone layer number and pericarp yield for elevated nutrient content in maize.. G3 (Bethesda). [10.1093_g3journal_jkad085]
+
+[3] Ren X, Pan Z, Zhao H, Zhao J, Cai M, Li J, Zhang Z, Qiu F. (2017). EMPTY PERICARP11 serves as a factor for splicing of mitochondrial nad1 intron and is required to ensure proper seed development in maize.. J Exp Bot. [10.1093_jxb_erx212]
+```
+
+Different top 3 than section 4's plain `--category "seed (PO:0009010)"`
+result — the expansion widened the pool of matching categories, so the
+relevance ranking shifted. `part_of` is the flag to use here specifically
+because `seed` has no `is_a` children in this ontology (see "Which
+relationship types are available for a given term?" below) — `is_a` would
+parse fine but silently contribute nothing.
+
+```bash
+# ancestors: also match papers annotated only with a parent of "hypocotyl"
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type document \
+  --category "hypocotyl (PO:0020100)" --expand-ancestor-relationship-type is_a \
+  "development" --count 3
+```
+
+```
+[1] Sekhon RS, Briskine R, Hirsch CN, Myers CL, Springer NM, Buell CR, de Leon N, Kaeppler SM. (2013). Maize gene atlas developed by RNA sequencing and comparative evaluation of transcriptomes based on RNA sequencing and microarrays.. PLoS One. [10.1371_journal.pone.0061005]
+
+[2] Bacon CW, Yates IE, Hinton DM, Meredith F. (2001). Biological control of Fusarium moniliforme in maize.. Environ Health Perspect. [10.1289_ehp.01109s2325]
+
+[3] Feng X, Meng Q, Zeng J, Yu Q, Xu D, Dai X, Ge L, Ma W, Liu W. (2022). Genome-wide identification of sucrose non-fermenting-1-related protein kinase genes in maize and their responses to abiotic stresses.. Front Plant Sci. [10.3389_fpls.2022.1087839]
+```
+
+Pass either flag multiple times to combine relationship types — `is_a` and
+`part_of` have different semantics (subtype vs. physical containment), so
+they're selected independently rather than lumped into one "include
+related terms" toggle. Combine both flags to expand in both directions at
+once:
+
+```bash
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type document \
+  --category "seed coat (PO:0009088)" \
+  --expand-relationship-type part_of \
+  --expand-ancestor-relationship-type is_a \
+  "development" --count 3
+```
+
+```
+[1] Barrero C, Royo J, Grijota-Martinez C, Faye C, Paul W, Sanz S, Steinbiss HH, Hueros G. (2009). The promoter of ZmMRP-1, a maize transfer cell-specific transcriptional activator, is induced at solute exchange surfaces and responds to transport demands.. Planta. [10.1007_s00425-008-0823-0]
+
+[2] Cooper M, Tomura S, Wilkinson MJ, Powell O, Messina CD. (2025). Breeding perspectives on tackling trait genome-to-phenome (G2P) dimensionality using ensemble-based genomic prediction.. Theor Appl Genet. [10.1007_s00122-025-04960-6]
+
+[3] Lin Y, Irani NG, Grotewold E. (2003). Sub-cellular trafficking of phytochemicals explored using auto-fluorescent compounds in maize cells.. BMC Plant Biol. [10.1186_1471-2229-3-10]
+```
+
+Omitting both flags preserves the exact-match-only behavior from section 4
+— this is opt-in, same as `--related-synonyms` in section 6.
+
+### Which relationship types are available for a given term?
+
+Neither flag is restricted to a fixed `choices` list — each accepts
+whatever relationship type string appears in the underlying OBO files
+(`is_a:` lines and `relationship: <type> <id>` lines), and GO/PO/TO don't
+all use the same set (GO leans on `regulates`/`positively_regulates`; PO
+uses `part_of` heavily for plant structure; different terms within the same
+ontology can have different relationship types depending on how
+specific/generic they are). What's available going *down* to children
+isn't necessarily the same as going *up* to parents, either. Rather than
+guess, every `category_search` match reports both directions: which
+relationship types have children under it (`relationship_types` —
+what `--expand-relationship-type` would need), and which have a parent
+above it (`parent_relationship_types` — what
+`--expand-ancestor-relationship-type` would need):
+
+```bash
+python3 bin/tpc_category_search.py "seed" --ontology PO --limit 3
+```
+
+```
+Categories matching "seed":
+
+  seed (PO:0009010)          [PO, exact]  children via: part_of; parents via: develops_from, has_part, is_a
+  seed chalaza (PO:0006333)  [PO, name_prefix]  parents via: develops_from, is_a, part_of
+  seed coat (PO:0009088)     [PO, name_prefix]  children via: part_of; parents via: is_a, part_of
+
+Example:
+  python3 bin/tpc_search_combined.py -c <corpus> --category "seed (PO:0009010)" "<keywords>"
+```
+
+Real ontology data is messier than a single `is_a`/`part_of` pair —
+`seed`'s own parents alone span `develops_from`, `has_part`, and `is_a`,
+and it has no `children via` for `is_a` at all here (only `part_of`), so
+`--expand-relationship-type is_a` on `seed` itself would be a no-op even
+though `is_a` clearly works for other terms. `seed chalaza` shows no
+`children via` at all — it's a leaf term, so `--expand-relationship-type`
+would be a no-op for it in any direction.
+
+You don't have to check `children via`/`parents via` by hand before every
+search, either: if you pass `--expand-relationship-type`/
+`--expand-ancestor-relationship-type` on an actual `--category` search
+(section 4b above) and the requested type isn't available for that term,
+`tpc_search_combined.py` prints a warning to stderr and still runs the
+search with whatever *is* available (or with just the original exact
+match, if nothing is) — it never blocks:
+
+```
+$ python3 bin/tpc_search_combined.py -c MaizeTest100 --type document --category "seed (PO:0009010)" \
+  --expand-relationship-type is_a "development" --count 1
+Warning: --expand-relationship-type is_a -- "seed (PO:0009010)" has no children via is_a, so this contributes nothing for it. Available for this term: part_of
+[1] Colombo F, Pagano A, Sangiorgio S, Macovei A, Balestrazzi A, Araniti F, Pilu R. (2023). Study of Seed Ageing in <i>lpa1-1</i> Maize Mutant and Two Possible Approaches to Restore Seed Germination.. Int J Mol Sci. [10.3390_ijms24010732]
+```
+
+`bin/tpc_category_search.py` warns the same way for its `--relationship-type`/
+`--ancestor-relationship-type` flags, one warning per directly-matched term
+that's missing the requested type (already-expanded matches in the same
+output are skipped, since they trivially have whatever type produced them).
+
+**API equivalent:** every match in `category_search`'s response carries
+both fields:
+
+```bash
+curl -s -G "$CATSEARCH" --data-urlencode "q=seed" --data-urlencode "limit=1"
+```
+
+```json
+{
+  "query": "seed",
+  "matches": [
+    {"id": "PO:0009010", "name": "seed", "category": "seed (PO:0009010)",
+     "ontology": "PO", "matched_on": "exact",
+     "relationship_types": ["part_of"],
+     "parent_relationship_types": ["develops_from", "has_part", "is_a"]}
+  ]
+}
+```
+
+Once you know which types a term supports in each direction, expand with
+just those — for `seed`, that's `part_of` for children and
+`develops_from`/`has_part`/`is_a` for parents (passing `is_a` as a
+*descendant* type here would parse fine but contribute nothing, per the
+`children via` list above):
+
+```bash
+python3 bin/tpc_search_combined.py -c MaizeTest100 --type document \
+  --category "seed (PO:0009010)" \
+  --expand-relationship-type part_of \
+  --expand-ancestor-relationship-type is_a \
+  "development" --count 3
+```
+
+`relationship_type`/`ancestor_relationship_type` on `category_search` (used
+for the *lookup* above) and `--expand-relationship-type`/
+`--expand-ancestor-relationship-type` on `--category` (used for the actual
+document *search*) are the same relationship-type vocabulary in each
+direction, resolved through the same server-side ontology closure — the
+CLI's `--category` expansion just unions each match's `category` string
+into the `categories` field of the `search_documents` payload before
+sending it, the same request shape shown in section 4's API example.
+
 ## 5. Ontology annotations with `--annotate`
 
 So far every example has been plain search — keywords and `--category` both

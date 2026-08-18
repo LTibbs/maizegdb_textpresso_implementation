@@ -91,6 +91,13 @@ keywords                  Search keywords
 --accession ID             Filter by DOI / accession. NOTE that slashes ("/") cause problems and so must be replaced by underscores ("_") e.g. search for 10.1007_s00425-012-1754-3 to retrieve doi 10.1007/s00425-012-1754-3
 --paper-type TYPE          Filter by paper type (Journal_article, Review, ...)
 --category CATEGORY        Restrict to ontology category (repeatable). Must be the exact stored string with ID suffix, e.g. "seed (PO:0009010)" or "adh1 (tpzm:0008786)" — a non-exact value is rejected with suggestions rather than run; see "Looking up --category values" below and bin/tpc_category_search.py
+--expand-relationship-type TYPE  Also match descendants of each --category term along this
+                           OBO relationship (repeatable), e.g. is_a, part_of.
+--expand-ancestor-relationship-type TYPE  Mirror of the above: also match ancestors
+                           (parent terms) along this OBO relationship (repeatable).
+                           Both default: unset — --category matches only the exact
+                           term, no ontology-graph expansion. See "Ontology
+                           relationship expansion" below.
 --categories-and           Require ALL categories to match (default: ANY)
 --sort-by-year             Sort by year instead of relevance score
 --format text|json         Output format (default: text)
@@ -133,6 +140,12 @@ python3 bin/tpc_search_combined.py -c MaizeOA --case-sensitive "ZmMADS"
 
 # Category search (ID suffix required)
 python3 bin/tpc_search_combined.py -c MaizeTest100 --category "seed (PO:0009010)" "development"
+
+# Category search including is_a/part_of descendants (see "Ontology relationship
+# expansion" below) -- also matches papers annotated only with a child term like
+# "hypocotyl" or "seed coat", not "seed" itself
+python3 bin/tpc_search_combined.py -c MaizeTest100 --category "seed (PO:0009010)" \
+  --expand-relationship-type is_a --expand-relationship-type part_of "development"
 
 # Drop bibliography-only document hits
 python3 bin/tpc_search_combined.py -c MaizeTest100 --type document "MARK" --exclude-type references
@@ -458,6 +471,115 @@ followed by a restart of `cas_annotate_server.py` to pick up new/changed
 categories -- the same "old data until restarted" caveat already noted for
 `textpressoapi`/lighttpd's `IndexReader` caching in the 2026-07-13 entry of
 `Laura_work_updates_log.md`.
+
+## Ontology relationship expansion (`--expand-relationship-type` / `--expand-ancestor-relationship-type`)
+
+By default `--category` matches only the *exact* term — a search for
+`"seed (PO:0009010)"` won't find a paper annotated only with a more
+specific child term like `"hypocotyl (PO:0020100)"` or
+`"seed coat (PO:0009088)"`, even though both are conceptually "seed"
+results, and it won't find one annotated only with a broader parent term
+either. `--expand-relationship-type` / `--expand-ancestor-relationship-type`
+(both repeatable) close that gap by walking the GO/PO/TO ontology graph —
+parent/child edges connected by a typed OBO relationship such as `is_a` or
+`part_of` — in either direction:
+
+- `--expand-relationship-type` walks *downward* to descendants (child/more-specific
+  terms).
+- `--expand-ancestor-relationship-type` walks *upward* to ancestors
+  (parent/more-general terms) — the mirror.
+
+```bash
+# descendants: also match papers annotated only with a child of "seed"
+python3 bin/tpc_search_combined.py -c MaizeTest100 --category "seed (PO:0009010)" \
+  --expand-relationship-type part_of "development" --count 3
+
+# ancestors: also match papers annotated only with a parent of "hypocotyl"
+python3 bin/tpc_search_combined.py -c MaizeTest100 --category "hypocotyl (PO:0020100)" \
+  --expand-ancestor-relationship-type is_a "development" --count 3
+```
+
+(`part_of` is the flag to use for `seed`'s descendants specifically —
+this particular term has no `is_a` children in the ontology, only
+`part_of`; see "Which relationship types are available for a given term?"
+below for how to check this per term rather than guessing.)
+
+This is a different axis from `--related-synonyms`/`MAIZE_GENES_RELATED`
+above: that's about *synonym ambiguity* for one locus (one term, multiple
+possibly-imprecise aliases), while this is about the *ontology-graph*
+relationship between distinct terms (`seed` and `hypocotyl` are different
+concepts, one a specific case of the other). `is_a` and `part_of` aren't
+interchangeable either — subtype vs. physical-containment — so pass each
+one you want explicitly rather than relying on a single "include
+related terms" toggle. Both flags can be combined (with each other, and
+with multiple relationship types each) to expand in both directions at
+once:
+
+```bash
+python3 bin/tpc_search_combined.py -c MaizeTest100 --category "seed coat (PO:0009088)" \
+  --expand-relationship-type part_of \
+  --expand-ancestor-relationship-type is_a "development"
+```
+
+Omitting both flags preserves the original exact-match behavior.
+
+### Which relationship types are available for a given term?
+
+There's no fixed list of relationship types shared across GO/PO/TO —
+different terms carry different ones depending on how the ontology models
+them, and the set of types available going *down* to children isn't
+necessarily the same as going *up* to parents. Rather than guess,
+`bin/tpc_category_search.py`'s output now shows, per match, both:
+
+```bash
+python3 bin/tpc_category_search.py "seed" --ontology PO --limit 3
+```
+
+```
+Categories matching "seed":
+
+  seed (PO:0009010)             [PO, exact]  children via: is_a, part_of
+  seed coat (PO:0009088)        [PO, name_prefix]  children via: is_a; parents via: part_of
+  seed abscission (GO:0097548)  [GO, name_prefix]  parents via: is_a
+
+Example:
+  python3 bin/tpc_search_combined.py -c <corpus> --category "seed (PO:0009010)" "<keywords>"
+```
+
+`seed (PO:0009010)` has no `parents via` note — it's a root term with
+nothing above it, so `--expand-ancestor-relationship-type` would be a no-op
+for it; `seed abscission` has no `children via` note — it's a leaf term, so
+`--expand-relationship-type` would be a no-op for it instead. Passing a
+relationship type a term doesn't have in that direction (typo, or one that
+just doesn't apply there) isn't an error — it silently contributes nothing
+extra — so check `children via`/`parents via` first rather than finding out
+by trial and error. The same values appear as `relationship_types` /
+`parent_relationship_types` in `--format json` and in the raw
+`category_search` API response.
+
+### Architecture
+
+Implemented entirely in `agr_textpresso`'s `textpressoapi/category_index.py`
+alongside the `--category` lookup index described above: OBO parsing was
+extended to also capture `is_a:` and `relationship: <type> <id>` lines
+(previously discarded), building both a typed parent→child edge map
+(`children_by_type`) and its mirror, a typed child→parent edge map
+(`parents_by_type`, straight off the OBO file) per relationship type.
+Descendant/ancestor closures are computed lazily and memoized per
+`(term_id, relationship_types)` the first time each is requested, not
+precomputed for every term up front. `cas_annotate_server.py`'s
+`/v1/textpresso/category_search` endpoint accepts repeatable
+`relationship_type` and `ancestor_relationship_type` query params and now
+also returns each match's available `relationship_types` (children) and
+`parent_relationship_types` (parents). `expand_categories_by_relationship()`
+in `tpc_search_combined.py` is the client-side piece that turns
+`--expand-relationship-type`/`--expand-ancestor-relationship-type` into the
+widened `--category` list actually sent to `search_documents` — same
+"resolve first, search second" pattern as `check_categories_or_exit()`. See
+the OBO relationship type prior art in `agr_textpresso`'s
+`textpressocentral/OboFileAnalyzer/OboFileSegmentation.cpp` (an offline
+preprocessing tool, not wired into the live search path, but the source for
+which relationship keywords to recognize).
 
 ## Other notes
 - **Generic-word contamination in `MAIZE_GENES`/`MAIZE_GENES_RELATED`

@@ -209,16 +209,29 @@ def annotation_service_url(search_url):
     return search_url.rsplit("/", 1)[0]
 
 
-def category_search(query, url=DEFAULT_URL, ontology=None, limit=10):
+def category_search(query, url=DEFAULT_URL, ontology=None, limit=10, relationship_types=None,
+                     ancestor_relationship_types=None):
     """Look up candidate --category strings for a free-text query.
 
+    relationship_types -- optional iterable of OBO relationship types (e.g.
+    ["is_a", "part_of"]). When given, each match's descendants along those
+    relationships are included too (see agr_textpresso's category_index.py).
+    Omitted preserves prior literal-match-only behavior.
+
+    ancestor_relationship_types -- same idea, mirrored: when given, each
+    match's ancestors (parent terms) along those relationships are included
+    too. Combine both to expand in both directions from the same query.
+
     Returns the server's ranked "matches" list (each a dict with id, name,
-    category, ontology, matched_on), or None if the lookup service itself
+    category, ontology, matched_on, relationship_types,
+    parent_relationship_types), or None if the lookup service itself
     couldn't be reached (network/service failure -- distinct from a query
     that legitimately has zero matches, which returns an empty list).
     """
     params = [("q", query)]
     params += [("ontology", o) for o in (ontology or ())]
+    params += [("relationship_type", r) for r in (relationship_types or ())]
+    params += [("ancestor_relationship_type", r) for r in (ancestor_relationship_types or ())]
     if limit:
         params.append(("limit", str(limit)))
     endpoint = f"{annotation_service_url(url)}/category_search?{urllib.parse.urlencode(params)}"
@@ -227,6 +240,83 @@ def category_search(query, url=DEFAULT_URL, ontology=None, limit=10):
             return json.loads(resp.read())["matches"]
     except (urllib.error.URLError, urllib.error.HTTPError):
         return None
+
+
+def expand_categories_by_relationship(categories, relationship_types, url=DEFAULT_URL,
+                                       ancestor_relationship_types=None):
+    """Expand --category values to include related terms along OBO relationship types.
+
+    categories                  -- exact "name (ID)" strings, already validated by
+                                    check_categories_or_exit().
+    relationship_types          -- iterable of OBO relationship types (e.g. is_a,
+                                    part_of) to expand into descendants (children);
+                                    falsy/None skips descendant expansion.
+    ancestor_relationship_types -- same idea, mirrored: expand into ancestors
+                                    (parent terms) instead; falsy/None skips it.
+
+    Both are no-ops when their respective argument is falsy; if both are
+    falsy, categories is returned unchanged.
+
+    For each category, looks up its ID via category_search() (which, given
+    relationship_types/ancestor_relationship_types, returns the term plus its
+    descendants/ancestors -- see agr_textpresso's category_index.py), and
+    unions in every returned "category" string. Order: originals first, then
+    newly discovered terms in the order returned, deduplicated throughout.
+
+    Warns to stderr (doesn't block the search) for any requested relationship
+    type that isn't actually available for that specific term in that
+    direction -- there's no fixed vocabulary across GO/PO/TO (a type valid
+    for one term can be absent on another), so a typo or a mismatched
+    term/relationship-type pairing would otherwise silently expand into
+    nothing with no indication why.
+    """
+    if not relationship_types and not ancestor_relationship_types:
+        return categories
+
+    expanded = list(dict.fromkeys(categories))
+    seen = set(expanded)
+    for cat in categories:
+        m = _CATEGORY_ID_RE.search(cat)
+        term_id = m.group(1) if m else cat
+        matches = category_search(term_id, url=url, limit=100,
+                                   relationship_types=relationship_types,
+                                   ancestor_relationship_types=ancestor_relationship_types) or ()
+        _warn_unavailable_relationship_types(
+            cat, term_id, matches, relationship_types, ancestor_relationship_types)
+        for match in matches:
+            if match["category"] not in seen:
+                seen.add(match["category"])
+                expanded.append(match["category"])
+    return expanded
+
+
+def _warn_unavailable_relationship_types(cat, term_id, matches, relationship_types,
+                                          ancestor_relationship_types):
+    """Print a stderr warning for any requested relationship type that has no
+    effect for this specific term, per the exact match's own
+    relationship_types/parent_relationship_types (see category_index.py).
+    Silent if the exact match isn't in matches (e.g. lookup service down) --
+    same fail-open stance as check_categories_or_exit().
+    """
+    exact = next((m for m in matches if m["id"] == term_id), None)
+    if exact is None:
+        return
+
+    def _warn(requested, available, direction, flag):
+        unavailable = sorted(set(requested) - set(available or ()))
+        if not unavailable:
+            return
+        available_note = ", ".join(available) if available else "(none -- no relationships in this direction)"
+        print(f'Warning: {flag} {", ".join(unavailable)} -- "{cat}" has no {direction} via '
+              f'{"/".join(unavailable)}, so this contributes nothing for it. '
+              f'Available for this term: {available_note}', file=sys.stderr)
+
+    if relationship_types:
+        _warn(relationship_types, exact.get("relationship_types"),
+              "children", "--expand-relationship-type")
+    if ancestor_relationship_types:
+        _warn(ancestor_relationship_types, exact.get("parent_relationship_types"),
+              "parents", "--expand-ancestor-relationship-type")
 
 
 def format_category_matches(matches):
@@ -315,6 +405,19 @@ def add_search_args(parser):
                              "to look one up.")
     parser.add_argument("--categories-and", action="store_true",
                         help="Require ALL categories to match (default: ANY)")
+    parser.add_argument("--expand-relationship-type", action="append", metavar="TYPE",
+                        dest="expand_relationship_types",
+                        help="Also search each --category's descendants (child terms) "
+                             "along this OBO relationship (repeatable), e.g. "
+                             "--expand-relationship-type is_a --expand-relationship-type "
+                             "part_of. Default: --category matches only the exact term, "
+                             "no ontology-graph expansion.")
+    parser.add_argument("--expand-ancestor-relationship-type", action="append", metavar="TYPE",
+                        dest="expand_ancestor_relationship_types",
+                        help="Mirror of --expand-relationship-type: also search each "
+                             "--category's ancestors (parent terms) along this OBO "
+                             "relationship (repeatable). Combine with "
+                             "--expand-relationship-type to expand both directions at once.")
     parser.add_argument("--sort-by-year", action="store_true",
                         help="Sort results by year instead of relevance score")
     parser.add_argument("--format", choices=["text", "json"], default="text",
@@ -718,6 +821,9 @@ def main():
         validate_search_args(args, parser)
         if args.category:
             check_categories_or_exit(args.category, args.url, parser)
+            args.category = expand_categories_by_relationship(
+                args.category, args.expand_relationship_types, args.url,
+                args.expand_ancestor_relationship_types)
         corpora = args.corpora or list_corpora(args.url)
         payload = build_query(args, corpora)
         results = search(payload, url=args.url)

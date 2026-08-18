@@ -1,16 +1,21 @@
 # Adding a New Document Corpus to Textpresso
 
-## Updated Aug 12 2026
+## Updated Aug 14 2026
 
 ## Purpose
 
 This is a step-by-step guide for getting a new batch of PDFs (from any species) into the shared Textpresso instance so they're full-text
 searchable via the API and the `/tpc/search` UI.
 
-It reflects the actual commands that work on the live host as of 2026-08-12
-(validated end-to-end while ingesting a 45-paper GDR/Rosaceae corpus). Where an existing script or wrapper turned out to be
-unreliable, that's called out explicitly with the direct command that works
-instead.
+It reflects the actual commands that work on the live host as of 2026-08-14
+(validated end-to-end while ingesting a 45-paper GDR/Rosaceae corpus on
+2026-08-12, and a 119-paper GrainGenes/wheat corpus — plus a full `-t1`→`-t4`
+tokenizer-mode switch for that corpus and `SorghumBase` — on 2026-08-14).
+Where an existing script or wrapper turned out to be unreliable, that's
+called out explicitly with the direct command that works instead.
+
+**2026-08-14 update: the tokenizer-mode recommendation in Step 5 flipped.**
+Use `-t4`, not `-t1`, for new PDF-based corpora — see Step 5 for why.
 
 If you only need to *search* existing corpora, see
 use the
@@ -233,7 +238,11 @@ step above.
 The packaged `tokenize` wrapper (`/usr/local/bin/03pdf2cas4tai.sh`) has an
 unreliable newer-than-file detection when starting from an empty output
 directory — it can silently produce zero output. Call `articles2cas`
-directly instead, which is what the wrapper calls internally anyway:
+directly instead, which is what the wrapper calls internally anyway.
+
+**Use `-t 4` (tai mode), not `-t 1`, done directly (not via the wrapper).**
+This recommendation flipped on 2026-08-14 — see "Why `-t4`, and why the old
+`-t1` advice was wrong" below before skipping straight to `-t1` out of habit.
 
 ```bash
 docker exec agr-textpresso-textpresso-1 bash -lc "
@@ -241,30 +250,84 @@ set -euo pipefail
 export LD_LIBRARY_PATH=\"\${LD_LIBRARY_PATH:-}:/usr/local/lib\"
 export PATH=\$PATH:/usr/local/bin
 mkdir -p /data/textpresso/tpcas-1/<CorpusName>
-cd /data/textpresso/tpcas-1
 ls /data/textpresso/raw_files/pdf/<CorpusName> > /tmp/<corpusname>_accessions.txt
+
+# Step 5a: pre-extract per-page text (tai mode reads this, it does not
+# read the PDF directly). Run synchronously, NOT backgrounded — the
+# packaged convert_text/tai.sh wrapper backgrounds these calls with no
+# final 'wait', so a docker exec session ending silently kills in-flight
+# jobs and produces partial/zero output with no error. This inline xargs
+# form has none of that problem:
+for acc in \$(cat /tmp/<corpusname>_accessions.txt); do
+  echo \"/data/textpresso/raw_files/pdf/<CorpusName>/\${acc}/\${acc}.pdf\"
+done > /tmp/<corpusname>_pdf_paths.txt
+cat /tmp/<corpusname>_pdf_paths.txt | xargs -n1 -P8 -I{} timeout 300 pdf2txtimg {}
+
+# Verify every accession actually got per-page text before continuing —
+# a PDF that failed extraction here will silently contribute nothing to
+# tokenize below rather than erroring:
+c=0
+for acc in \$(cat /tmp/<corpusname>_accessions.txt); do
+  [[ -f \"/data/textpresso/raw_files/pdf/<CorpusName>/\${acc}/\${acc}.00001.txt\" ]] && c=\$((c+1))
+done
+echo \"extracted: \${c} / \$(wc -l < /tmp/<corpusname>_accessions.txt)\"
+
+# Step 5b: tokenize from the pre-extracted text
+cd /data/textpresso/tpcas-1
 articles2cas -i /data/textpresso/raw_files/pdf/<CorpusName> \
-  -l /tmp/<corpusname>_accessions.txt -t 1 -o <CorpusName> -p
+  -l /tmp/<corpusname>_accessions.txt -t 4 -o <CorpusName> -p
 find <CorpusName> -name '*.tpcas' -print0 | xargs -0 -r gzip -f
 find <CorpusName> -maxdepth 2
 "
 ```
 
-(`-t 1` = fresh PDF input; `-p` = use the parent directory name, i.e. the
+(`-t 4` = tai/text-and-image input, reading the per-page `.txt`/image files
+`pdf2txtimg` just produced; `-p` = use the parent directory name, i.e. the
 accession, as the output file's basename.) `LD_LIBRARY_PATH` must include
-`/usr/local/lib` or `articles2cas` fails immediately with
+`/usr/local/lib` or `articles2cas`/`pdf2txtimg` fail immediately with
 `TdTokenizer.so: cannot open shared object file`.
 
-**Use `-t 1`, not `-t 4`.** The `tokenize` wrapper script itself calls
-`articles2cas` with `-t 4` internally, but that mode produces CAS1 files
-with **zero sentence-boundary annotations** — the paper indexes fine and
-`--type document` search works, but the default sentence-level search
-(what most users actually use, and what section-scoped searches like
-`--type abstract` depend on) silently returns "No results" for everything,
-with no error anywhere in the pipeline. `-t 1` (used by the master
-`run_tpc_pipeline_incremental.sh`'s own CAS1 step) is the correct mode for
-raw PDF input and produces normal sentence splitting. Verify before moving
-on:
+### Why `-t4`, and why the old `-t1` advice was wrong
+
+The previous version of this guide (through 2026-08-12) said to always use
+`-t1` because `-t4` "produces CAS1 files with zero sentence-boundary
+annotations." That was true of what was actually tried at the time — but the
+cause wasn't `-t4` itself, it was that nothing had pre-extracted the
+per-page text `-t4` needs: the packaged `tokenize` wrapper's own
+`pdf2txtimg` step is backgrounded with no `wait` (see Step 5a above) and
+silently produces incomplete output. Run `pdf2txtimg` synchronously first,
+as shown above, and `-t4` produces completely normal sentence-boundary
+annotations — confirmed at full scale on 2026-08-14 across `MaizeTest`,
+`MaizeTest100`, `MaizeOA`, `SorghumBase`, and this guide's own `GrainGenes`
+ingest (0 zero-sentence accessions out of 1,232 papers processed this way
+that day).
+
+More importantly, **section-scoped search (`--type abstract`,
+`--type references`, `--type discussion`, etc.) only works for corpora
+tokenized via `-t4`.** Section-boundary detection lives in `TdTokenizer.cpp`
+(the annotator `-t4` uses) and was fixed there in the 2026-07-13/07-14
+sessions (see `Laura_work_updates_log.md`). `-t1`'s tokenizer,
+`TpTokenizer.cpp`, has **no section-detection code at all** — not a bug to
+fix, a capability that was simply never built there. A corpus tokenized via
+`-t1` can never get section-scoped search without being re-tokenized via
+`-t4`; there's no annotate-time fix for this, it's baked in at the CAS1
+stage. (`CASManager.h`: `PDF2TPCAS_DESCRIPTOR` → `TpTokenizer.xml` for
+`-t1`; `TAI2TPCAS_DESCRIPTOR` → `TdTokenizer.xml` for `-t4`.)
+
+`-t4` also happened to route around 2 of 4 PoDoFo parse failures hit during
+the 2026-08-14 `SorghumBase`/`GrainGenes` work, since `pdf2txtimg` uses a
+different extraction backend than `-t1`'s direct PoDoFo parsing — a nice
+side benefit, but don't rely on it universally; the PoDoFo fallback recipe
+below is still needed for the cases `-t4` doesn't resolve on its own.
+
+**`-t1` is still valid** if you specifically don't need section-scoped
+search for this corpus and want to skip the extra `pdf2txtimg` step — it's
+simpler and one step shorter. Use the exact command from before:
+`articles2cas -i ... -t 1 -o <CorpusName> -p` (no `pdf2txtimg` pre-step
+needed). Just know that decision is permanent for that corpus's CAS1 unless
+you retokenize it later.
+
+Verify before moving on:
 
 ```bash
 docker exec agr-textpresso-textpresso-1 bash -lc \
@@ -539,6 +602,18 @@ really has no annotations from that ontology:
 docker exec agr-textpresso-textpresso-1 bash -lc \
   "zcat /data/textpresso/tpcas-2/<CorpusName>/<accession>/<accession>.tpcas.gz | grep -c 'tpzm'"
 # expect 0
+```
+
+If you tokenized via `-t4` (the default per Step 5), spot-check that section
+detection actually worked — a corpus-wide zero here usually means the
+`pdf2txtimg` pre-step was skipped or failed silently:
+
+```bash
+docker exec agr-textpresso-textpresso-1 bash -lc \
+  "zcat /data/textpresso/tpcas-1/<CorpusName>/<accession>/<accession>.tpcas.gz | grep -c 'textpresso:section'"
+# expect > 0 for most papers (not every paper has recognizable headings —
+# some legitimately return 0, e.g. book chapters with nonstandard section
+# names — but a corpus-wide zero means something's wrong)
 ```
 
 ## Step 10: Clean Up and Restore Shared State

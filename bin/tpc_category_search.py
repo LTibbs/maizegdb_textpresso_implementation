@@ -38,6 +38,38 @@ def _load_module(name, rel_path):
 _search = _load_module("tpc_search", "tpc_search.py")
 
 
+def _warn_unavailable_relationship_types(matches, relationship_types, ancestor_relationship_types):
+    """Print a stderr warning for each directly-matched term (matched_on has no
+    "+descendant"/"+ancestor" suffix) that's missing one or more of the
+    requested relationship types in that direction -- per that match's own
+    relationship_types/parent_relationship_types (see category_index.py).
+    Expanded matches are skipped since they trivially have the type that
+    produced them. No-op if neither --relationship-type nor
+    --ancestor-relationship-type was passed.
+    """
+    if not relationship_types and not ancestor_relationship_types:
+        return
+
+    def _warn(cat, requested, available, direction, flag):
+        unavailable = sorted(set(requested) - set(available or ()))
+        if not unavailable:
+            return
+        available_note = ", ".join(available) if available else "(none -- no relationships in this direction)"
+        print(f'Warning: {flag} {", ".join(unavailable)} -- "{cat}" has no {direction} via '
+              f'{"/".join(unavailable)}, so this contributes nothing for it. '
+              f'Available for this term: {available_note}', file=sys.stderr)
+
+    for m in matches:
+        if "+" in m.get("matched_on", ""):
+            continue  # already an expanded result, not the term the flags were requested for
+        if relationship_types:
+            _warn(m["category"], relationship_types, m.get("relationship_types"),
+                  "children", "--relationship-type")
+        if ancestor_relationship_types:
+            _warn(m["category"], ancestor_relationship_types, m.get("parent_relationship_types"),
+                  "parents", "--ancestor-relationship-type")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Search Textpresso ontology categories for --category candidates.",
@@ -51,13 +83,26 @@ def main():
                              "default: search all")
     parser.add_argument("--limit", type=int, default=20,
                         help="Max results (default: 20)")
+    parser.add_argument("--relationship-type", action="append", metavar="TYPE",
+                        dest="relationship_types",
+                        help="Also include descendants (child terms) of each match "
+                             "along this OBO relationship (repeatable), e.g. "
+                             "--relationship-type is_a --relationship-type part_of. "
+                             "Default: literal match only, no ontology-graph expansion.")
+    parser.add_argument("--ancestor-relationship-type", action="append", metavar="TYPE",
+                        dest="ancestor_relationship_types",
+                        help="Mirror of --relationship-type: also include ancestors "
+                             "(parent terms) of each match along this OBO relationship "
+                             "(repeatable). Combine with --relationship-type to expand "
+                             "both directions at once.")
     parser.add_argument("--url", default=_search.DEFAULT_URL,
                         help=f"API base URL (default: {_search.DEFAULT_URL})")
     parser.add_argument("--format", choices=["text", "json"], default="text",
                         help="Output format (default: text)")
     args = parser.parse_args()
 
-    matches = _search.category_search(args.query, args.url, args.ontology, args.limit)
+    matches = _search.category_search(args.query, args.url, args.ontology, args.limit,
+                                       args.relationship_types, args.ancestor_relationship_types)
     if matches is None:
         print(f"Could not reach the category lookup service at "
               f"{_search.annotation_service_url(args.url)}/category_search", file=sys.stderr)
@@ -73,10 +118,21 @@ def main():
         print("Try a shorter or more general term, or a different --ontology.")
         return
 
+    _warn_unavailable_relationship_types(matches, args.relationship_types,
+                                          args.ancestor_relationship_types)
+
     print(f'Categories matching "{args.query}":\n')
     width = max(len(m["category"]) for m in matches)
     for m in matches:
-        print(f'  {m["category"]:<{width}}  [{m["ontology"]}, {m["matched_on"]}]')
+        rel_types = m.get("relationship_types") or []
+        parent_rel_types = m.get("parent_relationship_types") or []
+        notes = []
+        if rel_types:
+            notes.append(f"children via: {', '.join(rel_types)}")
+        if parent_rel_types:
+            notes.append(f"parents via: {', '.join(parent_rel_types)}")
+        rel_note = f"  {'; '.join(notes)}" if notes else ""
+        print(f'  {m["category"]:<{width}}  [{m["ontology"]}, {m["matched_on"]}]{rel_note}')
 
     print(f'\nExample:\n  python3 bin/tpc_search_combined.py -c <corpus> --category "{matches[0]["category"]}" "<keywords>"')
 

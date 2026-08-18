@@ -123,16 +123,29 @@ def annotation_service_url(search_url):
     return search_url.rsplit("/", 1)[0]
 
 
-def category_search(query, url=DEFAULT_URL, ontology=None, limit=10):
+def category_search(query, url=DEFAULT_URL, ontology=None, limit=10, relationship_types=None,
+                     ancestor_relationship_types=None):
     """Look up candidate --category strings for a free-text query.
 
+    relationship_types -- optional iterable of OBO relationship types (e.g.
+    ["is_a", "part_of"]). When given, each match's descendants along those
+    relationships are included too (see agr_textpresso's category_index.py).
+    Omitted preserves prior literal-match-only behavior.
+
+    ancestor_relationship_types -- same idea, mirrored: when given, each
+    match's ancestors (parent terms) along those relationships are included
+    too. Combine both to expand in both directions from the same query.
+
     Returns the server's ranked "matches" list (each a dict with id, name,
-    category, ontology, matched_on), or None if the lookup service itself
+    category, ontology, matched_on, relationship_types,
+    parent_relationship_types), or None if the lookup service itself
     couldn't be reached (network/service failure -- distinct from a query
     that legitimately has zero matches, which returns an empty list).
     """
     params = [("q", query)]
     params += [("ontology", o) for o in (ontology or ())]
+    params += [("relationship_type", r) for r in (relationship_types or ())]
+    params += [("ancestor_relationship_type", r) for r in (ancestor_relationship_types or ())]
     if limit:
         params.append(("limit", str(limit)))
     endpoint = f"{annotation_service_url(url)}/category_search?{urllib.parse.urlencode(params)}"

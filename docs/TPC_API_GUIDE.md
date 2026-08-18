@@ -321,8 +321,11 @@ Repeat `ontology=GO`/`ontology=PO`/etc. to restrict.
 ```json
 {
   "matches": [
-    {"id": "PO:0009010", "name": "seed", "category": "seed (PO:0009010)", "ontology": "PO", "matched_on": "exact"},
-    {"id": "GO:0097548", "name": "seed abscission", "category": "seed abscission (GO:0097548)", "ontology": "GO", "matched_on": "name_prefix"},
+    {"id": "PO:0009010", "name": "seed", "category": "seed (PO:0009010)", "ontology": "PO",
+     "matched_on": "exact", "relationship_types": ["part_of"],
+     "parent_relationship_types": ["develops_from", "has_part", "is_a"]},
+    {"id": "GO:0097548", "name": "seed abscission", "category": "seed abscission (GO:0097548)",
+     "ontology": "GO", "matched_on": "name_prefix", "relationship_types": [], "parent_relationship_types": ["is_a"]},
     ...
   ]
 }
@@ -334,12 +337,82 @@ backend requires. `matched_on` is ranked exact > name_prefix >
 synonym_exact > name_substring > synonym_substring; the CLI wrapper always
 recommends `matches[0]`.
 
+`relationship_types` lists the OBO relationship types (`is_a`, `part_of`,
+`regulates`, ...) that actually have children under *that specific term* —
+i.e. the values `relationship_type` (below) would need to return anything
+for this match, expanding *downward* into descendants.
+`parent_relationship_types` is the mirror — the relationship types that
+have a parent above this term, i.e. what `ancestor_relationship_type`
+(below) would need to expand *upward* into ancestors. There's no fixed
+list shared across GO/PO/TO, so these are how a client discovers per-term,
+per-direction, what's expandable, rather than guessing. An empty list in
+either field means nothing to expand in that direction (a leaf term has no
+children; a root term has no parents).
+
 ```bash
 # Find the right category string, then use it in a search
 curl -s -G "$BASE_ANNOTATE_HOST/category_search" --data-urlencode "q=seed" \
   | jq -r '.matches[0].category'
 # -> "seed (PO:0009010)"
 ```
+
+### Including related terms (`relationship_type`, `ancestor_relationship_type`)
+
+By default `category_search` (and `--category` in the CLI) matches only the
+exact term. Two repeatable params expand it along the ontology graph, one
+per direction:
+
+- `relationship_type` — include a term's *descendants* (children) along
+  that OBO relationship. E.g. a paper annotated only with
+  `seed coat (PO:0009088)`, a `part_of` descendant of `seed`, then also
+  matches a `seed`-restricted search.
+- `ancestor_relationship_type` — the mirror: include a term's *ancestors*
+  (parents) along that OBO relationship instead. Both can be passed
+  together to expand in both directions from the same query.
+
+Not every relationship type applies to every term — `seed`'s own
+descendants here only use `part_of` (it has no `is_a` children at all), so
+check a term's `relationship_types`/`parent_relationship_types` (previous
+section) before picking which type(s) to pass; the CLI wrapper warns you
+if you request one that doesn't apply (see `TPC_SEARCH_GUIDE.md`), but the
+raw API here just silently returns nothing extra for it.
+
+```bash
+curl -s -G "http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/category_search" \
+  --data-urlencode "q=seed" \
+  --data-urlencode "relationship_type=part_of" \
+  --data-urlencode "limit=8"
+```
+
+```bash
+# ancestor direction, e.g. starting from a specific child term -- part_of here
+# since that's the relationship connecting "seed coat" back up to "seed"
+curl -s -G "http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/category_search" \
+  --data-urlencode "q=PO:0009088" \
+  --data-urlencode "ancestor_relationship_type=part_of" \
+  --data-urlencode "limit=8"
+```
+
+The returned `matches` list already includes the expanded terms (their
+`matched_on` gets a `+descendant` or `+ancestor` suffix, e.g.
+`"exact+descendant"`, so you can tell a direct hit from an expanded one,
+and which direction) — pass every returned `category` string as a separate
+`categories` entry in `/search_documents` to actually search with the
+expansion:
+
+```bash
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"query":{"type":"sentence","corpora":["MaizeTest100"],
+       "keywords":"development",
+       "categories":["seed (PO:0009010)","seed coat (PO:0009088)","seed chalaza (PO:0006333)"]},
+       "count":50,"include_match_sentences":true}' \
+  "$BASE/search_documents"
+```
+
+`/search_documents` itself has no relationship-expansion awareness — the
+expansion happens entirely in the `category_search` lookup step; the search
+endpoint just sees a longer literal `categories` list, same shape as
+section 2's category-restricted example above.
 
 ## Putting it together: a full workflow in curl
 
@@ -368,7 +441,7 @@ curl -s -G "$ANNOTATE" --data-urlencode "identifier=$ID" \
 | `{api}/available_corpora` | GET | List searchable corpora |
 | `{api}/search_documents` | POST (JSON body) | Keyword/metadata/section search |
 | `{annotate-host}/annotate` | GET (query params) | Ontology annotations, sentences, sections for one document |
-| `{annotate-host}/category_search` | GET (query params) | Look up exact `categories` strings by free-text term |
+| `{annotate-host}/category_search` | GET (query params) | Look up exact `categories` strings by free-text term; optionally expand via `relationship_type` (descendants) and/or `ancestor_relationship_type` (ancestors), e.g. is_a, part_of |
 
 `{api}` = `.../v1/textpresso/api`, `{annotate-host}` = `.../v1/textpresso`
 (one level up — `annotate` and `category_search` are siblings of `api`, not

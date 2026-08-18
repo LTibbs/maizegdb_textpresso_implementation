@@ -4231,3 +4231,371 @@ now, not just for `--annotate`.
   noted above isn't tested against any real query — worth a real test
   case if `--categories-and` combined with a gene category turns out to
   matter in practice.
+
+## Update log — 2026-08-18: figure-image spot-check turns up three more bugs beyond the 2026-08-12 nginx fix — 1114 images recovered across 4 corpora, plus a real `pdf2tpcas` colorspace bug found and patched
+
+### Background
+
+Laura spot-checked several papers after the 2026-08-12 figure-link fix (nginx
+`/images/` routing block, see that entry above) and found broken images were
+still widespread — `MaizeTest`, `MaizeOA`, `SorghumBase`, and `GrainGenes` all
+404ing, and GDR showing black boxes instead of 404s. Confirmed up front that
+the nginx fix itself hadn't regressed (the exact previously-404ing GDR URL
+from that entry still returns `200`) — these were different, previously
+undiscovered bugs surfacing on corpora/papers not covered by that session's
+scope.
+
+### Bug: `images/` directory populated under the wrong filename convention
+(`MaizeTest`, `MaizeOA`, `SorghumBase`, `GrainGenes` — 1114 images recovered)
+
+Root cause: for these corpora, the CAS annotation (what `Viewer.cpp` actually
+requests) references per-embedded-image filenames in the
+`<accession>.<page,5-digit>.img-<per-page 0-based index,3-digit>.{png,jpg}`
+convention, but the files physically present in `images/` either didn't
+exist at all (`GrainGenes`) or used a completely different convention —
+`<accession>.<sequential-counter>.jpg`, one per whole-page image object in
+document order (`MaizeTest`/`MaizeOA`/`SorghumBase`, the same convention
+`pdf2tpcas`'s own `Pdf2Tpcas/PdfInfo.cpp` actually writes, confirmed by
+reading its source — see below). The two conventions never matched, so
+every reference 404'd regardless of nginx routing. This is a broader version
+of the "images referenced but missing" pattern already documented for
+`MaizeTest100` in the 2026-08-12 entry above, just not caught there because
+that session's scope stopped at fully-empty `images/` folders.
+
+**Recovery approach** (same validated method as the 2026-08-12
+`MaizeTest100`/`MaizeOA` recovery, generalized into a reusable script):
+re-extract the real embedded raster images from the source PDF with
+`pdfimages -all`, reconstruct the exact filename `pdf2tpcas` would have
+produced, and only copy a file in if the reconstructed filename set exactly
+equals the set the CAS annotation references (pulled via the same `zcat |
+grep -oE` approach as before). Nothing is written unless the match is exact.
+
+One real wrinkle not present in the 2026-08-12 version of this script:
+`pdf2tpcas`'s per-page image index counts *every* image object on the page,
+including CCITT fax-encoded masks it silently never extracts as a real file.
+Naively numbering `pdfimages`' own output (which only emits real `.png`/
+`.jpg` files) undercounts relative to what the CAS expects. Fixed by
+deriving the per-page index from `pdfimages -list`'s full object order
+(every object, extracted or not) rather than from which files actually got
+written — confirmed against a case where naive numbering produced
+`img-000`/`img-000` but the CAS expected `img-001`/`img-001` (page had a
+skipped CCITT mask ahead of the real image).
+
+**Results** (0 mismatches anywhere — every attempted recovery either matched
+exactly or was left untouched):
+
+| Corpus | Recovered | Mismatch |
+|---|---|---|
+| MaizeTest | 3 | 0 |
+| MaizeOA | 447 | 0 |
+| SorghumBase | 545 | 0 |
+| GrainGenes | 119 (full corpus) | 0 |
+| **Total** | **1114** | **0** |
+
+Verified one recovered image from each corpus live through the public
+nginx path — all `200` with real image bytes.
+
+### Bug: GDR "black box" images — real `pdf2tpcas` colorspace bug, not a
+routing/data problem, found and patched in source
+
+GDR's figure links weren't 404ing (its CAS uses the plain sequential-counter
+convention and matches what's on disk) but a fraction of its images
+rendered as solid black boxes in the GUI. Ruled out corruption first: the
+reported file (`10.1007_s00122-004-1903-6.1.jpg`) is a structurally valid,
+complete JPEG (correct SOI/EOI markers, correct `Content-Type`/
+`Content-Length` from nginx) — the problem is in the actual pixel data.
+Installed Pillow in the container (`pip install pillow` into the
+`agr_textpresso` conda env) to inspect real pixel values directly, since no
+image tooling (PIL, ImageMagick, `djpeg`) was otherwise available on host
+or in the container.
+
+**Root cause, confirmed by reading `Pdf2Tpcas/PdfInfo.cpp`:** its non-JPEG
+image-extraction path (`bjpeg == false`, i.e. anything not `DCTDecode`) has
+carried a `// TODO: Handle colorspaces` since it was written — it writes
+the raw `GetFilteredCopy()` output straight into a PPM file with a header
+that hard-codes 8-bit-per-component RGB, regardless of the image's actual
+bit depth or colorspace. Two real, distinct failure modes hit this same
+code path:
+
+- **`ImageMask` ("stencil") objects** — these carry no color data of their
+  own; they're meant to be painted through the current fill color, which
+  this code never tracked. The 4158×5502 image behind the original bug
+  report matched *exactly* a `stencil` object in the source PDF (confirmed
+  via `pdfimages -list`).
+- **Real (non-mask) 1-bit CCITT bilevel scans** — PoDoFo's
+  `GetFilteredCopy()` turns out to return an **empty buffer** for these
+  streams in this build (confirmed by adding a temporary `fprintf(stderr,
+  ...)` debug line, rebuilding, and observing `lLen=0` against an expected
+  ~2.7MB of packed bitmap data — removed again once confirmed). The old
+  code wrote that empty/undersized buffer into the RGB-assuming PPM header
+  regardless, which `CImg` then reads back as near-solid black.
+
+Confirmed independently of any filename/order matching: directly decoded
+every one of GDR's 1249 on-disk images with Pillow and flagged genuinely
+near-black ones by pixel content (grayscale max <60 in a 100×100
+downsample) — **85 confirmed black**, not the larger, noisier number an
+earlier order-based `pdfimages -list` matching attempt produced (that
+approach false-positived on pages with many small embedded objects, e.g.
+one CJK paper with up to 689 objects on a single page).
+
+**Fix applied to existing GDR data (23 of the 85 recovered, verified):**
+for each confirmed-black image with a reliably identifiable source PDF
+page, re-rendered that page with `pdftoppm` (full-page rendering
+composites masks/bit-depth correctly, unlike raw per-object extraction) and
+swapped it in, keeping a `.bak-stencil` backup at each path. Every swap was
+pixel-verified as no longer near-black before being kept. As a side effect,
+this also fixed the two ~200-250MB oversized-image files spotted earlier in
+`10.1023_A_1020525906332` — those turned out to be the same raw-stencil-dump
+files, and the `pdftoppm` re-render replaced them with normally-sized JPEGs
+(~450KB) instead of a separate bug.
+
+**Fix applied to `pdf2tpcas` source (patched, rebuilt, redeployed into the
+running container):** `Pdf2Tpcas/PdfInfo.cpp`'s non-JPEG extraction path now
+checks `ImageMask` and, after fetching the stream, checks whether
+`GetFilteredCopy()` actually returned enough bytes for the image's stated
+dimensions (`>= width*height`, i.e. at least 1 byte/pixel) before writing
+anything — skipping extraction entirely rather than writing a corrupted
+file when either check fails. Deliberately conservative: **no image is
+considered better than a wrong image** for this fix, so scanned-page PDFs
+will now extract fewer figures (silently skipped) rather than a full set
+including black ones, until someone implements real
+`ImageMask`+fill-color compositing and/or a working CCITT decode path.
+Verified against three cases: a pure-stencil paper now extracts 0 images
+(previously 4 black ones); a bilevel-scan paper still correctly extracts
+its one real JPEG figure while skipping the two CCITT scans (previously
+black, now silently absent); a normal all-JPEG paper is unaffected
+(regression check). Old binary backed up as
+`/usr/local/bin/pdf2tpcas.bak-pre-colorspace-fix` in the container. This
+only affects *future* ingests — the 23 images already fixed in existing
+GDR data above are untouched by the binary swap and don't need
+re-extraction.
+
+**GDR remaining unfixed (62 of 85 confirmed-black, deliberately left
+alone):**
+- 48 images in one paper (`10.3864_j.issn.0578-1752.2016.12.011`) — pages
+  with 100–689 tiny embedded objects each (likely CJK bitmap font tiles,
+  not real figures); too ambiguous to map to source pages automatically.
+- 13 images across 2 `ActaHortic` papers — turned out to be degenerate
+  1×1-pixel color-fill artifacts, not real missing figures. Not a bug,
+  just background-fill images `pdf2tpcas` swept up as if they were content.
+- 1 image (`ActaHortic.2012.929.16.1.jpg`) — its source PDF now shows zero
+  extractable images via `pdfimages`, so it can't be mapped; unresolved,
+  cause unclear.
+
+### Checked and ruled out: the "Frontiers papers" silent-non-reference bug
+from the 2026-08-12 entry appears to already be fixed
+
+The 2026-08-12 entry's corpus-wide scope check flagged 30 SorghumBase
+accessions (guessed to be mostly Frontiers-journal papers, `fpls`/`fnut`/
+`fgene`/`fmicb`/`fnagi` prefixes) where `pdf2tpcas`'s CAS annotation never
+referenced an image at all despite the PDF having real extractable raster
+images — hypothesized (not confirmed) to be inline `BI`/`ID`/`EI`-style PDF
+images that its content-stream walker (which only handles the `Do`
+operator — confirmed by grepping the source, no `BI`/`ID`/`EI` handling
+anywhere) doesn't detect.
+
+Re-checked all 124 Frontiers-journal (`10.3389_*`) papers in SorghumBase
+today: **121 of 124 now have working `img-NNN` CAS references** — an
+incidental side effect of the filename-mismatch recovery above, which
+wasn't scoped to "Frontiers" specifically but happened to fix nearly all of
+them anyway. Spot-checked two live through nginx, both `200` with real
+image bytes. The remaining 3 (`fgene.2022.1092095`, `fnut.2024.1349757`,
+`fvets.2025.1507152`) have zero raster images in their source PDFs at all
+per `pdfimages` — the pre-existing vector-only-figure limitation (see
+2026-08-12 entry), not the silent-non-reference bug. So the original
+"Frontiers" hypothesis doesn't have a remaining case to confirm it against
+one way or the other; not worth chasing further unless it resurfaces
+somewhere the recovery script didn't touch (e.g. GDR still has that same
+"has raster, zero CAS reference" symptom on 4 accessions, unre-checked
+today since GDR uses the plain sequential-counter convention rather than
+`img-NNN` and so was out of scope for the `pdfimages`-based recovery
+script above).
+
+### Not yet done
+
+- [ ] The `pdf2tpcas` colorspace bug is patched conservatively (skip rather
+  than fix); real `ImageMask`+fill-color compositing and a working CCITT
+  decode path are still open if GDR-style scanned PDFs need their figures
+  back rather than silently dropped.
+- [ ] `10.3864_j.issn.0578-1752.2016.12.011` (48 remaining black images,
+  GDR) needs manual per-page investigation — automated page-matching
+  isn't reliable on its many-tiny-objects-per-page structure.
+- [ ] One remaining unmapped black image
+  (`ActaHortic.2012.929.16.1.jpg`, GDR) — cause unclear, source PDF shows
+  no extractable images now.
+- [ ] GDR's own 4 "has raster, zero CAS reference" accessions (noted in
+  the 2026-08-12 entry, distinct from the SorghumBase ones addressed
+  above) were never re-checked this session.
+- [ ] Vector-only figures (PDFs with no raster image objects at all, so
+  nothing is even referenced in the CAS) remain invisible to the whole
+  pipeline by design, not bug — would need a real new capability (e.g. a
+  `pdftoppm` full-page-render fallback) to address; not scoped further
+  today beyond confirming which specific papers currently hit it.
+
+## Update log — 2026-08-18 (continued): GO/PO/TO ontology-graph expansion for `--category` (`is_a`/`part_of`/etc., both directions), deployed and verified live
+
+### What was done
+
+`--category` has always required an *exact* term match — a search for
+`seed (PO:0009010)` never found papers annotated only with a more specific
+child term (`seed coat`) or a broader parent term. Unlike maize genes,
+which have an EXACT/RELATED synonym distinction (`--related-synonyms`, see
+the 2026-08-17 entry above), GO/PO/TO categories had **no ontology-graph
+awareness at all** — no `is_a`/`part_of` expansion, and no relationship
+data was even parsed out of the OBO files server-side.
+
+**Server-side (`agr_textpresso/textpressoapi/category_index.py`,
+`cas_annotate_server.py`):** OBO parsing (`_iter_obo_terms`) now also
+captures `is_a:` and `relationship: <type> <id>` lines, previously
+discarded entirely. `build_index()` builds typed edge maps in both
+directions — `children_by_type` (parent → children, for descendant
+closures) and `parents_by_type` (child → parents, straight off the OBO
+file, for ancestor closures) — plus their inverse indexes,
+`relationship_types_by_id`/`parent_relationship_types_by_id`, so a caller
+can ask "what relationship types actually apply to *this* term" instead of
+guessing against a fixed vocabulary (there isn't one — GO/PO/TO don't all
+use the same relationship types, and it varies per term). `_descendants()`/
+`_ancestors()` walk these transitively, memoized per `(term_id,
+relationship_types)` on the index (rebuilt once at server startup, same as
+the existing category index). `search()` gained `relationship_types`
+(descendants) and `ancestor_relationship_types` (ancestors) params — every
+match now also carries its own `relationship_types`/
+`parent_relationship_types` fields, and expanded results get a
+`+descendant`/`+ancestor` suffix on `matched_on` so a direct hit is always
+distinguishable from an expanded one. `/v1/textpresso/category_search`
+exposes this as repeatable `relationship_type`/`ancestor_relationship_type`
+query params.
+
+**Client-side (`bin/tpc_search_combined.py`, `bin/tpc_category_search.py`):**
+new repeatable flags `--expand-relationship-type`/
+`--expand-ancestor-relationship-type` on `--category` (search) and
+`--relationship-type`/`--ancestor-relationship-type` on
+`tpc_category_search.py` (lookup). `expand_categories_by_relationship()` is
+the piece that actually widens a search: for each validated `--category`
+value, it looks up the term via `category_search()` with the requested
+relationship type(s) and unions every returned `category` string into the
+list actually sent to `search_documents` — so this is real search
+expansion, not just a lookup convenience. Both default to unset (exact-match
+only, unchanged prior behavior).
+
+**Per your request, added a warning for a relationship type that doesn't
+apply to the given term:** GO/PO/TO have no fixed relationship-type
+vocabulary, so passing e.g. `--expand-relationship-type is_a` against a
+term whose only child relationship is `part_of` would otherwise silently
+expand into nothing with no indication why. Both CLI tools now check the
+requested type(s) against that term's own `relationship_types`/
+`parent_relationship_types` and print a stderr warning naming what's
+actually available — without blocking the search, same fail-open stance as
+`check_categories_or_exit()`.
+
+**Deployed and verified live**, not just locally: the running container
+(`agr-textpresso-textpresso-1`) was still executing the old
+`category_index.py`/`cas_annotate_server.py` with no relationship parsing
+at all (confirmed by diffing the deployed copy at
+`/usr/local/textpresso/cas_annotate/` against the repo checkout — only
+those two files differed, `casannot.py` was untouched). Copied the updated
+files in via `docker cp`, killed and restarted the `cas_annotate_server.py`
+process the same way `start_textpresso.sh` launches it, and confirmed the
+index rebuilt clean (67,569 categories, matching the pre-change count).
+Live `category_search` responses now carry `relationship_types`/
+`parent_relationship_types` as expected.
+
+**Every example in `TPC_SEARCH_TUTORIAL.md`, `TPC_SEARCH_GUIDE.md`, and
+`TPC_API_TUTORIAL.md` was re-verified against that live server**, which
+caught two things a synthetic test fixture wouldn't have:
+- The illustrative term IDs I'd invented for docs (`PO:0020123` for
+  "hypocotyl", `PO:0030124` for "seed coat") don't exist in the real PO —
+  swapped in the real ones (`PO:0020100`, `PO:0009088`).
+- A factually wrong claim: I'd written that "hypocotyl" is an `is_a`
+  descendant of "seed". It isn't — `seed`'s only child relationship in the
+  real ontology is `part_of` (no `is_a` children at all), and walking
+  hypocotyl's real `is_a` ancestors never reaches `seed`. All docs now use
+  `seed coat (PO:0009088)`, a verified `part_of` descendant of `seed`, for
+  that illustration, and every command's shown output is copy-pasted from
+  an actual run rather than hand-written.
+
+**Tests:** 22 new tests in `agr_textpresso/textpressoapi/tests/
+test_category_index.py` (OBO relationship parsing, obsolete-term exclusion,
+descendant/ancestor closures including multi-type transitive walks, that
+expansion never downgrades a direct match's rank, relationship-type
+discovery in both directions) and 12 in `sorghumbase_textpresso_
+implementation/tests/test_tpc_search_combined.py` (query-param forwarding
+in both directions, dedup/no-op/failure-fallback behavior, and the new
+unavailable-relationship-type warning). 34 total, all passing.
+
+**GO and TO spot-checked live** (were PO-only above). Both work the same
+way as PO, no code differences needed:
+- **GO** (`anthocyanin-containing compound biosynthetic process`,
+  `GO:0009718`): `children via: is_a, negatively_regulates,
+  positively_regulates, regulates; parents via: is_a` — confirmed GO
+  actually exercises the `regulates` family the code was written to
+  support generically but hadn't been tested against. `relationship_type=
+  is_a` expansion correctly reached a child term
+  (`GO:0043483`), `positively_regulates` reached a different child
+  (`GO:0031542`, "positive regulation of..."), and `ancestor_relationship_
+  type=is_a` walked all the way up 8 levels to the GO root
+  (`GO:0008150 biological_process`).
+- **TO** (`plant height`, `TO:0000207`): `children via: is_a, part_of;
+  parents via: is_a, part_of`. `is_a` descendants reached `plant height
+  uniformity`/`relative plant height`/`seedling height`; `part_of`
+  descendants reached `shoot axis internode length`/`stem length`
+  (structurally different results per type, as expected); ancestors
+  walked up through `plant morphology trait` → `plant trait` →
+  `whole plant size`.
+- Also re-ran the unavailable-relationship-type warning against a TO leaf
+  term (`heterosis (TO:0000355)`, `--relationship-type part_of`): warned
+  correctly, still returned the term's own (unexpanded) result rather than
+  failing.
+
+### Not yet done
+
+- [ ] Descendant/ancestor closures are memoized in-process, not
+  precomputed at index-build time — fine for the term volumes exercised so
+  far, but a very broad root term (e.g. GO's top-level `biological_process`)
+  walked with a broad relationship-type set is untested for latency.
+- [ ] The closure cache resets on every server restart along with the rest
+  of the category index, so the first `--expand-relationship-type` query
+  against a given term after a restart pays the walk cost once — not
+  measured, but should be small at these term counts (67,569 categories
+  indexed in a couple of seconds already).
+- [ ] `--categories-and` combined with relationship-type expansion (i.e.
+  requiring ALL of an expanded, possibly-large category list to match) isn't
+  tested — likely to behave more like "requires every descendant/ancestor
+  to independently match", which is probably not what a user would expect
+  from combining those two flags; worth a real test case if it comes up.
+
+## Update log — 2026-08-18: maize gene category tree still collapsed on GUI — second, separate 500-child cap in `TpCategoryBrowser`
+
+Reported: the Search page's category picker showed only the parent
+`Z. mays gene (tpzm:0000000)` with no `+` to expand, as if the 2026-07-17
+`GrowTreeFromObo()` fix (see above) hadn't landed.
+
+Checked the DB first — `tpontology_zmays_genes_20260813_0` (41,013 distinct
+categories) and `pcrelations_zmays_genes_20260813` (24,970 distinct
+children under the gene root) were both correct. So this wasn't the same
+bug recurring; it's a **second, independent 500-child cap**, in
+`textpressocentral/TpC/TpCategoryBrowser.cpp::LoadNextChildren()` — the
+class the live Search page actually uses to render the tree (not
+`TpOntologyBrowser`, which is unused by `Search.cpp`). It disables any
+node with `noc > 500` children and only adds the expand icon if
+`noc < 500`. Never touched by the July fix since that only patched the
+offline `Tpso` ontology loader. GO/PO/TO never hit it since none of their
+individual nodes exceed 500 direct children — only maize's flat ~25k-gene
+list did.
+
+Fix: both `500` thresholds → `CATEGORYMAXCHILDREN` (same constant from the
+July fix). Rebuilt `tpc` (the GUI binary) inside the container and
+redeployed. Deploy required stopping `lighttpd`, killing ~100 stale
+FastCGI `tpc` workers (a `cp` over the live binary hit `ETXTBSY`; a `mv`
+of a freshly-copied file worked instead), then restarting `lighttpd`.
+Confirmed: `Z. mays gene (tpzm:0000000)` now expands to individual genes
+in the GUI.
+
+Also found and fixed along the way, not the live bug but a real gap:
+the `tpso` ontology-loader binary running in the container predated the
+July 17 fix commit, and its source tree was missing from the container
+entirely — so a future ontology rebuild would have silently reintroduced
+the original collapse. Rebuilt and redeployed `tpso` from current source
+after a `pg_dump` backup of `tpontology*`/`pcrelations*`/`ontologymembers`
+to `agr_textpresso/.data/backups/ontology-20260818T145028Z/`. Old binaries
+kept as `/usr/local/bin/{tpso,tpc}.pre-*-bak` in the container.
