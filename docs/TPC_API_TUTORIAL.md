@@ -2,7 +2,7 @@
 
 This is the raw-HTTP counterpart to
 [`TPC_SEARCH_GUIDE.md`](TPC_SEARCH_GUIDE.md), which documents the
-`tpc_search.py` / `tpc_search_internal.py` command-line wrappers. Everything
+`tpc_search_combined.py` command-line wrappers. Everything
 those scripts do boils down to plain HTTP requests against two services, so
 if you're calling the API from a language other than Python — or just want
 to see the wire format directly — this is that version. Examples use `curl`
