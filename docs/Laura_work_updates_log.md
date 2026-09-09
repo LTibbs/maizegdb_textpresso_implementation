@@ -4733,29 +4733,33 @@ not caused by this change. In practice that means the anonymous limit on a
 closed paper is already exactly the intended shape: abstract + *N* matched
 sentences, nothing else.
 
-### Not yet done
+### Status / not yet done
 
-- [ ] **Nothing is deployed.** The code is committed but the container
-  still runs the old binary and has no manifest. Rolling it out = rebuild
-  the image (or rebuild `textpressoapi` + refresh
-  `/usr/local/textpresso/cas_annotate/` in place) and drop in a real
-  `open_access_manifest.tsv` + `api_keys.txt`.
+Server-side gating (this entry) landed as **`agr_textpresso` commit `36374eb`**
+on `LTibbs/agr_textpresso @ maizegdb/maize-textpresso-fixes` (pushed).
+
 - [x] **CLI `--api-key` flag** — done, see the CLI entry below (2026-09-09).
 - [x] **CLI `--annotate` blank-term display on a limited response** — fixed
   in the same CLI entry (falls back to the category label + prints a notice).
-- [ ] **Web UI (`textpressocentral`, Wt C++) is untouched.** Same gating
-  needs to happen there before a closed paper is visible in the GUI.
-- [ ] **Figures/images are still wide open** — served as static files by
-  lighttpd/nginx, entirely outside the API. Gating them needs a separate
-  proxy rule or routing image requests through the API.
 - [x] `TPC_API_GUIDE.md` gating section — added to both the copy in this repo
   and the one in `textpresso_sorghumbase_cli/docs/` (2026-09-09 CLI entry).
 - [x] This repo's `bin/tpc_search_combined.py` + `tests/` + `docs/TPC_SEARCH_GUIDE.md`
   got the same `--api-key` change (2026-09-09 CLI entry). The legacy
   `tpc_search.py` / `tpc_search_internal.py` did **not** — they're marked
   "REDUNDANT, not maintained going forward" in their own headers; left as-is.
+- [ ] **Deployment** — the container still runs the old binary and has no
+  manifest, so gating is inert in production. See the plan entry below (A).
+- [ ] **Web UI (`textpressocentral`, Wt C++)** — a closed paper is still fully
+  visible in the GUI. Plan entry (B).
+- [ ] **Figures/images** — served as static files by lighttpd/nginx, outside
+  any auth. Plan entry (C).
 
 ## Update log — 2026-09-09 (continued): `textpresso_sorghumbase_cli` — `--api-key` support + graceful non-open-access handling
+
+Landed as **this repo** commit `7332b9d` (`docs/`, `bin/tpc_search_combined.py`,
+`tests/test_tpc_api_key.py`) → `LTibbs/maizegdb_textpresso_implementation @ master`,
+and **`textpresso_sorghumbase_cli`** commit `479501d` on a local `api-key-support`
+branch (that repo has no personal fork remote configured yet).
 
 Picked up the deferred CLI items from the entry above. Applied to **both** the
 standalone `textpresso_sorghumbase_cli` repo and this repo's
@@ -4835,3 +4839,160 @@ all torn down after):
   `annotated_sentences[].text` is `""`; a consumer that keys on text sees
   empties. The `access_limited` flag is the signal to skip them, but the CLI
   could also just omit blank-text sentences from that array when limited.
+
+## Update log — 2026-09-09 (continued): plan for the remaining open-access pieces
+
+Where we are: the REST API + annotate sidecar gate correctly (opt-in, off
+until a manifest exists), and the Python CLI can authenticate. Three pieces
+remain — deployment, the web UI, and figure/image files — plus minor polish.
+
+### A. Deployment (unblocks everything else)
+
+Until this happens, gating is dead code: the running `textpresso` container
+has the pre-`36374eb` binary and no manifest, so every request is served in
+full and no key is accepted.
+
+Steps:
+
+1. **Rebuild.** Either rebuild the whole image (`docker compose build
+   textpresso`) off the `maizegdb/maize-textpresso-fixes` branch, or
+   in-place inside the running container: rebuild `textpressoapi` (`cd
+   /data/textpresso/textpressoapi && cmake --build build && make install`
+   — the CMake build dir is already there) and copy the four sidecar files
+   (`cas_annotate_server.py`, `casannot.py`, `category_index.py`,
+   **`access.py`** — new, must be added to the copy set; the Dockerfile
+   already does) into `/usr/local/textpresso/cas_annotate/`.
+2. **Restart** `textpressoapi` and `cas_annotate_server.py` (both are
+   restarted by `start_textpresso.sh`; in-place, kill + relaunch with the
+   same args — `textpressoapi` picks the manifest/keys paths up from its
+   new `--open-access-manifest` / `--api-keys-file` defaults, the sidecar
+   from `$TEXTPRESSO_OA_MANIFEST` / `$TEXTPRESSO_API_KEYS_FILE`).
+3. **Author the real manifest** at `/data/textpresso/open_access_manifest.tsv`.
+   Given the corpus is all-OA today, the safe first content is just:
+   ```
+   @default open
+   ```
+   which is behaviourally identical to having no manifest **except** that the
+   `open_access` field now appears on every result — a good canary that the
+   new binary is live. Add `@corpus:` / per-accession `closed` lines when the
+   first non-OA papers are ingested.
+4. **Create `/data/textpresso/textpressoapi_data/api_keys.txt`** — one random
+   key per subscriber/institution, `key<TAB>label`. Keep it out of the image
+   (it's on the mounted volume already). Decide the issuing process
+   (probably: Laura generates on request, appends a line, restarts the API).
+5. **Verify** with the 4-paper matrix from the API entry above (pick real
+   accessions, temporarily mark one `closed`, confirm anon vs keyed, then
+   revert to `@default open`).
+
+Effort: ~1 hr including verification. No code changes. This is a Laura task,
+not a code task — needs prod access and a call on the key-issuing workflow.
+
+### B. Web UI (`textpressocentral`)
+
+**Good news:** the Wt app already has corpus-level access control that maps
+almost 1:1 onto `@corpus:` manifest entries. `Search.cpp::
+UpdateLiteraturePreferences()` grants a corpus to a user iff it is in that
+user's **or** the `default` set of `PGLITERATUREPERMISSION` (a Postgres
+table, `Preference` API). It also already has a full Wt::Auth local login
+(BCrypt, email verification, cookies — `Session` / `session_->login()`), and
+a `Permissions.cpp` admin page for editing those grants.
+
+So corpus-level gating in the GUI needs **no new C++**: drop a closed corpus
+out of `default`'s permission set and grant it to subscriber logins via the
+existing Permissions page. That's the whole feature, if corpus-level is
+acceptable in the GUI.
+
+**Design decision — how closely should the GUI mirror the API?**
+
+| | API (built) | GUI option B1 (reuse perms) | GUI option B2 (mirror API) |
+|---|---|---|---|
+| granularity | per-paper *and* per-corpus | per-corpus only | per-paper *and* per-corpus |
+| anon on a closed corpus | abstract + N snippets ("preview") | corpus is invisible — no preview at all | abstract + N snippets |
+| auth | API key (header) | existing Wt login | existing Wt login |
+| new C++ | — | none | `Search.cpp` result rendering + `Viewer.cpp` redaction |
+
+Recommendation: **B1 to start** (zero code, ship with deployment), and only
+build B2 if the "Scholar-style preview in the browser" turns out to matter
+for closed corpora. Most MODs that paywall literature in Textpresso just hide
+the corpus.
+
+**Gaps to close even for B1:**
+
+- **`Viewer.cpp` does not check literature permission.** It renders a paper
+  from a `PaperAddress` / CAS2 filename with no corpus-permission gate that I
+  can see (it checks `session_->login().state()` only for *curation* actions,
+  not for viewing). A direct Viewer URL (`?...&viewer=...`) for a paper in a
+  corpus the user can't search may still render in full. Needs a permission
+  check at `Viewer` construction (line ~81) mirroring
+  `UpdateLiteraturePreferences`'s `IsPreference(corpus) || default` test,
+  redirecting to the abstract / a "log in" notice otherwise. ~30-50 lines.
+- Confirm `checkpermissions` is always `true` on the production code path
+  (there's a `UpdateLiteraturePreferences(false)` call at Search.cpp:2652 —
+  find what invokes it and whether an anonymous user can reach it).
+- The `default` permission set must be explicitly populated with the current
+  (all-OA) corpora before any corpus is removed from it — otherwise removing
+  one silently denies everything (the grant logic is deny-unless-listed).
+
+Effort: B1 config-only + the Viewer check ~half a day. B2 is 2-4 days of Wt
+C++ and its own test pass.
+
+### C. Figures / images
+
+Images are `<img src="/tpc/images/{paperdir}/images/{accession}.{page}.img-{n}.{png,jpg}">`
+served as **static files by lighttpd** (`url.rewrite-once` `^(.*)/tpc/images/(.*)`
+→ `$1/images/$2`, doc-root `/usr/lib/cgi-bin/tc/`). Nothing authenticates
+them — anyone who can guess/derive the path gets the figure, GUI login or
+not, API key or not.
+
+Options:
+
+1. **Move figure serving behind the API.** A new `textpressoapi` route
+   `GET /v1/textpresso/api/figure?identifier=…&name=…` that runs the same
+   `AccessControl::is_open_access` + key check, then streams the file.
+   Change the CAS2→HTML image `src` (in `Viewer.cpp` and in `pdf2tpcas`'s
+   link generation) to point at it. Most correct, most work (~1-2 days:
+   new route + streaming + MIME + the `src` rewrite + a lighttpd rule
+   change so `/images/` is no longer directly reachable).
+2. **lighttpd rule that checks a cookie/token.** lighttpd can't run the
+   manifest logic; would need `mod_magnet` (Lua) calling a tiny auth
+   endpoint, or splitting closed-corpus images into a separate dir with its
+   own `mod_auth`. Fragile.
+3. **Per-corpus image directories + existing GUI session.** If B1 lands
+   (corpus-level), the images for a closed corpus could live under a path
+   only served to authenticated sessions (lighttpd `$HTTP["cookie"]`
+   match on the Wt session cookie won't validate it, though — still needs
+   a check).
+4. **Accept the leak for now.** Figures are arguably lower-stakes than full
+   text; a paywalled paper's figures being reachable by direct URL (not
+   linked anywhere for anon users, since they can't open the Viewer) may be
+   an acceptable v1 gap, documented.
+
+Recommendation: **(4) for v1** paired with B1 (anon can't open the Viewer for
+a closed corpus, so the image URLs aren't discoverable through the UI), then
+**(1)** when there's appetite for the API work. Revisit if the corpus mix
+makes the leak material.
+
+### D. Minor polish (any time)
+
+- `tpc_category_search.py` (both repos): accept-and-ignore `--api-key` /
+  `$TPC_API_KEY` so habitual use doesn't error. ~3 lines each.
+- CLI `--annotate-sentences` on a limited paper: optionally drop the
+  blank-`text` sentences from `annotated_sentences` (keep the flag).
+- `get_documents_count` is ungated — a determined caller can still learn how
+  many closed-corpus papers match a query. Fine (it's a count, no content),
+  but note it if that ever matters.
+- Decide whether `open_access` should always appear on API results or only
+  when a manifest is configured (currently: only when configured). Keeping
+  it conditional means "no manifest" is byte-identical to pre-feature; the
+  cost is clients can't rely on the field's presence.
+
+### Suggested order
+
+1. **A** (deploy with `@default open`) — makes the feature real, zero risk.
+2. **D**'s `tpc_category_search.py` fix — trivial, removes a foot-gun.
+3. **B1** — populate `default` perms, add the `Viewer.cpp` permission check,
+   so the GUI is ready the day a closed corpus is ingested.
+4. First real closed corpus: add its `@corpus:` line (API) + leave it out of
+   `default` perms (GUI) + document the figure gap (**C4**).
+5. **B2 / C1** only if preview-in-browser or figure gating is actually
+   needed.
