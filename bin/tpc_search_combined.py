@@ -17,6 +17,10 @@ API notes (search):
     with any other type causes a 401 response (an API quirk, not an auth error).
   - Section-scoped types (abstract, result, etc.) return document-level hits;
     matched sentence text is only available with type == 'sentence'.
+  - --api-key / $TPC_API_KEY: for full-text access to non-open-access papers.
+    Without it (the default), such papers come back with metadata + abstract +
+    a few matched sentences only, flagged "access limited"; open-access papers
+    are served in full to everyone.
 
 Annotation modes (CAS2-backed):
 
@@ -67,6 +71,7 @@ examples:
   %(prog)s -c MaizeTest100 --type sentence "MARK" --exclude-type references
   %(prog)s -c MaizeTest100 --type document "MARK" --exclude-type references
   %(prog)s -c MaizeTest100 "adh1" --annotate --exclude-type references --exclude-type acknowledgments
+  %(prog)s --api-key "$TPC_API_KEY" -c SomeClosedCorpus "drought"   # full text of non-open-access papers
   %(prog)s --list-corpora
 """
 
@@ -85,6 +90,13 @@ _ROOT = os.path.join(_BIN, "..")
 
 DEFAULT_URL = "http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api"
 # DEFAULT_URL = "http://localhost:18080/v1/textpresso/api"
+
+# API key for full-text access to non-open-access papers. Read from the
+# environment as the default for --api-key; sent as the X-API-Key header on
+# search and annotation requests. Without a key, the server returns only
+# metadata + abstract + the first few matched sentences for a non-open-access
+# paper (open-access papers are unaffected).
+DEFAULT_API_KEY = os.environ.get("TPC_API_KEY") or None
 
 # --cas-root fallback only (server-side, local-file parsing). Not used by the
 # default HTTP path.
@@ -180,13 +192,20 @@ def build_query(args, corpora):
     return payload
 
 
-def search(payload, url=DEFAULT_URL):
-    """POST a search payload and return the parsed JSON result list."""
+def search(payload, url=DEFAULT_URL, api_key=None):
+    """POST a search payload and return the parsed JSON result list.
+
+    api_key, if given, is sent as the X-API-Key header, which lifts the
+    non-open-access limit on the returned data (see DEFAULT_API_KEY).
+    """
     data = json.dumps(payload).encode()
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["X-API-Key"] = api_key
     req = urllib.request.Request(
         f"{url}/search_documents",
         data=data,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     with urllib.request.urlopen(req) as resp:
@@ -424,6 +443,12 @@ def add_search_args(parser):
                         help="Output format (default: text)")
     parser.add_argument("--url", default=DEFAULT_URL,
                         help=f"API base URL (default: {DEFAULT_URL})")
+    parser.add_argument("--api-key", default=DEFAULT_API_KEY, metavar="KEY",
+                        help="API key for full access to non-open-access papers "
+                             "(default: $TPC_API_KEY). Sent as the X-API-Key header on "
+                             "search and annotation requests. Without it, non-open-access "
+                             "papers return only metadata, abstract, and the first few "
+                             "matched sentences; open-access papers are unaffected.")
     parser.add_argument("--list-corpora", action="store_true",
                         help="List available corpora and exit")
 
@@ -451,9 +476,9 @@ def _annotate_endpoint_url(search_url):
 
 
 def _load_annotations(doc, args, ontology_filter=None, include_related=False):
-    """Get (sentences, annotations, sections) for a search result document.
+    """Get (sentences, annotations, sections, limited) for a search result document.
 
-    Returns (None, None, None) if the CAS2 data can't be found. Neither
+    Returns (None, None, None, False) if the CAS2 data can't be found. Neither
     sentences nor annotations are filtered by section here -- callers apply
     _ca.exclude_sections() themselves, since some uses (e.g. mapping raw API
     sentence strings back to a CAS2 position) need the unfiltered sentence
@@ -465,6 +490,11 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
     are excluded.  Pass include_related=True or set ontology_filter explicitly to
     control RELATED synonym visibility.
 
+    ``limited`` is True when the server returned a reduced payload for a
+    non-open-access paper (no valid --api-key): sentence ``text`` and
+    annotation ``term`` come back blank, though offsets, categories and
+    sections are intact. Always False for the --cas-root local-file path.
+
     By default this fetches from cas_annotate_server.py over HTTP (works from
     anywhere with network access). If args.cas_root is set, it instead parses
     the CAS2 file directly from that local directory (server-side only).
@@ -475,33 +505,37 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
         path = _ca.identifier_to_cas_path(identifier, args.cas_root)
         if not os.path.exists(path):
             print(f"  [CAS2 not found: {path}]", file=sys.stderr)
-            return None, None, None
+            return None, None, None, False
         sentences, annotations, sections = _ca.parse_cas_file(path)
         if ontology_filter:
             annotations = [a for a in annotations if a["ontology"] in ontology_filter]
         elif not include_related:
             annotations = [a for a in annotations
                            if not a["ontology"].endswith("_RELATED")]
-        return sentences, annotations, sections
+        return sentences, annotations, sections, False
 
     params = [("identifier", identifier)]
     params += [("ontology", o) for o in (ontology_filter or ())]
     if include_related:
         params.append(("related_synonyms", "1"))
     url = f"{_annotate_endpoint_url(args.url)}?{urllib.parse.urlencode(params)}"
+    req = urllib.request.Request(url)
+    if getattr(args, "api_key", None):
+        req.add_header("X-API-Key", args.api_key)
     try:
-        with urllib.request.urlopen(url) as resp:
+        with urllib.request.urlopen(req) as resp:
             data = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         if e.code == 404:
             print(f"  [CAS2 annotation not found for: {identifier}]", file=sys.stderr)
         else:
             print(f"  [annotation API error {e.code}: {e.reason}]", file=sys.stderr)
-        return None, None, None
+        return None, None, None, False
     except urllib.error.URLError as e:
         print(f"  [annotation API connection failed: {e.reason}]", file=sys.stderr)
-        return None, None, None
-    return data["sentences"], data["annotations"], data["sections"]
+        return None, None, None, False
+    return (data["sentences"], data["annotations"], data["sections"],
+            bool(data.get("access_limited")))
 
 
 def _normalize_text(s):
@@ -560,7 +594,7 @@ def filter_gene_category_results(results, args):
 
     kept = []
     for doc in results:
-        _, annotations, _ = _load_annotations(
+        _, annotations, _, _ = _load_annotations(
             doc, args, ontology_filter=ontology_filter, include_related=args.related_synonyms)
         if annotations is None:
             kept.append(doc)  # can't verify -- keep rather than risk dropping a real match
@@ -630,7 +664,7 @@ def _document_has_match_outside_excluded(doc, args, exclude_types):
     sent_args.count = 200
     payload = build_query(sent_args, [corpus])
     try:
-        sub_results = search(payload, url=args.url) or []
+        sub_results = search(payload, url=args.url, api_key=getattr(args, "api_key", None)) or []
     except (urllib.error.HTTPError, urllib.error.URLError):
         return True
 
@@ -640,7 +674,7 @@ def _document_has_match_outside_excluded(doc, args, exclude_types):
     if not matched:
         return True
 
-    sentences, _, sections = _load_annotations(doc, args)
+    sentences, _, sections, _ = _load_annotations(doc, args)
     if sentences is None:
         return True
 
@@ -655,6 +689,30 @@ def _ref(doc):
         f"{doc.get('journal', '?')}. "
         f"[{doc.get('accession', doc.get('identifier', '?'))}]"
     )
+
+
+_ACCESS_LIMITED_NOTE = (
+    "non-open-access paper: showing metadata, abstract, and the first few "
+    "matched sentences only. Pass --api-key KEY (or set $TPC_API_KEY) for full text."
+)
+
+
+def _ontology_summary(annotations):
+    """Return {ontology: sorted unique labels} for the --annotate summary.
+
+    Prefers the matched term text; falls back to the category label when the
+    term is blank. The server blanks the term (but keeps the category and
+    offsets) for a non-open-access paper fetched without an --api-key, so this
+    still shows which ontology terms occur, just not the surface strings that
+    matched them. A leading "RELATED:" on a category (a RELATED-synonym link)
+    is stripped so the fallback label matches what the term-based view shows.
+    """
+    groups = {}
+    for a in annotations:
+        label = a.get("term") or re.sub(r"^RELATED:\s*", "", a.get("category") or "")
+        if label:
+            groups.setdefault(a["ontology"], set()).add(label)
+    return {k: sorted(v) for k, v in sorted(groups.items())}
 
 
 # ---------------------------------------------------------------------------
@@ -694,7 +752,7 @@ def print_results(results, args):
     # applied.
     if exclude_types and args.type == "sentence":
         for doc in results:
-            sentences, _, sections = _load_annotations(doc, args)
+            sentences, _, sections, _ = _load_annotations(doc, args)
             if sentences is not None:
                 doc["matched_sentences"] = _filter_matched_sentences(
                     doc.get("matched_sentences", []), sentences, sections, exclude_types)
@@ -702,7 +760,7 @@ def print_results(results, args):
     if args.annotate_sentences:
         output = []
         for doc in results:
-            sentences, annotations, sections = _load_annotations(
+            sentences, annotations, sections, limited = _load_annotations(
                 doc, args, ontology_filter, include_related)
             annotated = []
             if sentences is not None:
@@ -718,6 +776,10 @@ def print_results(results, args):
             meta = {k: doc.get(k, "") for k in
                     ("identifier", "title", "author", "year", "journal", "accession")}
             entry = {"paper": meta, "annotated_sentences": annotated}
+            if limited or doc.get("access_limited"):
+                # Non-open-access paper without a valid --api-key: sentence text
+                # and annotation term come back blank (offsets/categories kept).
+                entry["access_limited"] = True
             if args.type == "sentence":
                 entry["search_matched_sentences"] = doc.get("matched_sentences", [])
             output.append(entry)
@@ -725,16 +787,18 @@ def print_results(results, args):
         print()
         return
 
-    # --annotate with JSON output: add ontology_summary key to each result doc
+    # --annotate with JSON output: add ontology_summary key to each result doc.
+    # (open_access / access_limited, when the server sends them, are already on
+    # each doc and pass straight through this dump.)
     if args.format == "json":
         if args.annotate:
             for doc in results:
-                _, annotations, sections = _load_annotations(
+                _, annotations, sections, _ = _load_annotations(
                     doc, args, ontology_filter, include_related)
                 if exclude_types and annotations is not None:
                     annotations = _ca.exclude_sections(annotations, sections, exclude_types)
                 doc["ontology_summary"] = (
-                    _ca.summarize_by_ontology(annotations)
+                    _ontology_summary(annotations)
                     if annotations is not None else {}
                 )
         json.dump(results, sys.stdout, indent=2)
@@ -746,16 +810,21 @@ def print_results(results, args):
         print(f"[{i}] {_ref(doc)}")
         for s in doc.get("matched_sentences", []):
             print(f"  - {s.strip()}")
+        if doc.get("access_limited"):
+            print(f"  [access limited: {_ACCESS_LIMITED_NOTE}]")
         if args.annotate:
-            _, annotations, sections = _load_annotations(
+            _, annotations, sections, limited = _load_annotations(
                 doc, args, ontology_filter, include_related)
             if annotations is not None:
                 if exclude_types:
                     annotations = _ca.exclude_sections(annotations, sections, exclude_types)
-                summary = _ca.summarize_by_ontology(annotations)
+                summary = _ontology_summary(annotations)
                 print("  Ontology annotations:")
                 for ontology, terms in summary.items():
                     print(f"    {ontology}: {', '.join(terms)}")
+                if limited:
+                    print("    [ontology categories only; matched term text withheld "
+                          "for this non-open-access paper -- pass --api-key for full detail]")
         print()
 
 
@@ -826,7 +895,7 @@ def main():
                 args.expand_ancestor_relationship_types)
         corpora = args.corpora or list_corpora(args.url)
         payload = build_query(args, corpora)
-        results = search(payload, url=args.url)
+        results = search(payload, url=args.url, api_key=args.api_key)
         if args.category:
             results = filter_gene_category_results(results, args)
         print_results(results, args)

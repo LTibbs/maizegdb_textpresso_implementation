@@ -4740,16 +4740,98 @@ sentences, nothing else.
   the image (or rebuild `textpressoapi` + refresh
   `/usr/local/textpresso/cas_annotate/` in place) and drop in a real
   `open_access_manifest.tsv` + `api_keys.txt`.
-- [ ] **CLI has no `--api-key` flag** (`textpresso_sorghumbase_cli`). Only
-  the anonymous path is reachable from the CLI today; a key-holder can't
-  authenticate through it yet.
-- [ ] **CLI `--annotate` display is ugly on a limited response** — the
-  ontology summary renders blank term names (the category IDs are still
-  there). Should show the category name, or an "access limited" notice.
+- [x] **CLI `--api-key` flag** — done, see the CLI entry below (2026-09-09).
+- [x] **CLI `--annotate` blank-term display on a limited response** — fixed
+  in the same CLI entry (falls back to the category label + prints a notice).
 - [ ] **Web UI (`textpressocentral`, Wt C++) is untouched.** Same gating
   needs to happen there before a closed paper is visible in the GUI.
 - [ ] **Figures/images are still wide open** — served as static files by
   lighttpd/nginx, entirely outside the API. Gating them needs a separate
   proxy rule or routing image requests through the API.
-- [ ] `TPC_API_GUIDE.md` was updated in this repo; the copy in
-  `textpresso_sorghumbase_cli/docs/` still says "All endpoints are public".
+- [x] `TPC_API_GUIDE.md` gating section — added to both the copy in this repo
+  and the one in `textpresso_sorghumbase_cli/docs/` (2026-09-09 CLI entry).
+- [x] This repo's `bin/tpc_search_combined.py` + `tests/` + `docs/TPC_SEARCH_GUIDE.md`
+  got the same `--api-key` change (2026-09-09 CLI entry). The legacy
+  `tpc_search.py` / `tpc_search_internal.py` did **not** — they're marked
+  "REDUNDANT, not maintained going forward" in their own headers; left as-is.
+
+## Update log — 2026-09-09 (continued): `textpresso_sorghumbase_cli` — `--api-key` support + graceful non-open-access handling
+
+Picked up the deferred CLI items from the entry above. Applied to **both** the
+standalone `textpresso_sorghumbase_cli` repo and this repo's
+`bin/tpc_search_combined.py` (they had diverged only cosmetically — MaizeTest100
+vs SorghumBase example corpora, all-corpora vs SorghumBase default, the
+`casannot.py` module path — and the `--api-key` code is now identical between
+them). The legacy `bin/tpc_search.py` / `bin/tpc_search_internal.py` pair, both
+self-marked "REDUNDANT ... not maintained going forward", were left unchanged.
+
+### What was done
+
+**`--api-key KEY` / `$TPC_API_KEY`.** New argument on `tpc-search`, default
+read from the environment. Sent as the `X-API-Key` header on both the
+`/search_documents` POST and the `/annotate` GET (and on the internal
+supplementary `--type sentence` query that `--exclude-type` + `--type
+document` fires). `/available_corpora` and `/category_search` are never gated,
+so they're left unauthenticated. A valid key → full text and full annotations
+for a non-open-access paper; no key or a bad key → the reduced view, exactly
+as an anonymous HTTP caller would get.
+
+**Graceful limited-response handling** (previously the CLI crashed —
+`KeyError: 'term'` — or rendered blank ontology summaries on a limited
+`/annotate` payload):
+
+- `_load_annotations()` now returns a 4-tuple `(sentences, annotations,
+  sections, limited)`; `limited` comes from the server's `access_limited`
+  flag. All call sites updated.
+- New local `_ontology_summary()` replaces `casannot.summarize_by_ontology()`
+  in this script: uses the matched `term`, falling back to the `category`
+  label when the term is blank (which is what the server sends for a limited
+  paper), and strips a leading `RELATED:` so the fallback label matches the
+  term-based view. `casannot.py` itself is unchanged (it's mirrored from this
+  repo's `textpresso_classifiers/casannot.py`).
+- Text output prints `[access limited: ...]` under a trimmed search result and
+  `[ontology categories only; matched term text withheld ...]` under a trimmed
+  `--annotate` summary.
+- `--annotate-sentences` adds `"access_limited": true` to a trimmed paper's
+  JSON entry. Plain `--format json` already passed the server's
+  `open_access` / `access_limited` fields straight through.
+
+**Docs:** `docs/TPC_API_GUIDE.md` gained an Authentication section + a
+Non-Open-Access Papers table (per-endpoint reduced-view behavior);
+`docs/TPC_SEARCH_GUIDE.md` and `docs/USER_GUIDE.md` gained matching sections
+and a troubleshooting row; `README.md` a one-liner.
+
+### Tested
+
+31 unit tests pass (`tests/test_tpc_api_key.py` is new: header sent iff key
+given, 4-tuple + `access_limited` parsing, `_ontology_summary` fallback and
+`RELATED:` strip, `--api-key` arg + `$TPC_API_KEY` default, `[access limited]`
+text note).
+
+Live end-to-end against `agr-textpresso-textpresso-1` with the same
+parallel-instance setup as the API entry (test `textpressoapi` on :28080, test
+`cas_annotate_server` on :8083, a path-routing proxy fronting both, throwaway
+manifest marking `MaizeOA` + one accession closed; live services untouched,
+all torn down after):
+
+| CLI invocation (closed paper) | Result |
+|---|---|
+| no key | 2 matched sentences + `[access limited]` note; `--annotate` shows category labels + notice; `--annotate-sentences` entry has `access_limited: true`, blank text/term, no crash |
+| `--api-key testkey-xyz` | 140 matched sentences, real terms, `access_limited: false` |
+| `$TPC_API_KEY=testkey-xyz` (no flag) | same as `--api-key` |
+| `--api-key bogus` | same as no key (2 sentences, limited) |
+| open-access paper, any/no key | unchanged (full) |
+
+### Not yet done
+
+- [ ] `tpc_category_search.py` takes no `--api-key` (both repos) — fine for
+  now (the category endpoint is never gated), but a user who `export`s
+  `TPC_API_KEY` and passes `--api-key` to `tpc-category-search` out of habit
+  gets an "unrecognized argument". Could accept-and-ignore it for symmetry.
+- [ ] Legacy `bin/tpc_search.py` / `bin/tpc_search_internal.py` still lack the
+  flag — deliberately (self-marked redundant/unmaintained). Revisit only if a
+  caller that can't move to `tpc_search_combined.py` needs authenticated access.
+- [ ] `--annotate-sentences` on a limited paper returns entries whose
+  `annotated_sentences[].text` is `""`; a consumer that keys on text sees
+  empties. The `access_limited` flag is the signal to skip them, but the CLI
+  could also just omit blank-text sentences from that array when limited.

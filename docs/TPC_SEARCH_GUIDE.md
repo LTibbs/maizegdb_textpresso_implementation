@@ -102,6 +102,9 @@ keywords                  Search keywords
 --sort-by-year             Sort by year instead of relevance score
 --format text|json         Output format (default: text)
 --url URL                  API base URL
+--api-key KEY              Key for full-text access to non-open-access papers
+                           (default: $TPC_API_KEY). Sent as the X-API-Key header.
+                           See "Non-open-access papers" below.
 --list-corpora              List available corpora and exit
 --exclude-type TYPE        Exclude a CAS section type from results (repeatable). Precise,
                            CAS2-based exclusion (not limited to --type document) — see
@@ -112,6 +115,39 @@ keywords                  Search keywords
 results containing given *keywords*; `--exclude-type` drops results whose
 match falls only inside a given CAS *section* (e.g. bibliography). See the
 dedicated section below for exactly how each `--type` mode filters.
+
+### Non-open-access papers
+
+Every corpus on the server today is open access, so this does not affect
+current use. If a server is configured to mark some papers or corpora as
+non-open-access, a request for one of those without a key returns only
+metadata, the abstract, and the first few matched sentences, and flags it:
+
+```
+[access limited: non-open-access paper: showing metadata, abstract, and the
+first few matched sentences only. Pass --api-key KEY (or set $TPC_API_KEY) for
+full text.]
+```
+
+In JSON output such a paper carries `"open_access": false` and
+`"access_limited": true`. With `--annotate`, the ontology summary still lists
+the categories in the paper, substituting the category label for the withheld
+matched term; `--annotate-sentences` returns the annotation offsets and
+categories with sentence text and term blank and adds `"access_limited": true`
+to that paper's entry.
+
+Pass a key (issued by the server operator) to get the full text and
+annotations — via the environment or per invocation:
+
+```bash
+export TPC_API_KEY=your-key-here
+tpc_search_combined.py -c SomeClosedCorpus "drought"
+
+tpc_search_combined.py --api-key your-key-here -c SomeClosedCorpus "drought"
+```
+
+It is sent as the `X-API-Key` header on search and annotation requests.
+`--list-corpora` and `tpc_category_search.py` are never gated.
 
 ### Examples
 
