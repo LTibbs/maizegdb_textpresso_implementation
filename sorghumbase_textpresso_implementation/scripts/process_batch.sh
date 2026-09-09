@@ -24,8 +24,10 @@
 #   -s SRC_PDF_DIR    Directory of flat <accession>.pdf files to stage into the
 #                     required layout first. Omit if you have already staged
 #                     PDFs at raw_files/pdf/<CORPUS>/<accession>/<accession>.pdf
-#   -C CONTAINER      Container name (default: auto-detected, else
-#                     agr-textpresso-textpresso-1).
+#   -C CONTAINER      Container name. Default: the running container whose
+#                     name ends in "-textpresso-<n>" (normally
+#                     agr_textpresso-textpresso-1). Pass this only if
+#                     auto-detection fails.
 #   -P N              Parallel workers for tokenize/annotate (default: 1).
 #                     Keep low on a laptop — annotate is memory-hungry.
 #   -t MODE           Tokenizer mode: 4 (default, enables section-scoped
@@ -99,14 +101,12 @@ LOG_DIR="${BASE}/logs"
 # ----------------------------------------------------------------------------
 log()  { printf '\n\033[1;36m[%s] %s\033[0m\n' "$(date -u +%H:%M:%S)" "$*"; }
 warn() { printf '\033[1;33mWARN: %s\033[0m\n' "$*" >&2; }
-die()  { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
+die()  { printf '\033[1;31mERROR: %b\033[0m\n' "$*" >&2; exit 1; }
 
 # Run a bash snippet inside the container with the Textpresso runtime env set.
+# Under -n the script reports its plan and exits before any mutating step (see
+# the dry-run block after staging), so dexec always executes.
 dexec() {
-  if [[ "$DRY_RUN" == "1" ]]; then
-    printf '  (dry-run) docker exec %s bash -lc: %s\n' "$CONTAINER" "$1"
-    return 0
-  fi
   docker exec "$CONTAINER" bash -lc '
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:/usr/local/lib"
     export PATH="$PATH:/usr/local/bin"
@@ -121,10 +121,18 @@ log "Preflight"
 command -v docker >/dev/null || die "docker not found on PATH"
 
 if [[ -z "$CONTAINER" ]]; then
-  CONTAINER="$(docker ps --filter 'ancestor=agr-textpresso-textpresso' --format '{{.Names}}' | head -n1 || true)"
-  [[ -n "$CONTAINER" ]] || CONTAINER="agr-textpresso-textpresso-1"
+  # The compose service is "textpresso"; its container name is
+  # "<project>-textpresso-<n>" where <project> is the agr_textpresso clone dir.
+  mapfile -t _cands < <(docker ps --format '{{.Names}}' | grep -E '(^|[-_])textpresso-[0-9]+$' || true)
+  if [[ ${#_cands[@]} -eq 1 ]]; then
+    CONTAINER="${_cands[0]}"
+  elif [[ ${#_cands[@]} -gt 1 ]]; then
+    die "multiple candidate containers: ${_cands[*]}\nPick one with -C <name>."
+  else
+    die "could not find a running Textpresso container.\nStart it (cd ~/agr_textpresso && docker compose up -d), or pass -C <name> (see: docker ps)."
+  fi
 fi
-docker exec "$CONTAINER" true 2>/dev/null || die "container '$CONTAINER' is not running (start it: docker compose up -d)"
+docker exec "$CONTAINER" true 2>/dev/null || die "container '$CONTAINER' is not running (start it: cd ~/agr_textpresso && docker compose up -d)"
 echo "  container: $CONTAINER"
 echo "  corpus:    $CORPUS"
 echo "  tokenizer: -t $TOK_MODE   workers: -P $NPROC"
@@ -189,13 +197,33 @@ else
 fi
 
 STAGED_COUNT="$(dexec "find '${RAW_PDF}' -mindepth 2 -maxdepth 2 -iname '*.pdf' 2>/dev/null | wc -l" | tr -d '[:space:]')"
-[[ "${STAGED_COUNT:-0}" -gt 0 ]] || die "no staged PDFs found under ${RAW_PDF}"
-echo "  staged accessions: $STAGED_COUNT"
-dexec "ls '${RAW_PDF}' > '${ACC_LIST}'; wc -l < '${ACC_LIST}'" >/dev/null || true
+if [[ "${STAGED_COUNT:-0}" -eq 0 ]]; then
+  if [[ "$DRY_RUN" == "1" && -n "$SRC_PDF_DIR" ]]; then
+    echo "  (dry-run) ${#pdfs[@]} PDF(s) from $SRC_PDF_DIR would be staged under ${RAW_PDF}"
+  else
+    die "no staged PDFs found under ${RAW_PDF}"
+  fi
+else
+  echo "  staged accessions: $STAGED_COUNT"
+  dexec "ls '${RAW_PDF}' > '${ACC_LIST}'; wc -l < '${ACC_LIST}'" >/dev/null || true
+fi
 
 # Warn about metadata coverage
 CSV_COUNT="$(dexec "ls ${BASE}/imports/metadata/*.csv 2>/dev/null | wc -l" | tr -d '[:space:]')"
 [[ "${CSV_COUNT:-0}" -gt 0 ]] || warn "no metadata CSV in ${BASE}/imports/metadata/ — .bib files will be placeholders."
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "Dry run — would now, in the container:"
+  cat <<EOF
+    1. tokenize : $( [[ "$TOK_MODE" == "4" ]] && echo 'pdf2txtimg (synchronous) then ' )articles2cas -t ${TOK_MODE} -o ${CORPUS} -p   -> ${CAS1}
+    2. verify    : every accession has a non-zero-sentence CAS-1 file
+    3. annotate : scoped symlink tree of ${CORPUS} only -> annotate -P ${NPROC}   -> ${CAS2}
+    4. verify    : every accession has a CAS-2 file
+    5. .bib      : generate_pdf_bib.py per accession, from ${BASE}/imports/metadata
+    6. package  : ${OUTDIR}/${CORPUS_TAG}-${RUN_ID}.tgz  (+ .manifest.txt)
+EOF
+  exit 0
+fi
 
 # ----------------------------------------------------------------------------
 # 2. Tokenize -> CAS-1
@@ -221,6 +249,7 @@ if [[ "$TOK_MODE" == "4" ]]; then
     done
     echo \"  per-page text extracted: \${c} / \${t}\"
     [[ \${c} -gt 0 ]] || { echo 'pdf2txtimg produced nothing' >&2; exit 1; }
+    [[ \${c} -eq \${t} ]] || echo \"  WARN: \$((t-c)) PDF(s) got no per-page text — they will produce zero-sentence CAS-1 (flagged in the verify step below)\" >&2
   "
 fi
 

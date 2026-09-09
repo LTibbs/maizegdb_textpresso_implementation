@@ -131,24 +131,42 @@ wsl --install -d Ubuntu       # then reboot
 
 Install Docker Desktop, and in **Settings -> Resources -> WSL Integration**
 enable your Ubuntu distro. Give Docker real memory — `annotate` (`runAECpp`)
-loads ~1.1M ontology rows and is the memory bottleneck. Create
-`C:\Users\<you>\.wslconfig`:
+loads ~1.1M ontology rows and is the memory bottleneck.
+
+Modern WSL2 runs Ubuntu and the Docker containers in one shared utility VM, so
+the `.wslconfig` `memory` value is the ceiling for *both together*. Size it
+from your machine's physical RAM: leave Windows ~8–12 GB and give the rest to
+WSL. Create `C:\Users\<you>\.wslconfig`:
 
 ```ini
 [wsl2]
-memory=12GB
-processors=6
+memory=20GB      # 32 GB laptop: 20 GB here leaves ~12 GB for Windows.
+processors=12    # of 22 logical cores; the base image build runs make -j8.
+swap=8GB
 ```
 
+On a 16 GB machine use `memory=10GB`, `processors=6`, and expect `annotate`
+to be slow — keep `-P 1`.
+
 Then `wsl --shutdown` from PowerShell and reopen the Ubuntu terminal.
+Confirm it took effect: `wsl -d Ubuntu -- free -g` should show the new total.
 
 ### 2. Clone the Textpresso repo (into the Linux filesystem)
 
+`agr_textpresso` is a private repo, so authenticate WSL's git first — either
+`gh auth login` (GitHub CLI, HTTPS) or add an SSH key to your GitHub account
+and use the SSH URL. The commands below use HTTPS; swap in
+`git@github.com:LTibbs/agr_textpresso.git` if you set up SSH.
+
+**Clone the directory as `agr_textpresso`** (underscore) exactly as shown —
+Docker Compose derives the project name, and therefore the container name
+(`agr_textpresso-textpresso-1`), from this directory.
+
 ```bash
-git config --global core.autocrlf false
+git config --global core.autocrlf false   # keep LF endings; the .sh scripts need it
 cd ~
 git clone --branch maizegdb/maize-textpresso-fixes \
-  git@github-agr-textpresso:LTibbs/agr_textpresso.git
+  https://github.com/LTibbs/agr_textpresso.git
 cd agr_textpresso
 ```
 
@@ -156,8 +174,13 @@ Also clone this repo (for `process_batch.sh`):
 
 ```bash
 cd ~
-git clone git@github-maizegdb-textpresso:LTibbs/maizegdb_textpresso_implementation.git
+git clone https://github.com/LTibbs/maizegdb_textpresso_implementation.git
 ```
+
+> Your Windows checkout of this repo was cloned with `core.autocrlf=true`, so
+> its `process_batch.sh` has CRLF line endings and will fail from WSL with
+> `bash\r: No such file or directory`. Always run the WSL clone, never the
+> `/mnt/c/...` copy.
 
 ### 3. Build the images from source
 
@@ -259,6 +282,8 @@ scripts/process_batch.sh \
   on mismatch
 - `-P` parallel workers (keep at 1–2 on a laptop)
 - `-t` tokenizer mode: `4` (default; enables section-scoped search) or `1`
+- `-C` container name — only needed if auto-detection fails; the script picks
+  the running `*-textpresso-1` container, normally `agr_textpresso-textpresso-1`
 
 The script runs: preflight (locks, parity, bib helper) -> stage -> tokenize
 -> verify CAS-1 sentence counts -> annotate (scoped to this corpus only) ->
@@ -290,7 +315,7 @@ docker exec $C bash -lc "
 curl -s http://localhost:18080/v1/textpresso/api/available_corpora
 curl -s -X POST http://localhost:18080/v1/textpresso/api/get_documents_count \
   -H 'Content-Type: application/json' \
-  -d '{"query":{"keywords":"<a term you expect","type":"document","corpora":["SorghumBase"]}}'
+  -d '{"query":"<a term you expect>","corpora":["SorghumBase"]}'
 ```
 
 Skip this for routine batches — it's slow and the operator does the real
