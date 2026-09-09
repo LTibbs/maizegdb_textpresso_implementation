@@ -11,6 +11,13 @@ and `jq`; translate freely into whatever HTTP client you have.
 Nothing here requires server-side access. All endpoints are public over the
 network.
 
+> **Open-access gating.** If the server is configured with an open-access
+> manifest (it is not, by default), non-open-access papers return a reduced
+> payload to callers with no API key: metadata + abstract + the first few
+> matching sentences only, no full text. Open-access papers — everything in
+> the corpus today — are unaffected and still need no authentication. See
+> [Open-access gating](#5-open-access-gating) at the end.
+
 ## Base URLs
 
 ```
@@ -433,6 +440,50 @@ ID=$(echo "$RESULTS" | jq -r '.[0].identifier')
 curl -s -G "$ANNOTATE" --data-urlencode "identifier=$ID" \
   | jq '.annotations | group_by(.ontology) | map({(.[0].ontology): [.[].term] | unique}) | add'
 ```
+
+## 5. Open-access gating
+
+By default this is inactive — every paper is open access, every endpoint is
+public, and nothing below applies. It becomes active only when the server
+operator installs an **open-access manifest**
+(`/data/textpresso/open_access_manifest.tsv`) that marks some papers or
+corpora as non-open-access.
+
+When active:
+
+| Caller | Open-access paper | Non-open-access paper |
+|--------|-------------------|-----------------------|
+| no API key | full response | metadata + `abstract` + first N `matched_sentences` (default N=3); no `fulltext`, no `all_sentences` |
+| valid API key | full response | full response |
+
+`/search_documents` results gain two fields once a manifest is configured:
+`open_access` (bool, always) and `access_limited` (bool, present and `true`
+only when that result was trimmed).
+
+`/annotate` behaves the same way: for a non-open-access paper with no API key
+the payload keeps its full shape — every sentence and annotation, with offsets,
+categories and section boundaries — but each sentence `text` and each
+annotation `term` is blanked to `""`, and `"access_limited": true` is added.
+`/category_search` is pure ontology lookup and is never gated.
+
+### Passing an API key
+
+Any one of:
+
+```bash
+# header
+curl -s -H "X-API-Key: $KEY" ...
+curl -s -H "Authorization: Bearer $KEY" ...
+
+# or in the JSON body of a POST
+-d '{"api_key":"'"$KEY"'","query":{...}}'
+
+# or as a query param on the GET endpoints
+curl -s -G "$ANNOTATE" --data-urlencode "identifier=$ID" --data-urlencode "api_key=$KEY"
+```
+
+Keys are issued by the server operator (a line in the server's
+`api_keys.txt`). They are unrelated to any Textpresso Central web login.
 
 ## Summary: endpoints at a glance
 
