@@ -4599,3 +4599,157 @@ the original collapse. Rebuilt and redeployed `tpso` from current source
 after a `pg_dump` backup of `tpontology*`/`pcrelations*`/`ontologymembers`
 to `agr_textpresso/.data/backups/ontology-20260818T145028Z/`. Old binaries
 kept as `/usr/local/bin/{tpso,tpc}.pre-*-bak` in the container.
+
+## Update log — 2026-09-09: open-access gating for the Textpresso REST API + annotate sidecar (opt-in, off by default)
+
+### What was done
+
+Added a way to serve non-open-access papers in a reduced form to callers
+who aren't logged in, while still serving everything in full to anyone for
+the open-access papers we have today. All code changes are in
+`agr_textpresso` (`textpressoapi/`); this repo only gets doc updates
+(`docs/TPC_API_GUIDE.md`, this log).
+
+Motivation: the whole corpus is open access right now, so every endpoint
+returns full text and full CAS2 sentence data to anyone. Before ingesting
+any non-open-access literature we need a lever to limit anonymous access to
+those papers to something defensible (metadata + abstract + a few matching
+sentences, à la Google Scholar snippets), while a key-holder still gets
+everything.
+
+**Design (chosen after weighing options):**
+
+| Decision | Choice | Why |
+|---|---|---|
+| Where OA status is declared | a **manifest file** the API reads at startup, nothing in the ingest/CAS pipeline changes | fully decoupled — flip a paper's status by editing one file, no re-tokenize/re-index |
+| Auth for full access | an **API-keys file** (one key per line), separate from the dormant `tokens.db` | simplest; no dependency on Phoenix SSO or Cognito for a first cut |
+| Anonymous limit on a closed paper | metadata + `abstract` + first *N* matching sentences (`--max-anon-snippets`, default 3); no `fulltext`, no `all_sentences` | matches the "fair-use snippet" model; the actual snippet count/length is a policy dial, not a legal judgment I can make |
+| Default when no manifest present | **feature entirely inert** — every path is the pre-change path | guarantees back-compat for the open-access papers already deployed; nobody needs a key for anything until we say so |
+
+**New / changed files (`agr_textpresso`):**
+
+| File | Change |
+|------|--------|
+| `textpressoapi/access_control.h` | new — header-only manifest + API-key loader for the C++ service |
+| `textpressoapi/access.py` | new — same logic for the Python annotate sidecar |
+| `textpressoapi/open_access_manifest.tsv.example` | new — annotated sample manifest |
+| `textpressoapi/tests/test_access.py` | new — 8 tests (manifest precedence, `/`≡`_`, key parsing, redaction shape) |
+| `textpressoapi/main.cpp` | `search_documents` + `get_category_matches_document_fulltext` gate; new flags `--open-access-manifest`, `--api-keys-file`, `--max-anon-snippets` |
+| `textpressoapi/cas_annotate_server.py` | `/annotate` redacts sentence/annotation text for a closed paper without a key |
+| `textpressoapi/Dockerfile` | ships `access.py` alongside the other sidecar modules |
+| `textpressoapi/docs/search_documents.rst` | documents the new response fields + gating |
+| `CLAUDE.md` | filesystem-paths table + auth section |
+
+### How it works
+
+Manifest (`/data/textpresso/open_access_manifest.tsv`, or `--open-access-manifest`):
+
+```
+@default              open           # status for anything not matched below
+@corpus:SomeCorpus    closed          # per-corpus default
+10.1234/some.doi      closed          # per-accession, wins over corpus + default
+```
+
+Precedence: accession > corpus > `@default`. Accessions compare
+case-insensitively with `/` and `_` treated as equivalent. Status tokens:
+`open|oa|true|1|yes` / `closed|restricted|false|0|no`.
+
+API keys (`/data/textpresso/textpressoapi_data/api_keys.txt`, or
+`--api-keys-file`): one key per line, optional label after whitespace, `#`
+comments. Sent as `X-API-Key:`, `Authorization: Bearer`, or a body
+`api_key` field (or `?api_key=` on the GET endpoints). The Python sidecar
+reads the same two files via `$TEXTPRESSO_OA_MANIFEST` /
+`$TEXTPRESSO_API_KEYS_FILE` (defaults match the C++ flags).
+
+Behaviour once a manifest exists:
+
+| Endpoint | open-access paper | closed paper, no/invalid key | closed paper, valid key |
+|---|---|---|---|
+| `/search_documents` | unchanged | `open_access:false`, `access_limited:true`, `matched_sentences` capped at *N*, no `fulltext`/`all_sentences`, `abstract` kept | full |
+| `/annotate` | unchanged | full payload shape, but every sentence `text` and annotation `term` blanked to `""`; offsets/categories/sections kept; `access_limited:true` | full |
+| `get_category_matches_document_fulltext` | unchanged | `matches` omitted, `access_limited:true` | full |
+| `get_documents_count`, `available_corpora`, `category_search` | never gated | — | — |
+
+When a manifest is present, every `/search_documents` result also gains an
+`open_access` boolean; `access_limited:true` appears only on results that
+were actually trimmed. **With no manifest file, none of these fields
+appear and every response is byte-identical to before.**
+
+### Tested live against `agr-textpresso-textpresso-1`
+
+Built the modified `textpressoapi` inside the container and ran it plus the
+modified sidecar as **parallel instances on spare ports (28080 / 8083)**
+against the real read-only index, with a throwaway manifest — the live
+services on 18080 / 8082 were never touched, and everything was torn down
+after (verified: original binary in place, no manifest files on the
+volume, live API back to the pre-change response shape).
+
+Throwaway manifest (nothing is actually non-OA — this was purely a test):
+
+```
+@default open
+@corpus:MaizeOA closed
+10.1093_aob_mcaf075 open              # override — proves accession beats corpus
+10.1007_s00425-021-03799-7 closed    # one closed paper in an otherwise-open corpus
+```
+
+`--max-anon-snippets 2`, one key `testkey-abc123`.
+
+| paper | no key | valid key (header or body) | invalid key |
+|---|---|---|---|
+| SorghumBase `10.1007_s00425-024-04427-w` (default open) | full (982 matched) | full | full |
+| SorghumBase `10.1007_s00425-021-03799-7` (accession=closed) | limited: 2 matched, no `all_sentences`, `access_limited:true` | full (623 matched) | limited |
+| MaizeOA `10.1073_pnas.2216894120` (corpus=closed) | limited: 2 matched, `access_limited:true` | full (562 matched) | limited |
+| MaizeOA `10.1093_aob_mcaf075` (accession override → open) | full (703 matched) | full | full |
+
+`get_documents_count` identical with/without key. `abstract` still
+returned for closed papers. `/annotate` on the closed papers: sentence
+`text` / annotation `term` blanked, offsets + categories + sections
+intact, `access_limited:true`; with a key, full.
+
+Also ran the existing SorghumBase CLI (`tpc_search_combined.py`) anonymously
+against a path-routing proxy that fronted both test services — closed
+papers correctly came back limited, and `--annotate` / `--annotate-sentences`
+still worked (ontology *category IDs* shown, matched *term* text blank).
+
+### Bug found and fixed during testing
+
+The first version of the `/annotate` redaction **dropped** the `text` and
+`term` keys entirely. That crashed the current CLI's `--annotate` mode
+(`KeyError: 'term'` in `casannot.summarize_by_ontology`, which does
+`a["term"]` unconditionally) and would break any existing client doing a
+positional/offset join. Changed the redaction to **keep every key and
+element, blanking only the value** (`text=""`, `term=""`). Re-tested — no
+crashes, offset-join code keeps working, and a client can still tell it's
+looking at a limited response from `access_limited:true`. `test_access.py`
+covers the redaction shape (keys preserved, values blanked, input not
+mutated).
+
+### Pre-existing behaviour worth noting
+
+`fulltext` comes back **empty on this deployment** even with
+`include_fulltext:true` — confirmed against the untouched live API, so it's
+not caused by this change. In practice that means the anonymous limit on a
+closed paper is already exactly the intended shape: abstract + *N* matched
+sentences, nothing else.
+
+### Not yet done
+
+- [ ] **Nothing is deployed.** The code is committed but the container
+  still runs the old binary and has no manifest. Rolling it out = rebuild
+  the image (or rebuild `textpressoapi` + refresh
+  `/usr/local/textpresso/cas_annotate/` in place) and drop in a real
+  `open_access_manifest.tsv` + `api_keys.txt`.
+- [ ] **CLI has no `--api-key` flag** (`textpresso_sorghumbase_cli`). Only
+  the anonymous path is reachable from the CLI today; a key-holder can't
+  authenticate through it yet.
+- [ ] **CLI `--annotate` display is ugly on a limited response** — the
+  ontology summary renders blank term names (the category IDs are still
+  there). Should show the category name, or an "access limited" notice.
+- [ ] **Web UI (`textpressocentral`, Wt C++) is untouched.** Same gating
+  needs to happen there before a closed paper is visible in the GUI.
+- [ ] **Figures/images are still wide open** — served as static files by
+  lighttpd/nginx, entirely outside the API. Gating them needs a separate
+  proxy rule or routing image requests through the API.
+- [ ] `TPC_API_GUIDE.md` was updated in this repo; the copy in
+  `textpresso_sorghumbase_cli/docs/` still says "All endpoints are public".
