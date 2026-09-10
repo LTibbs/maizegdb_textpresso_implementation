@@ -26,7 +26,7 @@
 #                     PDFs at raw_files/pdf/<CORPUS>/<accession>/<accession>.pdf
 #   -C CONTAINER      Container name. Default: the running container whose
 #                     name ends in "-textpresso-<n>" (normally
-#                     agr_textpresso-textpresso-1). Pass this only if
+#                     agr-textpresso-textpresso-1). Pass this only if
 #                     auto-detection fails.
 #   -P N              Parallel workers for tokenize/annotate (default: 1).
 #                     Keep low on a laptop — annotate is memory-hungry.
@@ -137,6 +137,18 @@ echo "  container: $CONTAINER"
 echo "  corpus:    $CORPUS"
 echo "  tokenizer: -t $TOK_MODE   workers: -P $NPROC"
 
+# Host path of the /data/textpresso bind mount, if this script can see it.
+# When set, staging writes straight to the mount (fast) instead of per-file
+# `docker cp` (a round trip each — minutes of overhead for a big corpus).
+DATA_HOST="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data/textpresso"}}{{.Source}}{{end}}{{end}}' "$CONTAINER" 2>/dev/null || true)"
+if [[ -n "$DATA_HOST" && -d "$DATA_HOST/raw_files" ]]; then
+  RAW_PDF_HOST="${DATA_HOST}/raw_files/pdf/${CORPUS}"
+  echo "  data mount: $DATA_HOST (host-visible)"
+else
+  RAW_PDF_HOST=""
+  echo "  data mount: not host-visible — staging via docker cp"
+fi
+
 # No competing pipeline / stale locks
 BUSY="$(dexec "ps -eo args | grep -E 'run_tpc_pipeline|articles2cas|runAECpp|create_single_index|indexmerger' | grep -v grep || true")"
 [[ -z "$BUSY" ]] || die "another pipeline process is running in the container:\n$BUSY"
@@ -163,9 +175,12 @@ else
   warn "no -O given: not verifying ontology parity against the server. Annotations may not match the server's category tree."
 fi
 
-TPONT_ROWS="$(dexec "psql -At -d www-data -c 'select count(*) from tpontology;'" | tr -d '[:space:]')"
-echo "  tpontology rows: ${TPONT_ROWS:-0}"
-[[ "${TPONT_ROWS:-0}" -gt 0 ]] || die "tpontology is empty — lexica not built. See setup doc, step 5."
+# The merged `tpontology` table is built per-run by `annotate` and dropped
+# again, so at rest only the per-ontology `tpontology_<name>_<n>` lexica exist.
+# Their presence (plus the ontologymembers check above) means lexica are built.
+LEX_TABLES="$(dexec "psql -At -d www-data -c \"select count(*) from pg_tables where schemaname='public' and tablename like 'tpontology\\_%';\"" | tr -d '[:space:]')"
+echo "  per-ontology lexica tables: ${LEX_TABLES:-0}"
+[[ "${LEX_TABLES:-0}" -gt 0 ]] || die "no tpontology_* lexica tables — lexica not built. Run CreateLexica.bash (setup doc, step 5)."
 
 # PDFs present?
 if [[ -n "$SRC_PDF_DIR" ]]; then
@@ -183,15 +198,41 @@ if [[ -n "$SRC_PDF_DIR" ]]; then
   shopt -u nullglob
   [[ ${#pdfs[@]} -gt 0 ]] || die "no *.pdf files in $SRC_PDF_DIR"
   echo "  ${#pdfs[@]} PDF(s) to stage"
+
+  # Accession = source filename minus .pdf. Textpresso wants the DOI with '/'
+  # replaced by '_'; flag names that still look like a raw DOI or carry odd
+  # characters (parentheses are legal in DOIs and fine downstream).
+  bad_slash=(); odd=()
   for pdf in "${pdfs[@]}"; do
     acc="$(basename "$pdf")"; acc="${acc%.pdf}"; acc="${acc%.PDF}"
-    if [[ "$DRY_RUN" == "1" ]]; then
-      echo "  (dry-run) stage $acc"
-      continue
-    fi
-    docker exec "$CONTAINER" mkdir -p "${RAW_PDF}/${acc}"
-    docker cp "$pdf" "${CONTAINER}:${RAW_PDF}/${acc}/${acc}.pdf"
+    [[ "$acc" == *"/"* ]] && bad_slash+=("$acc")
+    [[ "$acc" =~ ^[A-Za-z0-9._()+-]+$ ]] || odd+=("$acc")
   done
+  [[ ${#bad_slash[@]} -eq 0 ]] || die "these source filenames contain '/': ${bad_slash[*]}\nRename them with '/' -> '_' before staging."
+  [[ ${#odd[@]} -eq 0 ]] || warn "accessions with unusual characters (proceeding): ${odd[*]}"
+
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "  (dry-run) would stage ${#pdfs[@]} PDF(s) into ${RAW_PDF}/<acc>/<acc>.pdf"
+  elif [[ -n "$RAW_PDF_HOST" ]]; then
+    # Fast path: write straight to the bind mount.
+    mkdir -p "$RAW_PDF_HOST"
+    for pdf in "${pdfs[@]}"; do
+      acc="$(basename "$pdf")"; acc="${acc%.pdf}"; acc="${acc%.PDF}"
+      mkdir -p "$RAW_PDF_HOST/$acc"
+      cp -f "$pdf" "$RAW_PDF_HOST/$acc/$acc.pdf"
+    done
+  else
+    # Portable path: build the nested tree once, then a single docker cp.
+    _stage_tmp="$(mktemp -d)"
+    for pdf in "${pdfs[@]}"; do
+      acc="$(basename "$pdf")"; acc="${acc%.pdf}"; acc="${acc%.PDF}"
+      mkdir -p "$_stage_tmp/$acc"
+      cp -f "$pdf" "$_stage_tmp/$acc/$acc.pdf"
+    done
+    dexec "mkdir -p '${RAW_PDF}'"
+    docker cp "$_stage_tmp/." "${CONTAINER}:${RAW_PDF}/"
+    rm -rf "$_stage_tmp"
+  fi
 else
   log "Stage PDFs — skipped (-s not given; assuming already staged)"
 fi
@@ -208,9 +249,39 @@ else
   dexec "ls '${RAW_PDF}' > '${ACC_LIST}'; wc -l < '${ACC_LIST}'" >/dev/null || true
 fi
 
-# Warn about metadata coverage
+# Metadata coverage: which staged accessions have no row in any metadata CSV.
+# generate_pdf_bib.py matches on the DOI with '/' or '_' (normalize_accession),
+# so compare on the '_' form. A miss here == placeholder .bib == the paper is
+# dropped from the index later, so surface it now.
 CSV_COUNT="$(dexec "ls ${BASE}/imports/metadata/*.csv 2>/dev/null | wc -l" | tr -d '[:space:]')"
-[[ "${CSV_COUNT:-0}" -gt 0 ]] || warn "no metadata CSV in ${BASE}/imports/metadata/ — .bib files will be placeholders."
+if [[ "${CSV_COUNT:-0}" -eq 0 ]]; then
+  warn "no metadata CSV in ${BASE}/imports/metadata/ — every .bib will be a placeholder."
+elif [[ "$DRY_RUN" != "1" ]]; then
+  NO_META="$(dexec "python3 - <<'PY'
+import csv, glob
+acc = set(open('${ACC_LIST}').read().split())
+dois = set()
+for c in glob.glob('${BASE}/imports/metadata/*.csv'):
+    try:
+        with open(c, encoding='utf-8', errors='replace', newline='') as f:
+            for row in csv.DictReader(f):
+                d = (row.get('doi') or '').strip().replace('/', '_')
+                if d:
+                    dois.add(d)
+    except Exception as e:
+        print('CSV_ERROR', c, e)
+missing = sorted(acc - dois)
+print('MISSING', len(missing), 'of', len(acc))
+for a in missing[:50]:
+    print(' ', a)
+PY
+" || true)"
+  echo "  metadata check: ${NO_META%%$'\n'*}"
+  if [[ "$NO_META" != *"MISSING 0 "* ]]; then
+    warn "staged accessions with no metadata row (placeholder .bib -> dropped at index time):"
+    printf '%s\n' "$NO_META" | sed -n '2,$p' | sed 's/^/  /'
+  fi
+fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
   log "Dry run — would now, in the container:"
@@ -339,16 +410,34 @@ dexec "
   done
 "
 
-PLACEHOLDER="$(dexec "
+# A .bib that is missing, or whose author/title is '<not uploaded>', means the
+# CSV DOI never matched — the indexer drops or blanks that paper. An empty
+# abstract alone (abstract|<not uploaded>) is harmless: the paper still indexes
+# with full bibliographic metadata, only abstract-scoped search misses it.
+BIB_BAD="$(dexec "
   for acc in \$(cat '${ACC_LIST}'); do
     b='${CAS2}/'\"\${acc}\"'/'\"\${acc}\"'.bib'
-    { [[ -f \"\$b\" ]] && ! grep -q '<not uploaded>' \"\$b\"; } || echo \"\${acc}\"
+    if [[ ! -f \"\$b\" ]]; then echo \"\${acc}\tno .bib file\"
+    elif grep -Eq '^(author|title)\|<not uploaded>' \"\$b\"; then echo \"\${acc}\tunmatched metadata\"
+    fi
   done
   true
 ")"
-if [[ -n "$PLACEHOLDER" ]]; then
-  warn "these accessions have missing or placeholder .bib metadata (check the CSV 'doi' column matches the accession):"
-  echo "$PLACEHOLDER" | sed 's/^/    /'
+BIB_NOABS="$(dexec "
+  for acc in \$(cat '${ACC_LIST}'); do
+    b='${CAS2}/'\"\${acc}\"'/'\"\${acc}\"'.bib'
+    [[ -f \"\$b\" ]] && grep -q '^abstract|<not uploaded>' \"\$b\" && ! grep -Eq '^(author|title)\|<not uploaded>' \"\$b\" && echo \"\${acc}\"
+    true
+  done
+  true
+")"
+if [[ -n "$BIB_BAD" ]]; then
+  warn "accessions with missing/unmatched .bib metadata (dropped or blank at index time — fix the CSV 'doi' column):"
+  printf '%s\n' "$BIB_BAD" | sed 's/^/    /'
+fi
+if [[ -n "$BIB_NOABS" ]]; then
+  n=$(printf '%s\n' "$BIB_NOABS" | grep -c .)
+  echo "  note: ${n} accession(s) have full biblio metadata but an empty abstract in the CSV (indexes fine; abstract search won't hit them)"
 fi
 
 # ----------------------------------------------------------------------------
@@ -390,7 +479,7 @@ dexec "
     echo \"generated     : ${RUN_ID} (UTC)\"
     echo \"tokenizer     : articles2cas -t ${TOK_MODE}\"
     echo \"ontologies    : ${ONTO_NOW}\"
-    echo \"tpontology    : ${TPONT_ROWS} rows\"
+    echo \"lexica tables : ${LEX_TABLES} tpontology_* tables\"
     echo \"accessions    : \"\$(cat '${ACC_LIST}' | wc -l)
     echo
     echo 'Server operator steps:'
