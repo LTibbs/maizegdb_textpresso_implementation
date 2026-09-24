@@ -4996,3 +4996,98 @@ makes the leak material.
    `default` perms (GUI) + document the figure gap (**C4**).
 5. **B2 / C1** only if preview-in-browser or figure gating is actually
    needed.
+
+## Update log — 2026-09-24: open-access gating recap, and exactly what a Docker rebuild needs (checked against the actual `Dockerfile`/`docker-compose.yml`, not just the plan)
+
+The 2026-09-09 entries above cover the design and the CLI work; this entry
+answers one question precisely — **"what, if anything, has to change to make
+gating work when the `textpresso` image is rebuilt?"** — by reading the
+actual build files rather than restating the plan. Short answer: **nothing**.
+Everything gating needs is already committed on
+`maizegdb/maize-textpresso-fixes` (`36374eb`); a plain rebuild picks it up
+automatically and stays fully backward-compatible until someone deliberately
+creates a manifest file.
+
+### Recap: the design in one paragraph
+
+`textpressoapi` (C++) and `cas_annotate_server.py` (Python sidecar) each load
+an optional **open-access manifest** (`@default`, `@corpus:<name>`,
+per-accession lines, precedence accession > corpus > default) and an optional
+**API keys file**. If the manifest file doesn't exist, `AccessControl` never
+enforces anything and every response is byte-identical to before the feature
+existed — that's what makes this safe to ship dark. When a manifest *is*
+present, an unauthenticated caller asking for a non-open-access paper gets
+metadata + abstract + up to `--max-anon-snippets` (default 3) matching
+sentences from `search_documents`, and a `/annotate` payload with every
+`sentences[].text` / `annotations[].term` blanked (offsets, categories,
+sections kept — see `access.py`/`access_control.h` doc-comments and
+`cas_annotate_server.py`'s docstring). A valid key (`X-API-Key`,
+`Authorization: Bearer`, or a body/query `api_key`) restores full access.
+`category_search` is never gated.
+
+### What a rebuild needs — verified against the build files themselves
+
+I checked (not assumed) `Dockerfile`, `docker-compose.yml`, `start_textpresso.sh`,
+`initialize.sh`, `main.cpp`, and `access.py` directly:
+
+- **The C++ side needs no build changes.** `access_control.h` is header-only
+  and already `#include`d by `main.cpp`; it's compiled the normal way by
+  `initialize.sh -t`'s existing `cmake .. && make -j 8 && make install` for
+  `textpressoapi` — no new source files to add to any `CMakeLists.txt`, no
+  new dependency.
+- **The Python sidecar copy list is already fixed.** The gating commit
+  (`36374eb`) itself updated `Dockerfile`'s `cp` line to include `access.py`
+  alongside `cas_annotate_server.py`, `casannot.py`, `category_index.py` —
+  confirmed by re-reading `Dockerfile:42` just now; nothing left to do there.
+- **No new flags or env vars need to be set anywhere.** `main.cpp`'s
+  `--open-access-manifest` / `--api-keys-file` defaults
+  (`/data/textpresso/open_access_manifest.tsv` /
+  `/data/textpresso/textpressoapi_data/api_keys.txt`) and `access.py`'s
+  `$TEXTPRESSO_OA_MANIFEST` / `$TEXTPRESSO_API_KEYS_FILE` defaults point at
+  the **same two paths**. `start_textpresso.sh` invokes both
+  `textpressoapi` and `cas_annotate_server.py` with no extra arguments
+  either way (lines 15-17), so both processes pick up those defaults for
+  free — no entrypoint edit needed.
+- **Those two paths already survive a rebuild.** `docker-compose.yml` mounts
+  `${TEXTPRESSO_DATA_DIR}:/data/textpresso` as a host bind volume; both
+  default paths live under it. Rebuilding or recreating the container never
+  touches host-mounted files, so once a manifest/keys file is created it
+  persists across every future rebuild without re-doing anything.
+- **`docker-compose.yml` builds `Dockerfile`, not `Dockerfile-cloud`**
+  (`build.dockerfile: Dockerfile`, line 8) — confirmed directly — so the
+  fixed copy list above is the one that actually matters for the deployed
+  container. Caveat for the record, unrelated to gating and not something I
+  changed: `Dockerfile-cloud` (a separate, apparently manually-invoked build
+  path per its own header comment) has never copied the `cas_annotate_*`
+  sidecar files at all, gating or no gating — if that Dockerfile is ever
+  used for a real deployment, `/annotate` and `/category_search` simply
+  wouldn't exist there. Pre-existing, not introduced by this work; flagging
+  only so it doesn't look like a new gap.
+
+**So the actual rebuild steps are:**
+
+1. Rebuild the image off `maizegdb/maize-textpresso-fixes` (or wherever it
+   lands after merging) — `docker compose build textpresso && docker compose
+   up -d textpresso`, or push a new tag through whatever the normal release
+   process is. No Dockerfile/compose edits required.
+2. That's it for code. Gating stays **off** (byte-identical old behavior)
+   until a manifest file is deliberately created — which is a data change on
+   the mounted volume, not a rebuild step. Section **A** above (author
+   `open_access_manifest.tsv`, create `api_keys.txt`) is still the right
+   next action when you're ready to actually turn it on, and is unaffected
+   by anything in this entry.
+
+### Housekeeping noticed while checking this
+
+- `textpressoapi/cas_annotate_server.py` in the working tree has one small
+  uncommitted change beyond `36374eb`: `log_message()` now wraps its
+  `stderr.write` in `try/except OSError` so a logging failure (e.g. disk
+  full) can't crash the handler thread after a response was already queued.
+  Harmless and unrelated to this entry's question — left as-is, uncommitted,
+  pending your go-ahead to fold it into a commit.
+- The persistent, self-serve gated test stack from the last session
+  (`/data/textpresso/oa-test/` inside the running container, gated services
+  reachable at `localhost:8080/v1/textpresso-test/{api,annotate,category_search}`,
+  demo key `tpc-demo-key-2026`) is still up and untouched by this entry —
+  full instructions in `~/OA_GATING_TEST.md` on the host. It's separate from
+  and doesn't affect the real, ungated container described above.
