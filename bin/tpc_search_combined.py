@@ -88,7 +88,8 @@ import urllib.request
 _BIN  = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_BIN, "..")
 
-DEFAULT_URL = "http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api"
+DEFAULT_URL = "https://textpresso.maizegdb.org/v1/textpresso/api"
+#DEFAULT_URL = "http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api"
 # DEFAULT_URL = "http://localhost:18080/v1/textpresso/api"
 
 # API key for full-text access to non-open-access papers. Read from the

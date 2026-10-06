@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Textpresso for Maize — Search</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page">
+
+  <div class="pagehead">
+    <div class="breadcrumb">Data Hubs / Reference Data Hub / Textpresso</div>
+    <h1>Textpresso for Maize</h1>
+    <div class="subtitle">Search across the maize literature built on Textpresso, with sentence-level gene, GO, PO and TO ontology annotations.</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active">Search</div>
+    <div class="tab">About</div>
+    <div class="tab">References</div>
+    <div class="tab">Related resources</div>
+  </div>
+
+  <div id="statusBanner" class="status-banner" hidden></div>
+
+  <form id="searchForm" class="search-block">
+
+    <div class="search-row">
+      <input id="keywords" type="text" class="search-input" placeholder="Search keywords, e.g. anthocyanin biosynthesis, drought tolerance, cct1">
+      <select id="searchIn" class="search-scope">
+        <option value="full_text" selected>Full text</option>
+        <option value="title">Title</option>
+        <option value="abstract">Abstract</option>
+        <option value="introduction">Introduction</option>
+        <option value="result">Results</option>
+        <option value="discussion">Discussion</option>
+        <option value="conclusion">Conclusion</option>
+        <option value="materials_and_methods">Materials and methods</option>
+      </select>
+      <button type="submit" class="btn btn-primary search-btn">Search</button>
+    </div>
+
+    <div class="search-subrow">
+      <button type="button" id="advancedToggle" class="link-btn">
+        <span id="advancedCaret" class="caret">&#9656;</span>
+        Advanced search
+      </button>
+      <span class="sep">|</span>
+      <span class="try-links">Try:
+        <a href="#" class="try-link" data-q="liguleless">liguleless</a> &middot;
+        <a href="#" class="try-link" data-q="cct1">cct1</a> &middot;
+        <a href="#" class="try-link" data-q="anthocyanin">anthocyanin</a>
+      </span>
+    </div>
+
+    <div id="advancedPanel" class="advanced-panel" hidden>
+
+      <div class="grid-3">
+        <div class="field">
+          <label>Corpora</label>
+          <div id="corporaList" class="checkbox-list">Loading corpora&hellip;</div>
+        </div>
+        <div class="field">
+          <label for="excludeKeywords">Exclude keywords</label>
+          <input id="excludeKeywords" type="text" placeholder="e.g. Arabidopsis">
+        </div>
+        <div class="field">
+          <label for="sortBy">Sort by</label>
+          <select id="sortBy">
+            <option value="relevance" selected>Relevance</option>
+            <option value="year">Year (newest first)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field">
+        <label for="categoryQuery">Category or gene lookup</label>
+        <div class="category-row">
+          <input id="categoryQuery" type="text" placeholder="e.g. seed, cct1, drought response" autocomplete="off">
+          <button type="button" id="categoryLookupBtn" class="btn btn-outline">Look up</button>
+        </div>
+        <div id="categoryResults" class="category-results" hidden></div>
+        <div id="categorySelected" class="category-selected" hidden></div>
+        <div id="categoryNote" class="field-note" hidden></div>
+        <div class="checkbox-row">
+          <label><input type="checkbox" id="expandAncestors"> Include broader terms (ancestors)</label>
+          <label><input type="checkbox" id="expandDescendants"> Include narrower terms (descendants)</label>
+          <label><input type="checkbox" id="relatedSynonyms"> Include related gene synonyms</label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="grid-4">
+        <div class="field">
+          <label for="author">Author</label>
+          <input id="author" type="text" placeholder="e.g. Buckler">
+        </div>
+        <div class="field">
+          <label for="journal">Journal</label>
+          <input id="journal" type="text" placeholder="e.g. Plant Cell">
+        </div>
+        <div class="field">
+          <label for="year">Year</label>
+          <input id="year" type="text" placeholder="e.g. 2014">
+        </div>
+        <div class="field">
+          <label for="paperType">Paper type</label>
+          <select id="paperType">
+            <option value="">Any</option>
+            <option value="Journal_article">Journal article</option>
+            <option value="Thesis">Thesis</option>
+            <option value="Conference_proceeding">Conference proceeding</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-note">References and acknowledgments sections are excluded from search by default, to avoid matches on citations or funding boilerplate.</div>
+      <div class="checkbox-row">
+        <label><input type="checkbox" id="includeReferences"> Include references section</label>
+        <label><input type="checkbox" id="includeAcknowledgments"> Include acknowledgments section</label>
+      </div>
+
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary">Apply filters</button>
+        <button type="button" id="resetBtn" class="btn btn-secondary">Reset</button>
+      </div>
+
+    </div>
+
+  </form>
+
+  <div id="resultsSummary" class="results-summary" hidden>
+    <div id="resultsCount"></div>
+    <div class="export-buttons">
+      <button type="button" id="exportCsv" class="btn btn-outline btn-sm">Export CSV</button>
+      <button type="button" id="exportJson" class="btn btn-outline btn-sm">Export JSON</button>
+    </div>
+  </div>
+
+  <div id="resultsList" class="results-list"></div>
+
+  <div id="loadMoreRow" class="load-more-row" hidden>
+    <button type="button" id="loadMoreBtn" class="btn btn-outline">Load more results</button>
+  </div>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
