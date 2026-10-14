@@ -18,6 +18,8 @@ Endpoints:
 | `/api/search` | POST | Keyword/metadata/category search (JSON body, see `SearchRequest` in `backend/main.py`) |
 | `/api/category_search` | GET | Look up exact `category` strings by free-text term |
 | `/api/annotate` | GET | Grouped ontology annotation summary for one document |
+| `/api/document` | GET | Whole paper for the full-text viewer: text plus page/paragraph/figure/section/sentence/annotation offsets (`?identifier=`) |
+| `/api/figure` | GET | One figure image for the viewer (`?identifier=&name=<basename>`) |
 | `/api/health` | GET | Liveness check |
 
 ## Frontend
@@ -43,6 +45,133 @@ export, ontology-annotation display, gene EXACT/RELATED filtering, and
 references/acknowledgments exclusion. Only `/api/category_search` (category/
 gene lookup) is degraded (fails gracefully with an inline message rather
 than breaking) until the known issue below is fixed upstream.
+
+## Full-text viewer (`viewer.html`)
+
+The new GUI's counterpart to Textpresso Central's `/tpc/curation` Viewer.
+Each search result that can be opened gets an **Annotated full text** action,
+and its title becomes a link too. Either one opens
+`viewer.html?id=<identifier>&q=…` in a new tab. The separate
+**Publisher full text ↗** action goes to the DOI.
+
+The viewer is laid out as two panes that scroll independently: controls on
+the left, the paper on the right. The controls therefore stay in view
+however far each "next" jumps. Below 860px wide, the controls become a
+scrollable strip above the paper.
+
+The four control panels (Keyword matches, Category matches, Annotations,
+Contents) start collapsed to a one-line header with a short summary, such
+as "81 terms" or "5 sections · 5 figures". Click a header to expand it.
+Each panel's open/closed state is remembered in the browser. The steppers
+(‹ ›) stay visible even when their panel is collapsed. The viewer provides:
+
+- **The full paper** with page dividers, paragraphs, and figures inline at
+  the point where they appear in the PDF. Click a figure to open it full
+  size.
+- **Keyword matches and category matches, stepped separately.** Each has
+  its own ‹ › and count, so stepping through one never jumps into the
+  other.
+  - Keyword matches are yellow, and the current one is orange. Use `[` and
+    `]` to step.
+  - Category matches are teal, and the current one is outlined. Use `{` and
+    `}` to step.
+  - The current match's sentence is tinted, but only when it's a normal
+    length (≤ 500 characters). Some papers' CAS "sentences" span whole
+    paragraphs.
+  - Matches inside sections the search excluded (references/acknowledgments
+    by default) are shown in grey and skipped.
+  - **Keywords:** the box starts with the search's keywords. Type a new
+    term to change it.
+  - **Categories:** "Find categories in this paper" is a type-ahead over the
+    terms annotated in this paper, searching by name or by GO/PO/TO ID. Each
+    chosen category becomes a chip showing its count, and removing the chip
+    removes it. The search page's categories start out as chips. Matching
+    uses the ontology ID, so different spellings of the same term in the CAS
+    still match.
+  - **Include broader / narrower terms** (GO/PO/TO chips only) also matches
+    the term's ancestors and/or descendants. They're looked up through
+    `/api/category_search` using the term's own relationship types, the
+    same way the search page expands categories. The checkboxes start from
+    the search page's setting (`anc=1` / `desc=1`).
+  - A chip shows how many related terms contributed, as "+N terms". Its
+    tooltip lists them.
+  - The lookup service returns at most 100 terms per direction, and the
+    panel notes when a list was cut off.
+  - **Related gene synonyms** count only if the search had "include related
+    gene synonyms" on (passed to the viewer as `rel=1`).
+- **Annotations.** Highlighting can be switched on or off for each term:
+  - Each ontology (genes, GO, PO, TO) has a checkbox for all its terms. It
+    shows as partly checked when only some are on.
+  - The term list has a checkbox per term and a filter box for long lists.
+    Its Select all / Deselect all links act on the terms the filter is
+    showing.
+  - Select all / Deselect all in the panel header covers every ontology.
+  - Each ontology's on/off setting is remembered between papers. Choices for
+    individual terms last only for the current page.
+  - Clicking a term's name highlights every occurrence, and ‹ › then steps
+    through them.
+  - Clicking any annotated word shows its categories.
+- **Contents.** Jump to a section or figure. Sections come from the CAS2
+  section labels after `casannot.repair_sections()` removes the tokenizer's
+  false headings. These include a wrapped "(see Materials / and methods)" or
+  a table column header "Reference". See the 2026-10-14 work-log entry.
+- **Previous/next paper**, following the result list the search page last
+  showed (saved in `localStorage`).
+
+### Where the data comes from
+
+The viewer reads only the local CAS2 file (`CAS_ROOT`), parsed by
+`textpresso_classifiers/casdoc.py`. The live API has nothing equivalent:
+`search_documents`' full text has its tags stripped and carries no offsets.
+So without a local CAS2 tree there is no viewer: `/api/document` returns
+503, and the search page hides the link. The link is also hidden for papers
+whose corpus isn't in the local tree (on the dev box that means everything
+except MaizeOA).
+
+`casdoc.py` handles both CAS layouts:
+
+- **`tai`** (MaizeOA): structure is stored in separate page, dblbrk and
+  image elements.
+- **`pdf`** (older corpora): structure is stored as inline `<_pdf …/>` tags,
+  which are stripped and all offsets remapped. This is covered by
+  `tests/test_casdoc.py`.
+
+### Figures
+
+`/api/figure` tries these locations in order:
+
+1. `CAS_ROOT/<corpus>/<acc>/images/`
+2. `TPCAS1_ROOT/<corpus>/<acc>/images/` (default: `tpcas-1` next to
+   `CAS_ROOT`; override with `TEXTPRESSO_TPCAS1_ROOT`)
+3. `RAW_PDF_ROOT/<corpus>/<acc>/` (default: `raw_files/pdf` next to
+   `CAS_ROOT`; override with `TEXTPRESSO_RAW_PDF_ROOT`)
+4. Otherwise it returns a 307 redirect to the live
+   `https://textpresso.maizegdb.org/tpc/images/<corpus>/<acc>/images/<name>`.
+
+On the dev box, steps 1–2 fail: the tpcas-2 `images` symlink can't be
+followed over the WSL UNC mount, and the tpcas-1 `images/` directories are
+empty. Figures are therefore served from `raw_files`.
+
+Images in `raw_files` are taken from the PDF before the pipeline's
+`invert_img` step (`agr_textpresso/tpctools/CMYKInverter`), so CMYK JPEGs
+in it look like colour negatives. `/api/figure` applies the same fix the
+pipeline does for that source only: it negates CMYK JPEGs and returns
+them as RGB. This needs Pillow, which is in `requirements.txt`; without
+Pillow the file is served as-is.
+
+### Restricted papers
+
+Both endpoints, and the `viewer_allowed` flag on each search result, go
+through `_can_view_full_text()` in `backend/main.py`. Today that allows
+open-access papers only, and restricted papers get 403 and no link.
+
+`_is_open_access()` is still the test-only stand-in that marks about 1 in 4
+papers as restricted. It now uses a hash of the identifier rather than the
+result position, so the search page and the viewer agree on which papers
+are restricted.
+
+When GUI login exists, add the logged-in user check to
+`_can_view_full_text()`. Nothing else needs to change.
 
 ## Known issue: annotation sidecar service is unreachable over HTTP — worked around locally
 
@@ -96,6 +225,17 @@ If neither the default WSL path nor an overridden path exists (WSL not
 running, wrong machine), `CAS_ROOT` falls back to `None` and behavior
 reverts to the flaky HTTP path described above, same as before this was
 wired up — it doesn't crash, it just degrades.
+
+### Abstracts come from the corpus metadata CSVs
+
+`search_documents` returns no abstract, so `/api/search` attaches one to
+each result from the metadata CSVs the corpora were built from
+(`sorghumbase_textpresso_implementation/metadata/*_papers.csv`), matched by
+DOI in accession form (`/` → `_`) or PMID. They're read once on the first
+search. Override the directory with `TEXTPRESSO_METADATA_DIR`. A paper with
+no matching row (or an empty `abstract` cell) has its Abstract toggle
+greyed out in the GUI. Abstracts are deliberately not fetched from PubMed,
+so what's shown is exactly what was ingested.
 
 **It does not help `/category_search`** (no local-file equivalent — that
 endpoint looks up OBO ontology term IDs, a different dataset from per-paper

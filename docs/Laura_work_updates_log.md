@@ -5091,3 +5091,130 @@ I checked (not assumed) `Dockerfile`, `docker-compose.yml`, `start_textpresso.sh
   demo key `tpc-demo-key-2026`) is still up and untouched by this entry —
   full instructions in `~/OA_GATING_TEST.md` on the host. It's separate from
   and doesn't affect the real, ungated container described above.
+
+## Update log — 2026-10-14: full-text viewer page for the new GUI
+
+Added `textpresso_gui/frontend/viewer.html` (with `viewer.js` and
+`viewer.css`). It is the new GUI's equivalent of Textpresso Central's
+`/tpc/curation` Viewer (`agr_textpresso/textpressocentral/TpC/Viewer.cpp`).
+
+What it does:
+- Shows the full paper with figures inline.
+- Steps through search matches. Matches in excluded sections are greyed
+  out and skipped.
+- Highlights annotations per ontology, and steps through every occurrence
+  of a chosen category.
+- Has a contents panel and previous/next paper navigation.
+
+Open-access papers only for now. Usage and design notes are in
+`textpresso_gui/docs/GUI_SETUP.md`, under "Full-text viewer".
+
+**Code:**
+- **New `textpresso_classifiers/casdoc.py`** parses a whole CAS2 file into
+  one text string with offsets for pages, paragraphs, figures, sections,
+  sentences and annotations. It handles both layouts:
+  - `tai` (MaizeOA): separate page, dblbrk and image elements.
+  - `pdf`: inline `<_pdf …/>` tags, which are stripped and every offset
+    remapped.
+
+  Tests are in `tests/test_casdoc.py` (7 tests, run with
+  `python -m unittest tests.test_casdoc`).
+- **New backend endpoints** `/api/document` and `/api/figure`. Search
+  results gain a `viewer_allowed` flag.
+- **Access check.** All of it goes through one function,
+  `_can_view_full_text()`, which is the place to add the logged-in user
+  check later.
+- **Test open-access flag.** `_is_open_access()` now hashes the identifier
+  instead of using the result position, so the search page and the viewer
+  agree.
+- **`app.js`** gets a "View full text" action in the table and card views.
+  The DOI link is relabelled "Publisher".
+
+**Findings worth keeping:**
+- **`casannot._PDF_TAG_RE` can't match `_image` tags.** The pattern is
+  `<_pdf[^/]*/>`, and an `_image` tag's value is a path containing `/`.
+  `casdoc.py` uses its own pattern. `casannot`'s own uses aren't affected
+  in practice, since it only strips tags from text windows.
+- **Locally, every MaizeOA `tpcas-1/.../images/` directory is empty**
+  (0 of 1438). The tpcas-2 `images` symlink also can't be followed over the
+  WSL UNC mount. The same files, under the same names, are next to the
+  source PDFs in `.data/raw_files/pdf/<corpus>/<acc>/`, so `/api/figure`
+  falls back to those, and then to the live `/tpc/images/...` URL.
+- **Raw-PDF CMYK JPEGs are colour negatives.** The pipeline's `invert_img`
+  step (`tpctools/CMYKInverter/CMYKModifier.cpp`, which negates every CMYK
+  `.jpg`) never ran on the `raw_files` copies. `/api/figure` now does the
+  same negation for that source. Checked by eye against the live
+  `/tpc/images` copy of `10.1002_advs.202415606.00002.img-001.jpg`.
+
+## Update log — 2026-10-14 (continued): false section headings — read-time repair here, tokenizer fix upstream
+
+**Symptom.** The viewer's Contents list for `MaizeOA/10.1093_plcell_koae007`
+read Introduction, References, Result, Materials and methods, Discussion,
+Materials and methods, Acknowledgments, References.
+
+**Cause: the CAS2 section labels are wrong.** The viewer was showing them
+correctly. `TdTokenizer` treats any line that is exactly a heading word as a
+heading, and each section runs to the next heading. In that paper:
+- a table column header "Reference" (p3) became a References section;
+- a wrapped "(see Materials
+and methods)" became a Methods section, which
+  relabelled most of the Results (p4–p9).
+
+The search's default references/acknowledgments exclusion uses these same
+labels, so real matches inside a false References span were being dropped.
+
+**Scale.** I scanned all 1438 MaizeOA papers. 440 of the 1399 with sections
+looked wrong:
+
+| Problem | Papers |
+|---|---|
+| Mid-sentence "heading" | 303 |
+| Section type repeats non-adjacently | 246 |
+| "references" before body text | 146 |
+
+Of the references-before-body spans, 124 have fewer than 3 reference-entry
+lines (tables, SNP lists, allele lists). Real reference lists almost always
+have 6+ in their first 3000 characters.
+
+**Fix 1: read-time repair (this repo, live once the backend restarts).**
+`casannot.repair_sections()` is now applied by both `parse_cas_file()` (search
+section filtering, `/api/annotate`) and `casdoc.py` (viewer). A heading is
+false if:
+- the text after it continues a sentence (starts lowercase or with closing
+  punctuation);
+- it is "references" before body text with fewer than 3 reference-entry lines;
+- it comes right after References and its text is still reference entries
+  (e.g. "Methods
+Ecol Evol…" from a wrapped journal name).
+
+A false heading's span folds into the previous section, and adjacent spans of
+the same type merge.
+
+Results:
+- Rescanning flags 128 papers, down from 440. Most of the rest are legitimate:
+  a Cell "STAR Methods" section after the references, or a numbered reference
+  list inside a Nature/PNAS Methods section.
+- `koae007` now reads Abstract, Introduction, Results, Discussion, Materials
+  and methods, Acknowledgments, References.
+- Tests: `tests/test_section_repair.py` (7) plus the existing
+  `tests/test_casdoc.py`; 26/26 pass alongside `test_tpc_search_combined`.
+
+**Fix 2: tokenizer (`agr_textpresso`). Patched in source, not built,
+compiled or deployed.** `TdTokenizer.cpp/.h` has a new
+`validateSectionHeadings()` with the same four rules.
+- Each section now runs to the next *real* heading, so false ones fold into
+  the previous section.
+- The "enough structure to label sections" score now counts only real
+  headings, which also lets the implicit-references fallback run when the
+  only "References" heading was false.
+- It also fixes an underflow in `combineSectionAnnotations`'s loop bound.
+
+To take effect it needs:
+- a rebuild of the image (the same `cmake --build` path as earlier
+  `TdTokenizer` changes);
+- a re-run of tokenize → annotate → index for every corpus.
+
+The section-scoped search ("Search keywords in: Results") uses the Lucene
+index, so it stays affected until then. `textpressoapi/casannot.py`, the HTTP
+`/annotate` sidecar, has its own copy of the parser without the repair; the
+reprocessed data makes that moot.

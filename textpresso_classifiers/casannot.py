@@ -70,6 +70,109 @@ _ONTOLOGY_PREFIXES = [
 # e.g. <_pdf _cr/>, <_pdf _fsc=+10/>, <_pdf _page=2/>.
 _PDF_TAG_RE = re.compile(r"<_pdf[^/]*/>")
 
+# --- Section repair -------------------------------------------------------
+# TdTokenizer treats any line that is exactly a heading word ("Materials",
+# "Reference", "Methods", ...) as a section heading, and each section runs
+# until the next heading. In PDF text that misfires on a wrapped in-text
+# cross-reference ("...(see Materials\nand methods)...") or a table column
+# header ("Reference"), and one false heading relabels everything up to the
+# next real one -- e.g. most of a Results section labelled "materials and
+# methods", or part of an Introduction labelled "references" (which the
+# search's default references/acknowledgments exclusion then drops).
+# Measured 2026-10-14 over MaizeOA: ~300 papers with a mid-sentence
+# "heading", ~120 with a non-reference-list "references" span before body
+# text. repair_sections() undoes these at read time; the matching tokenizer
+# fix is in agr_textpresso's TdTokenizer.cpp (takes effect on reprocessing).
+_BODY_SECTIONS = {"introduction", "background", "result", "discussion", "conclusion",
+                  "materials and methods", "design"}
+_FRAME_SECTIONS = {"beginning of article", "end of article"}
+# Text right after a real heading starts a new sentence or title; a lowercase
+# word or closing punctuation means the "heading" was mid-sentence.
+_CONTINUATION_RE = re.compile(r"^\s*[a-z)\]},;.:]")
+# A reference-list entry at line start: "Surname AB, ...", "Surname, A. B.,",
+# "1. Surname AB", "[12] Surname, A." -- at least a few within the first 3000
+# characters of a real reference list.
+_REF_ENTRY_RE = re.compile(
+    r"^\s*(?:\[?\d{1,3}[\].)]?\s+)?[A-Z][\w'’\-]+(?:\s[A-Z][\w'’\-]+)?,?\s(?:[A-Z]\.?\s?-?){1,3}[,.]",
+    re.M)
+_MIN_REF_ENTRIES = 3
+
+
+def looks_like_reference_list(text):
+    return len(_REF_ENTRY_RE.findall(text[:3000])) >= _MIN_REF_ENTRIES
+
+
+def repair_sections(sections):
+    """Undo TdTokenizer's false section headings (see the note above).
+
+    sections -- dicts with begin, end, type and optionally content (the CAS
+    section element's content attribute: the text after the heading). Without
+    content nothing can be judged, so such sections are kept as they are.
+
+    A heading is false if the text after it continues a sentence; if it is a
+    "references" heading that comes before body text and isn't followed by a
+    reference list; or if it comes right after a references section and its
+    text is still reference entries. A false heading's span is folded into the section
+    before it (which is what it would have been without that heading); then
+    adjacent spans of the same type(s) are merged. "beginning/end of article"
+    are left alone. Returns new dicts with begin, end and type only.
+    """
+    frames = [s for s in sections if s["type"] in _FRAME_SECTIONS]
+    groups = []  # sections sharing one heading position ("Results and Discussion" -> both)
+    for s in sorted((s for s in sections if s["type"] not in _FRAME_SECTIONS),
+                    key=lambda s: (s["begin"], s["end"])):
+        if groups and groups[-1][0]["begin"] == s["begin"]:
+            groups[-1].append(s)
+        else:
+            groups.append([s])
+
+    def continues_sentence(group):
+        return any(s.get("content") is not None and _CONTINUATION_RE.match(s["content"]) for s in group)
+
+    last_body = max((g[0]["begin"] for g in groups if not continues_sentence(g)
+                     and any(s["type"] in _BODY_SECTIONS for s in g)), default=-1)
+
+    def is_false(group):
+        if continues_sentence(group):
+            return True
+        if all(s["type"] == "references" for s in group):
+            content = group[0].get("content")
+            return (content is not None and not content.startswith("(implicit")
+                    and group[0]["begin"] < last_body and not looks_like_reference_list(content))
+        return False
+
+    # A heading inside a reference list whose text is still reference entries
+    # -- e.g. "Methods\nEcol Evol 12(11)..." from a wrapped citation of the
+    # journal Methods in Ecology and Evolution -- is part of that list. A real
+    # Methods section after the references (Nature/Cell style) isn't
+    # reference entries, so it stays.
+    def inside_reference_list(group, previous):
+        content = group[0].get("content")
+        return (previous is not None and any(s["type"] == "references" for s in previous)
+                and not any(s["type"] == "references" for s in group)
+                and content is not None and looks_like_reference_list(content))
+
+    kept = []
+    for group in groups:
+        if is_false(group) or inside_reference_list(group, kept[-1] if kept else None):
+            if kept:  # fold into the previous section
+                end = max(s["end"] for s in group)
+                for s in kept[-1]:
+                    s["end"] = max(s["end"], end)
+            continue
+        group = [{"begin": s["begin"], "end": s["end"], "type": s["type"]} for s in group]
+        if kept and {s["type"] for s in kept[-1]} == {s["type"] for s in group} \
+                and max(s["end"] for s in kept[-1]) >= group[0]["begin"]:
+            end = max(s["end"] for s in group)
+            for s in kept[-1]:
+                s["end"] = max(s["end"], end)
+            continue
+        kept.append(group)
+
+    out = [{"begin": s["begin"], "end": s["end"], "type": s["type"]} for s in frames]
+    out += [s for group in kept for s in group]
+    return sorted(out, key=lambda s: (s["begin"], s["end"]))
+
 
 def _get_sofa(content):
     """Extract and html-unescape the sofaString from raw CAS2 XML content.
@@ -210,9 +313,11 @@ def parse_cas_file(cas_path):
         begin = int(re.search(r'\bbegin="(\d+)"', el).group(1))
         end   = int(re.search(r'\bend="(\d+)"',   el).group(1))
         tm    = re.search(r'\btype="([^"]*)"', el)
+        cm    = re.search(r'\bcontent="([^"]*)"', el)
         section_type = html.unescape(tm.group(1)) if tm else ""
-        sections.append({"begin": begin, "end": end, "type": section_type})
-    sections.sort(key=lambda s: s["begin"])
+        sections.append({"begin": begin, "end": end, "type": section_type,
+                         "content": html.unescape(cm.group(1)) if cm else None})
+    sections = repair_sections(sections)  # sorted; drops false headings (see above)
 
     return sentences, annotations, sections
 

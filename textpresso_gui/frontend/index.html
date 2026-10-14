@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Textpresso for Maize — Search</title>
+<title>MaizeGDB Textpresso</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,8 +12,8 @@
 
   <div class="pagehead">
     <div class="breadcrumb">Data Hubs / Reference Data Hub / Textpresso</div>
-    <h1>Textpresso for Maize</h1>
-    <div class="subtitle">Search across the maize literature built on Textpresso, with sentence-level gene, GO, PO and TO ontology annotations.</div>
+    <h1>MaizeGDB Textpresso</h1>
+    <div class="subtitle">Maize literature search built on Textpresso. Search by keyword and annotations including maize genes, GO, PO, and TO.</div>
   </div>
 
   <div class="tabs">
@@ -27,19 +27,36 @@
 
   <form id="searchForm" class="search-block">
 
-    <div class="search-row">
-      <input id="keywords" type="text" class="search-input" placeholder="Search keywords, e.g. anthocyanin biosynthesis, drought tolerance, cct1">
-      <select id="searchIn" class="search-scope">
-        <option value="full_text" selected>Full text</option>
-        <option value="title">Title</option>
-        <option value="abstract">Abstract</option>
-        <option value="introduction">Introduction</option>
-        <option value="result">Results</option>
-        <option value="discussion">Discussion</option>
-        <option value="conclusion">Conclusion</option>
-        <option value="materials_and_methods">Materials and methods</option>
-      </select>
-      <button type="submit" class="btn btn-primary search-btn">Search</button>
+    <div class="query-rows">
+
+      <div class="query-row">
+        <label class="query-label" for="keywords">Keywords</label>
+        <input id="keywords" type="text" class="search-input" placeholder="e.g. anthocyanin biosynthesis, drought tolerance">
+      </div>
+
+      <div class="query-row">
+        <label class="query-label" for="categoryQuery">Categories</label>
+        <div class="category-field">
+          <div id="categoryBox" class="chip-input">
+            <div id="categoryChips" class="chips"></div>
+            <input id="categoryQuery" type="text" class="chip-text" autocomplete="off"
+                   placeholder="Type a gene or a GO/PO/TO term, e.g. cct1, seed development"
+                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="categoryResults">
+          </div>
+          <div id="categoryResults" class="category-dropdown" role="listbox" hidden></div>
+          <div id="categoryNote" class="field-note category-note" hidden></div>
+          <div id="categoryOptions" class="category-options" hidden>
+            <span id="matchModeGroup" class="match-mode" hidden>Match
+              <label><input type="radio" name="categoryMatch" value="any"> any</label>
+              <label><input type="radio" name="categoryMatch" value="all" checked> all</label>
+            </span>
+            <label id="expandAncestorsLabel" hidden><input type="checkbox" id="expandAncestors"> Include ancestor (broader) ontology terms</label>
+            <label id="expandDescendantsLabel" hidden><input type="checkbox" id="expandDescendants"> Include descendant (narrower) ontology terms</label>
+            <label id="relatedSynonymsLabel" hidden><input type="checkbox" id="relatedSynonyms"> Related gene synonyms</label>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div class="search-subrow">
@@ -50,50 +67,13 @@
       <span class="sep">|</span>
       <span class="try-links">Try:
         <a href="#" class="try-link" data-q="liguleless">liguleless</a> &middot;
-        <a href="#" class="try-link" data-q="cct1">cct1</a> &middot;
-        <a href="#" class="try-link" data-q="anthocyanin">anthocyanin</a>
+        <a href="#" class="try-link" data-category="cct1">cct1 (gene)</a> &middot;
+        <a href="#" class="try-link" data-category="seed development">seed development (GO)</a>
       </span>
+      <button type="submit" class="btn btn-primary search-btn">Search</button>
     </div>
 
     <div id="advancedPanel" class="advanced-panel" hidden>
-
-      <div class="grid-3">
-        <div class="field">
-          <label>Corpora</label>
-          <div id="corporaList" class="checkbox-list">Loading corpora&hellip;</div>
-        </div>
-        <div class="field">
-          <label for="excludeKeywords">Exclude keywords</label>
-          <input id="excludeKeywords" type="text" placeholder="e.g. Arabidopsis">
-        </div>
-        <div class="field">
-          <label for="sortBy">Sort by</label>
-          <select id="sortBy">
-            <option value="relevance" selected>Relevance</option>
-            <option value="year">Year (newest first)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="field">
-        <label for="categoryQuery">Category or gene lookup</label>
-        <div class="category-row">
-          <input id="categoryQuery" type="text" placeholder="e.g. seed, cct1, drought response" autocomplete="off">
-          <button type="button" id="categoryLookupBtn" class="btn btn-outline">Look up</button>
-        </div>
-        <div id="categoryResults" class="category-results" hidden></div>
-        <div id="categorySelected" class="category-selected" hidden></div>
-        <div id="categoryNote" class="field-note" hidden></div>
-        <div class="checkbox-row">
-          <label><input type="checkbox" id="expandAncestors"> Include broader terms (ancestors)</label>
-          <label><input type="checkbox" id="expandDescendants"> Include narrower terms (descendants)</label>
-          <label><input type="checkbox" id="relatedSynonyms"> Include related gene synonyms</label>
-        </div>
-      </div>
-
-      <div class="divider"></div>
 
       <div class="grid-4">
         <div class="field">
@@ -119,10 +99,44 @@
         </div>
       </div>
 
-      <div class="field-note">References and acknowledgments sections are excluded from search by default, to avoid matches on citations or funding boilerplate.</div>
-      <div class="checkbox-row">
-        <label><input type="checkbox" id="includeReferences"> Include references section</label>
-        <label><input type="checkbox" id="includeAcknowledgments"> Include acknowledgments section</label>
+      <div class="divider"></div>
+
+      <div class="field scope-field">
+        <label for="searchIn">Search keywords in</label>
+        <select id="searchIn">
+          <option value="full_text" selected>Full text</option>
+          <option value="title">Title</option>
+          <option value="abstract">Abstract</option>
+          <option value="introduction">Introduction</option>
+          <option value="result">Results</option>
+          <option value="discussion">Discussion</option>
+          <option value="conclusion">Conclusion</option>
+          <option value="materials_and_methods">Materials and methods</option>
+        </select>
+        <div class="field-note">
+          Applies to keywords only &mdash; categories always match anywhere in the paper.
+          With a single section, matching sentences are taken from that section of each paper
+          (Title has none to show), and a search that also uses categories only considers the
+          top 200 papers for the keywords in that section.
+        </div>
+        <div class="field-note">References and acknowledgments sections are excluded from search by default, to avoid matches on citations or funding boilerplate, but you can include them if desired:</div>
+        <div class="checkbox-row">
+          <label><input type="checkbox" id="includeReferences"> Include references section</label>
+          <label><input type="checkbox" id="includeAcknowledgments"> Include acknowledgments section</label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="excludeKeywords">Exclude keywords</label>
+          <input id="excludeKeywords" type="text" placeholder="e.g. Arabidopsis">
+        </div>
+        <div class="field">
+          <label>Corpora</label>
+          <div id="corporaList" class="checkbox-list">Loading corpora&hellip;</div>
+        </div>
       </div>
 
       <div class="btn-row">
@@ -137,6 +151,16 @@
   <div id="resultsSummary" class="results-summary" hidden>
     <div id="resultsCount"></div>
     <div class="export-buttons">
+      <div id="expandControls" class="expand-controls" role="group" aria-label="Expand a section for every result">
+        <span class="expand-label">Expand all:</span>
+        <button type="button" class="expand-btn" data-expand="abstract" aria-pressed="false">Abstracts</button>
+        <button type="button" class="expand-btn" data-expand="sentences" aria-pressed="false">Sentences</button>
+        <button type="button" class="expand-btn" data-expand="annotations" aria-pressed="false">Annotations</button>
+      </div>
+      <div class="view-toggle" role="group" aria-label="Result view">
+        <button type="button" id="viewTable" class="view-btn active" aria-pressed="true">Table</button>
+        <button type="button" id="viewCards" class="view-btn" aria-pressed="false">Cards</button>
+      </div>
       <button type="button" id="exportCsv" class="btn btn-outline btn-sm">Export CSV</button>
       <button type="button" id="exportJson" class="btn btn-outline btn-sm">Export JSON</button>
     </div>

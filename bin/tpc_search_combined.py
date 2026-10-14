@@ -193,6 +193,47 @@ def build_query(args, corpora):
     return payload
 
 
+# --- Double-encoded UTF-8 ("mojibake") repair --------------------------------
+# Some corpora on the live server (confirmed for MaizeTest100) return author/
+# title metadata double-encoded: UTF-8 bytes were read as Latin-1/cp1252
+# somewhere in ingest and re-encoded, so "Würschum" arrives as "WÃ¼rschum"
+# (bytes c3 83 c2 bc for one "ü"). The MaizeGDB source CSV is correct, so
+# this is an upstream ingest bug -- repaired in search() below until the
+# corpus is rebuilt, so the CLI and the GUI backend (which calls search())
+# both get clean metadata.
+#
+# Repairs only runs that look like a UTF-8 lead byte plus continuation bytes
+# AND re-decode as strict UTF-8, one run at a time -- so correctly encoded
+# accents elsewhere in the same string (e.g. "Roldán") are left untouched,
+# and ordinary text that just happens to contain "Ã" isn't mangled.
+_CP1252_HIGH = "".join(bytes([b]).decode("cp1252", errors="ignore") for b in range(0x80, 0xA0))
+# A UTF-8 lead byte (0xC2-0xF4) followed by 1-3 continuation bytes
+# (0x80-0xBF, or their cp1252 renderings), as they look after being
+# mis-decoded one byte per character.
+_MOJIBAKE_RE = re.compile("[%s-%s][%s-%s%s]{1,3}" % (
+    chr(0xC2), chr(0xF4), chr(0x80), chr(0xBF), re.escape(_CP1252_HIGH)))
+
+
+def _mojibake_bytes(run: str) -> bytes:
+    return b"".join(bytes([ord(c)]) if ord(c) < 0x100 else c.encode("cp1252") for c in run)
+
+
+def _repair_run(m) -> str:
+    try:
+        return _mojibake_bytes(m.group(0)).decode("utf-8")
+    except UnicodeDecodeError:
+        return m.group(0)
+
+
+def fix_mojibake(text):
+    if not isinstance(text, str):
+        return text
+    return _MOJIBAKE_RE.sub(_repair_run, text)
+
+
+_MOJIBAKE_FIELDS = ("title", "author", "journal")
+
+
 def search(payload, url=DEFAULT_URL, api_key=None):
     """POST a search payload and return the parsed JSON result list.
 
@@ -210,7 +251,12 @@ def search(payload, url=DEFAULT_URL, api_key=None):
         method="POST",
     )
     with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read())
+        results = json.loads(resp.read())
+    for doc in results or ():
+        for field in _MOJIBAKE_FIELDS:
+            if field in doc:
+                doc[field] = fix_mojibake(doc[field])
+    return results
 
 
 def list_corpora(url=DEFAULT_URL):

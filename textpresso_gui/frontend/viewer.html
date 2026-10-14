@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MaizeGDB Textpresso — Annotated full text</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body class="viewer-body">
+
+<div class="page viewer-page">
+
+  <div class="viewer-topbar">
+    <div class="breadcrumb"><a href="index.html">MaizeGDB Textpresso</a> / Annotated full text</div>
+    <div id="paperNav" class="paper-nav" hidden>
+      <button type="button" id="prevPaper" class="btn btn-outline btn-sm">&lsaquo; Previous paper</button>
+      <span id="paperPos" class="paper-pos"></span>
+      <button type="button" id="nextPaper" class="btn btn-outline btn-sm">Next paper &rsaquo;</button>
+    </div>
+  </div>
+
+  <!-- Two panes that scroll independently, so the controls on the left stay
+       put while stepping through matches moves the paper on the right. -->
+  <div class="viewer-layout">
+
+    <aside id="sidebar" class="viewer-sidebar" hidden>
+
+      <!-- Each panel: a header that expands/collapses its body (all start
+           collapsed), plus a compact strip -- the steppers -- that stays
+           visible either way so matches can be clicked through without
+           opening anything. -->
+
+      <section class="side-panel" data-panel="search">
+        <button type="button" class="panel-toggle" aria-expanded="false" aria-controls="searchBody">
+          <span class="caret" aria-hidden="true">&#9656;</span>
+          <span class="side-title">Keyword matches</span>
+          <span id="searchMeta" class="panel-meta"></span>
+        </button>
+        <div class="stepper">
+          <button type="button" id="hitPrev" class="step-btn" aria-label="Previous keyword match" title="Previous keyword match ( [ )">&lsaquo;</button>
+          <span id="hitPos" class="step-label">No keywords</span>
+          <button type="button" id="hitNext" class="step-btn" aria-label="Next keyword match" title="Next keyword match ( ] )">&rsaquo;</button>
+        </div>
+        <div id="searchBody" class="panel-body" hidden>
+          <form id="findForm" class="find-form">
+            <label class="find-label" for="findInput">Find keywords in this paper</label>
+            <div class="find-row">
+              <input id="findInput" type="text" placeholder="e.g. drought">
+              <button type="submit" class="btn btn-outline btn-sm">Find</button>
+            </div>
+          </form>
+          <div id="hitNote" class="field-note" hidden></div>
+        </div>
+      </section>
+
+      <section class="side-panel" data-panel="categories">
+        <button type="button" class="panel-toggle" aria-expanded="false" aria-controls="categoriesBody">
+          <span class="caret" aria-hidden="true">&#9656;</span>
+          <span class="side-title">Category matches</span>
+          <span id="categoryMeta" class="panel-meta"></span>
+        </button>
+        <div class="stepper">
+          <button type="button" id="catPrev" class="step-btn cat-step" aria-label="Previous category match" title="Previous category match ( { )">&lsaquo;</button>
+          <span id="catPos" class="step-label">No categories</span>
+          <button type="button" id="catNext" class="step-btn cat-step" aria-label="Next category match" title="Next category match ( } )">&rsaquo;</button>
+        </div>
+        <div id="categoriesBody" class="panel-body" hidden>
+          <label class="find-label" for="catInput">Find categories in this paper</label>
+          <div class="cat-find">
+            <div id="catChips" class="cat-chips"></div>
+            <input id="catInput" type="text" placeholder="Gene or GO/PO/TO term" autocomplete="off"
+                   role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="catSuggest">
+            <ul id="catSuggest" class="cat-suggest" role="listbox" hidden></ul>
+          </div>
+          <div id="expandRow" class="expand-row" hidden>
+            <label><input type="checkbox" id="expandAnc"> Include broader terms (ancestors)</label>
+            <label><input type="checkbox" id="expandDesc"> Include narrower terms (descendants)</label>
+            <div class="field-note">GO, PO and TO terms only.</div>
+          </div>
+          <div id="expandNote" class="field-note" hidden></div>
+          <div id="catNote" class="field-note" hidden></div>
+        </div>
+      </section>
+
+      <section class="side-panel" data-panel="annotations">
+        <button type="button" class="panel-toggle" aria-expanded="false" aria-controls="annotationsBody">
+          <span class="caret" aria-hidden="true">&#9656;</span>
+          <span class="side-title">Annotations</span>
+          <span id="annotationsMeta" class="panel-meta"></span>
+        </button>
+        <div id="focusBox" class="focus-box" hidden>
+          <div id="focusLabel" class="focus-label"></div>
+          <div class="stepper">
+            <button type="button" id="focusPrev" class="step-btn" aria-label="Previous occurrence">&lsaquo;</button>
+            <span id="focusPos" class="step-label"></span>
+            <button type="button" id="focusNext" class="step-btn" aria-label="Next occurrence">&rsaquo;</button>
+            <button type="button" id="focusClear" class="link-btn focus-clear">Clear</button>
+          </div>
+        </div>
+        <div id="annotationsBody" class="panel-body" hidden>
+          <div class="select-all" role="group" aria-label="Highlight all annotations">
+            <span class="find-label">Highlight:</span>
+            <button type="button" id="annAll" class="link-btn">Select all</button>
+            <span class="sep">&middot;</span>
+            <button type="button" id="annNone" class="link-btn">Deselect all</button>
+          </div>
+          <div id="ontoGroups" class="onto-groups"></div>
+        </div>
+      </section>
+
+      <section class="side-panel" data-panel="contents">
+        <button type="button" class="panel-toggle" aria-expanded="false" aria-controls="contentsBody">
+          <span class="caret" aria-hidden="true">&#9656;</span>
+          <span class="side-title">Contents</span>
+          <span id="contentsMeta" class="panel-meta"></span>
+        </button>
+        <div id="contentsBody" class="panel-body" hidden>
+          <ul id="tocList" class="toc-list"></ul>
+        </div>
+      </section>
+
+    </aside>
+
+    <main id="viewerMain" class="viewer-main">
+      <header id="docHeader" class="doc-header" hidden>
+        <h1 id="docTitle" class="doc-title"></h1>
+        <div id="docAuthors" class="doc-authors"></div>
+        <div id="docCitation" class="doc-citation"></div>
+      </header>
+      <article id="docText" class="doc-text"><div class="empty-state">Loading&hellip;</div></article>
+    </main>
+
+  </div>
+
+</div>
+
+<div id="annPopover" class="ann-popover" role="dialog" aria-label="Annotations" hidden></div>
+
+<script src="viewer.js"></script>
+</body>
+</html>
