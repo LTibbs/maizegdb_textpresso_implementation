@@ -5099,15 +5099,38 @@ Added `textpresso_gui/frontend/viewer.html` (with `viewer.js` and
 `/tpc/curation` Viewer (`agr_textpresso/textpressocentral/TpC/Viewer.cpp`).
 
 What it does:
-- Shows the full paper with figures inline.
-- Steps through search matches. Matches in excluded sections are greyed
-  out and skipped.
-- Highlights annotations per ontology, and steps through every occurrence
-  of a chosen category.
-- Has a contents panel and previous/next paper navigation.
+- Shows the full paper with page dividers, paragraphs and inline figures
+  (click to enlarge). The sidebar and the paper scroll separately under a
+  fixed top bar; they stack on narrow screens.
+- Previous/next paper follows the last result list (kept in localStorage
+  under `tpViewerContext`).
+- Sidebar panels, each collapsed to a one-line summary by default (open or
+  closed state remembered):
+  - **Keyword matches:** yellow highlights, orange for the current one;
+    step with ‹ › or `[` `]`; a box to search again. Matches in excluded
+    sections are greyed out and skipped.
+  - **Category matches:** a separate stepper (teal, keys `{` `}`).
+    Type-ahead over the categories annotated in this paper, matched by
+    ontology ID. Optional broader/narrower GO/PO/TO terms, with narrower
+    terms capped at 100. Categories and expansion settings carry over from
+    the search page.
+  - **Annotations:** a checkbox per ontology and per term, a term filter,
+    and Select all / Deselect all. Clicking a term steps through its
+    occurrences; clicking an annotated word shows its categories. tpzm gene
+    IDs are never shown.
+  - **Contents:** a jump list of sections and figures.
 
 Open-access papers only for now. Usage and design notes are in
 `textpresso_gui/docs/GUI_SETUP.md`, under "Full-text viewer".
+
+**Search-page changes made in the same session:**
+- Each result gets an "Annotated full text" link, and its title links to
+  the viewer too. The DOI link is now "Publisher full text ↗".
+- Page title is now "MaizeGDB Textpresso", with a new subtitle.
+- tpzm gene IDs are hidden in the category dropdown, chips and results
+  summary.
+- The Advanced panel is reordered, and its "Sort by" control is removed;
+  table column sorting replaces it (see the results entry below).
 
 **Code:**
 - **New `textpresso_classifiers/casdoc.py`** parses a whole CAS2 file into
@@ -5126,9 +5149,10 @@ Open-access papers only for now. Usage and design notes are in
   check later.
 - **Test open-access flag.** `_is_open_access()` now hashes the identifier
   instead of using the result position, so the search page and the viewer
-  agree.
-- **`app.js`** gets a "View full text" action in the table and card views.
-  The DOI link is relabelled "Publisher".
+  agree. (Replaced later the same day by real open-access data; see the
+  search-page entry below.)
+- **`app.js`** gets the viewer links listed under "Search-page changes"
+  above.
 
 **Findings worth keeping:**
 - **`casannot._PDF_TAG_RE` can't match `_image` tags.** The pattern is
@@ -5218,3 +5242,413 @@ The section-scoped search ("Search keywords in: Results") uses the Lucene
 index, so it stays affected until then. `textpressoapi/casannot.py`, the HTTP
 `/annotate` sidecar, has its own copy of the parser without the repair; the
 reprocessed data makes that moot.
+
+### Addendum (same day): missed letter-spaced headings, runaway abstracts, revised rules
+
+Prompted by `10.1002_tpg2.20451`, an invited review whose "abstract" ran
+40,000 characters. The paper has no Introduction/Methods/Results/Discussion,
+only topical headings. Its Acknowledgments heading was extracted as
+"AC K N OW L E D G M E N T S", which the tokenizer doesn't recognise (it knows
+only the unspaced or evenly spaced forms). So the abstract ran on to
+REFERENCES.
+
+Across MaizeOA:
+- 35 papers had letter-spaced headings missed: "I NTRO D U C TI O N",
+  "M ATE R I A L S A N D M E TH O DS", "RE FE R ENC E S", ...
+- 43 had an "abstract" over 6,000 characters (max 85k).
+
+**Fixes, read time (`casannot.py`; `casdoc.py` uses the same functions):**
+- `add_letter_spaced_headings()` inserts sections for letter-spaced lines
+  matching a known heading word, splitting the section that contained them.
+  It also works on papers the tokenizer gave no sections at all.
+- **The "continues a sentence" rule is replaced.** In two-column Wiley
+  layouts the text after a *real* heading often starts lowercase (the rest
+  of a hyphenated word from the other column), so that rule was dropping
+  real Acknowledgments/References. A heading is now false if:
+  - prose comes before it on its line ("…see Materials", "…smartsnp, an r
+    package … Methods"), but text glued to it is allowed ("STAR+METHODS");
+    or
+  - it is sandwiched mid-sentence: the next text continues a sentence *and*
+    the previous line is non-blank and doesn't end one.
+
+  Judged on the raw sofaString, where line breaks are intact.
+- **"references" not followed by a reference list** is false when before
+  body text, *or* when a later references heading has the real list (a table
+  column header "Reference" after the Discussion).
+- **"Heading inside a reference list"** is now judged on the next line being
+  a citation tail (volume(issue):, DOI, "(2019)") rather than 3000 chars of
+  look-ahead. The look-ahead swallowed a real Acknowledgments whose reference
+  list followed a few lines later.
+- **An abstract over 6,000 chars ends at the next page break.** A review's
+  body then stays unlabelled instead of being called "abstract". Read time
+  only; the tokenizer doesn't do this.
+
+**Results:**
+
+| Measure | Before | After |
+|---|---|---|
+| Papers with missed letter-spaced headings | 35 | 3 |
+| Abstracts over 6,000 chars | 43 | 2 (both ~6.5k) |
+
+- The remaining 3 letter-spaced cases are merged into an adjacent section of
+  the right type, or are reading-order artifacts.
+- `tpg2.20451` now reads Abstract (3.1k, incl. the plain language summary),
+  Acknowledgments, References.
+- `tests/test_section_repair.py` now has 15 tests; 34/34 pass with the other
+  section/CAS tests.
+
+**Tokenizer (`agr_textpresso` `TdTokenizer.cpp/.h`): patched, still not
+built, compiled or deployed.**
+- **Letter-spaced headings:** `CollapseLetterSpacedHeadings()` rewrites
+  letter-spaced heading lines to their known form before the trie search
+  (position map kept in step). `CanonicalHeading()` maps the raw-section text
+  to the known heading string.
+- **Real headings:** `validateSectionHeadings()` now implements the revised
+  rules above (`HeadingMisplaced`, the later-real-references rule,
+  `ContinuesCitation`).
+- **Not ported:** the abstract page cut stays read time only.
+
+Still needs an image rebuild, plus tokenize → annotate → index for every
+corpus.
+
+**Known leftover:** in `10.1111_eva.13673` the PDF's two-column reading
+order puts the REFERENCES heading mid-Discussion, so the reference list is
+labelled Acknowledgments. Both labels are excluded from search by default,
+so results aren't affected; only the viewer's Contents shows it.
+
+## Update log — 2026-10-14 (continued): search page — table view, keyword + category rows, same-paper matching, real open-access levels
+
+**Table view, now the default, with a Table/Cards toggle.**
+- Columns: Title/Citation, Authors (clamped to 3 lines, full list on
+  hover), Year, Score, Access, Actions. Actions: Publisher full text, Copy
+  citation, Copy DOI, and Annotated full text (from the viewer work).
+- **New `POST /api/citations`.** It reads each paper's PMID from its local
+  `.bib`, then makes one batched PubMed esummary call per page of results,
+  cached in memory. This fills in volume/issue/pages and the real DOI. The
+  real DOI matters because accessions replace "/" with "_", which can't be
+  reversed (`10.1093_jxb_erq180` is really `10.1093/jxb/erq180`). The page
+  renders first and fills citations in when they arrive. Example:
+  "J Exp Bot 61(13):3689-96". Ahead-of-print papers have no volume yet.
+- Titles render `<sup>`/`<sub>` as well as `<i>`.
+
+**Garbled accents in author names.** Some MaizeTest100 metadata is
+double-encoded UTF-8 on the live server ("WÃ¼rschum" for "Würschum").
+- `fix_mojibake()`, inside `search()` in `bin/tpc_search_combined.py`
+  (shared by the CLI and the GUI), repairs only runs that re-decode as
+  strict UTF-8, so correct accents in the same string are left alone.
+- 5 unit cases pass. Live search and the CLI both print "Würschum T" and
+  "Würsig H, Martín Roldán M".
+- This is a workaround for an upstream ingest bug. The full text also lost
+  characters ("Wrschum"), which can't be repaired.
+
+**Two-row search: Keywords and Categories.**
+- The Categories row is a type-ahead over `/api/category_search`, with
+  GO/PO/TO/Gene badges and term IDs. Each pick becomes a removable chip;
+  arrows, Enter, Backspace and Esc work. Text left in the box when Search
+  is pressed is added if it's an exact match; otherwise the search stops
+  and shows suggestions.
+- Options appear only when they apply:
+  - Match any/all: 2+ chips.
+  - Broader/narrower ontology terms: a non-gene chip is present.
+  - Related gene synonyms: a gene chip is present.
+- Gene categories are never expanded. A gene's parent is a catch-all term,
+  so expanding upward would match every gene.
+- **"All" plus expansion** now runs one OR'd search per category group and
+  intersects the results (`_search_category_groups`). Before, expansion
+  flattened every group into one list, so "all" demanded every expanded
+  term at once. For seed (PO:0009010) + seed development (GO:0048316):
+  any 200 (capped), all 87, all + narrower 88, about 15 s.
+
+**Keywords + categories now match in the same paper, not the same
+sentence.**
+- With the Full text scope, the API requires the keyword and the category
+  in one sentence:
+  - drought + cct1: 0 papers that way, vs 16 at paper level;
+  - drought + seed development: 8 vs 111.
+- `_paper_level_search` searches at paper level instead. It then re-checks
+  References/Acknowledgments exclusion for each paper from its CAS2
+  sentences, annotations and section map, and drops a paper only on
+  positive evidence; anything it can't check is kept. Laura chose this on
+  condition that the exclusions still work, which they do:
+
+  | Search | No exclusions | Default exclusions | Time |
+  |---|---|---|---|
+  | drought + cct1 | 8 | 5 | 16 s |
+  | drought + seed development | 50 | 30 | 22 s |
+
+- Three dropped papers were checked by hand against CAS2, all correctly
+  dropped:
+  - `jxb_erq308` and `s41598-023-32989-4`: "seed development" only in
+    References.
+  - `tpg2.70101`: "drought" only in References.
+
+**"Search keywords in" applies to keywords only, and moved into
+Advanced.** The API's section indexes carry no category data. Any category
+search with type title/abstract/result/methods returns 0, even "seed
+development (GO)", which has 200+ papers at document level. Categories
+therefore always match anywhere in the paper.
+
+| Search | Before | After |
+|---|---|---|
+| seed development only, Abstract | 0 | 49 |
+| drought in Abstract + seed development | 0 | 11 |
+| drought in Title + seed development | 0 | 6 |
+| drought (Full text) + seed development | 30 | 30 |
+
+Section-scoped searches now get snippets (`_section_snippets`):
+- Abstract snippets come from the metadata abstract. The API's Abstract
+  scope searches the `.bib` abstract (30/30 hits had the keyword there),
+  and 16 of those 30 papers have no CAS2 abstract section.
+- Other sections use the CAS2 sentences in that section. The CAS2 section
+  map agreed with the API 30/30 for Results and for Methods.
+- 50/50 results got snippets for Results, Methods and Abstract.
+
+**Circuit-breaker bug.** Papers missing from the local tree (all of
+MaizeTest100) were counted as `/annotate` sidecar failures. That tripped
+the breaker, which then blocked *local* MaizeOA lookups for 60 s at a time,
+silently turning off section exclusion and snippets.
+- Local CAS2 is now read outside the breaker. Non-local papers go to the
+  HTTP sidecar, which works today at about 0.4 s per paper.
+- Effects:
+  - drought + seed development went from 30 to 25, because MaizeTest100
+    papers are now actually checked instead of silently kept;
+  - section snippets went from 0/50 to 50/50.
+
+**Smaller fixes:**
+- Every search returned HTTP 500 after a restart: `_load_annotations()`
+  now returns 4 values (a new `limited` flag), but the backend unpacked 3.
+- The annotation panel now asks for related synonyms, so
+  MAIZE_GENES_RELATED gets its own row. Long ontology labels are no longer
+  clipped.
+- A global `[hidden]{display:none !important}`: the results bar and "Load
+  more" were showing before any search.
+- The corpus selection defaults to MaizeOA, on load and on Reset.
+
+**Real open-access data replaces the test placeholder.** The source is the
+PDF pipeline's `download_manifest.csv` (override with
+`TEXTPRESSO_OA_MANIFEST`): Unpaywall `oa_status` plus the Europe PMC
+licence.
+
+| Level | Rule | Snippets | Viewer |
+|---|---|---|---|
+| open | gold/green/hybrid, or any CC licence | 8 | yes, when the CAS2 file is local |
+| publisher ("Free at publisher") | bronze with no CC licence | 8 | no |
+| restricted | everything else | 3 | no |
+
+- Search results carry `access`, `oa_status` and `license`. There are three
+  badges with tooltips, the column is "Access" and sortable, and CSV export
+  includes all three fields.
+- MaizeOA: 1,432 papers open and 5 publisher-level (2 Plant J 2007, 3
+  Genetics 2015–16). `/api/document` returns 403 for publisher-level and
+  restricted papers.
+- **Why the Europe PMC licence is needed:**
+  - Unpaywall misses delayed CC licences. Genome Research and J Cell Biol
+    switch to CC BY-NC(-SA) later but stay "bronze" in Unpaywall; a bronze
+    J Cell Biol 1984 paper with CC BY-NC-SA now counts as open.
+  - Unpaywall has no status at all for some fully CC BY papers (PLoS ONE,
+    microPublication Biology).
+  - NCBI's old PMC licence service (`oa.fcgi`) now returns 404 on both
+    domains, hence Europe PMC.
+- **Correction:** `access_class=pmc_oa` means only "has a PMCID", not "in
+  the PMC open-access subset".
+- If the manifest can't be read, the backend treats every paper as
+  restricted.
+
+**Pipeline changes, outside this repo** (`~/maize_pipeline/pipeline/` in
+WSL, not a git repo):
+- **New `refresh_licenses.py`** records each paper's current Europe PMC
+  licence in the manifest (new columns `epmc_license`, `epmc_oa_subset`,
+  `license_checked`; all other columns untouched):
+  - it fills from `work/epmc_cache.jsonl` first, and rechecks only papers
+    without a CC licence (to catch delayed licences);
+  - it never downgrades or erases a licence: only a more permissive one
+    replaces it;
+  - it falls back from PMCID to DOI lookup;
+  - it logs every change to `work/license_changes.tsv`, and backs up the
+    manifest before writing.
+- New `test_refresh_licenses.py`: 15 offline tests.
+- `README.md`: a new "Reuse licences" section, a quarterly re-run step 3,
+  and the corrected `pmc_oa` description.
+- `download_manifest.csv` was updated in place. Backups:
+  - `download_manifest.csv.bak-20261014-145226`
+  - `download_manifest.csv.bak-20261014-150354`
+  - `README.md.bak-20261014-145242`
+- A zip of the edited files is at
+  `C:\Users\ltibbs\Downloads\maize_pipeline_licence_edits_2026-10-14.zip`.
+- **Results:**
+  - tests: 15/15 new and the existing 89 pass;
+  - licences: 1,987 of 8,040 papers have a CC licence;
+  - the PMCID→DOI fallback recovered 121 older Plant Cell / Plant
+    Physiology papers;
+  - seeding from the cache restored CC BY-NC for `10.1101/gr.166397.113`
+    and `10.1093/jxb/erq179` (Europe PMC returned no licence for them
+    today).
+
+**API behaviour noticed along the way:**
+- Multi-word keyword queries are OR'd, with roughly word-prefix matching.
+- Some empty searches return `null`, not `[]`.
+- Identifiers sometimes contain `//`.
+- Some categories the type-ahead suggests have no annotated papers at all
+  (e.g. "drought recovery (GO:0009819)").
+
+**Not tested:**
+- There are no automated GUI tests; the UI was checked through headless-Edge
+  screenshots.
+- The Copy buttons and Cards view weren't clicked in a live browser.
+- The restricted level wasn't exercised on a real closed paper (MaizeOA has
+  none); the 3-snippet rule was checked on a paper with no status.
+
+## Update log — 2026-10-14 (continued): results — column sorting, abstracts, collapsible detail sections, ranked "top sentences"
+
+**Column sorting.** Title, Authors, Year, Score and Access have sort
+arrows; Actions has nothing to sort on.
+- Clicking cycles: first direction → reversed → back to the server's
+  relevance order. The first direction is A→Z for text, and newest,
+  highest or most open first for the others.
+- Missing values always sort last; ties keep relevance order.
+- It's client-side, so it reorders only the loaded results. "Load more"
+  keeps the sort; a new search resets it.
+- Cards view and CSV/JSON export use the same order. CSV gained a score
+  column.
+
+**Abstracts from our own metadata CSVs.** `search_documents` returns no
+abstract.
+- `/api/search` now attaches one from the corpus metadata CSVs
+  (`sorghumbase_textpresso_implementation/metadata/*_papers.csv`; override
+  with `TEXTPRESSO_METADATA_DIR`). They're matched by DOI in accession form
+  or by PMID, and read once on the first search (6,390 keys).
+- Deliberately not PubMed (Laura's choice), so the text is exactly what was
+  ingested.
+- Check: an "anthocyanin" search gave 50/50 results with an abstract.
+- Markup such as `<i>` is stripped so search terms can be highlighted.
+
+**Collapsible detail sections.** Every result has three toggles, each with
+its own arrow: Abstract, "Top sentences (N of M)" and Ontology annotations.
+- One piece of code serves both views: a full-width row under each table
+  row, and the bottom of each card.
+- Table: everything starts collapsed. Cards: top sentences start open, as
+  before.
+- A toggle is greyed out when there's nothing to show ("Abstract (not
+  available)", "Top sentences (none)").
+- Each paper's open state survives sorting and view switches; a new search
+  collapses everything.
+- "Expand all" buttons (Abstracts / Sentences / Annotations) in the results
+  bar open or close one section for every result.
+- Annotations load only when opened, four at a time, with a 60 s timeout. A
+  timeout or network failure isn't cached, so collapsing and reopening
+  retries; real answers are cached.
+
+**Why the timeout: a hung backend.** Annotation panels sat on "Loading…"
+forever, and even `/api/health` stopped answering.
+- The :8010 backend was running with `--reload`. Another session's edit to
+  `main.py` triggered a reload, and the new worker hung.
+- The page had cached the hung request, so it never recovered, even after a
+  fresh backend came up.
+- The search-page session hit the same `--reload` hang twice and now runs
+  the backend without it.
+
+**Ranked "top sentences".**
+- **Finding:** the API returns a paper's matched sentences in reading order,
+  with no per-sentence score; `score` is for the whole document. On 8
+  papers (75–204 matches each), every list was strictly in document order
+  when checked against CAS2 offsets. So the "top 8" were just the first 8,
+  usually the title block and the start of the abstract.
+- **Now `_top_sentences()` picks the best N** before the list is cut to 8
+  or 3:
+  1. Demote repeats of the title or abstract, "sentences" over 600 chars
+     (usually tables), and PDF page furniture glued on during extraction:
+     URLs, DOI lines, ©, "| Volume 9 | Issue 9", "7 of 50" page counters,
+     Received/Accepted dates.
+  2. More distinct search terms first. Prefix match; AND/OR/NOT ignored.
+  3. Results/Discussion/Conclusion over Introduction/Background, with
+     Methods and unlabelled sentences in between. This uses the section map
+     already loaded for References/Acknowledgments exclusion, so it costs
+     no extra file reads.
+  4. The earlier sentence wins ties.
+
+  The chosen sentences are shown in reading order; "of M" still counts
+  every match.
+- **Results:**
+  - The purple-pericarp sweetcorn anthocyanin paper and the ZmDREB drought
+    paper now show 8 of 8 sentences from Results; before, the first 8 of
+    the paper.
+  - "drought tolerance": all 8 sentences contain both terms. Before, the
+    title block came first.
+  - Review articles change little, because their CAS2 labels nearly the
+    whole body Introduction or Background.
+- **Depends on the section-label repair above:** better labels directly
+  improve rule 3.
+- **Limits:** rule 3 does nothing for papers without local CAS2
+  (MaizeTest/MaizeTest100). It also does nothing when both References and
+  Acknowledgments are included, because the step that loads the section map
+  doesn't run then.
+
+**Testing:**
+- Laura used the sections in the browser, which is how the stale-backend
+  and hung-request problems were found.
+- The ranking was tested by calling `post_search` in-process against the
+  live API and local CAS2. It hasn't been looked at in the GUI yet.
+
+## Update log — 2026-10-14 (continued): three sessions in parallel, and where things stand
+
+Three Claude Code sessions worked on the GUI at once:
+- the viewer and section repair;
+- the search page and open-access levels;
+- the result details.
+
+**Collisions:**
+- On Windows, `uvicorn --reload` hung after edits three times. The backend
+  now runs without it, so **it must be restarted by hand after any backend
+  change.**
+- One session's process filter also killed another's test uvicorn on :8011.
+  It was harmless, and the other session was told.
+- `main.py` and `app.js` were edited by all three sessions. Each told the
+  others about edits to shared files, and every session's functions were
+  checked to still be in place; nothing was lost.
+- For next time: one session should own the backend process, or the
+  sessions should work in separate files.
+
+**Commits:** Laura's `6a8c437` (12:06, "Add GUI full text viewer") has
+nearly all of the day's work from all three sessions, despite its name.
+Still uncommitted:
+- the section-repair addendum (`casannot.py`, `casdoc.py`,
+  `tests/test_section_repair.py`, `GUI_SETUP.md`);
+- the Europe PMC licence part of the access levels (`main.py`: `_oa_info()`
+  and `epmc_license` → "open"; `app.js`: licence in the badge tooltip and
+  CSV);
+- this log.
+
+**Open items:**
+- **Backend:** restart :8010 to pick up the latest backend changes.
+- **Tokenizer** (`TdTokenizer.cpp/.h` in `agr_textpresso`): needs an image
+  rebuild and then tokenize → annotate → index for every corpus. Until then
+  the section-scoped search ("Search keywords in: Results") uses the old
+  labels from the Lucene index. The `/annotate` sidecar's own
+  `casannot.py` has no repair.
+- **CLI behind the GUI** (`bin/tpc_search_combined.py`):
+  - still has the `--categories-and` + expansion flattening flaw;
+  - still matches keyword + category in the same sentence;
+  - doesn't use the access levels.
+- **MaizeTest / MaizeTest100 aren't in the local tpcas-2**, so those
+  papers get no viewer and no section-based sentence ranking. Laura plans
+  to run Textpresso on them locally.
+- **Licence policy:** 314 CC BY-NC-ND and 126 CC BY-NC papers count as
+  open. Whether annotated display conflicts with "no derivatives" is
+  Laura's / ISU's call. 5 MaizeOA papers stay publisher-level (in the
+  Europe PMC OA subset but no licence stated).
+- **Skill:** the maize-literature-acquisition skill doesn't mention the
+  new `refresh_licenses.py` step yet.
+- **Search speed and coverage:**
+  - combined searches with exclusions take 15–25 s;
+  - section-scoped + category searches consider only the top 200
+    keyword-in-section papers;
+  - category expansion is capped at 100 narrower terms.
+- **Type-ahead** offers categories that have no papers.
+- **Viewer:** there are three steppers (keywords, categories, and clicking
+  a term in Annotations). Folding the third into categories is undecided.
+- **Section-label leftovers:**
+  - `10.1111_eva.13673`: references labelled Acknowledgments, from the
+    PDF's reading order;
+  - `pld3.492`: a 101-char Introduction, also from reading order.
+- **Tests:** the full `tests/` suite wasn't run as a whole today; sessions
+  ran their own test files (34/34 section/CAS tests pass).

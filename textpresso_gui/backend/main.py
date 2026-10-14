@@ -255,19 +255,26 @@ SEARCH_SCOPES = {
 DEFAULT_EXCLUDED_SECTIONS = {"references", "acknowledgments"}
 
 # --- Open-access gating -----------------------------------------------------
-# Per-paper access level, from the Unpaywall status the PDF pipeline records
-# for every paper it fetched (maize_pipeline/pipeline/download_manifest.csv,
-# columns doi / oa_status / oa_license / ...; covers all 1438 MaizeOA papers).
+# Per-paper access level, from what the PDF pipeline records for every paper
+# it fetched (maize_pipeline/pipeline/download_manifest.csv; covers all 1438
+# MaizeOA papers): Unpaywall's oa_status, plus the reuse licence Europe PMC
+# reports (epmc_license, written by the pipeline's refresh_licenses.py and
+# re-checked each run, so delayed licences are picked up). Unpaywall alone
+# isn't enough: it calls journals that relicense on a delay (Genome Research,
+# J Cell Biol) "bronze" even once the article is CC BY-NC, and has no status
+# at all for some fully CC BY papers (PLoS ONE, microPublication Biology).
 # TEXTPRESSO_OA_MANIFEST overrides the path. Three levels:
 #
-#   "open"        gold / green / hybrid -- openly licensed: the full set of
-#                 top matched sentences, and the full-text viewer where the
-#                 paper is stored locally.
-#   "publisher"   bronze -- free to read on the publisher's site but with no
-#                 reuse licence, so the full text isn't republished here (no
-#                 viewer); still gets the full set of top matched sentences.
-#   "restricted"  closed, no status, or not in the manifest: only the top few
-#                 matched sentences.
+#   "open"        Unpaywall gold / green / hybrid, OR any Creative Commons
+#                 licence in Europe PMC: the full set of top matched
+#                 sentences, and the full-text viewer where the paper is
+#                 stored locally.
+#   "publisher"   bronze without a CC licence -- free to read on the
+#                 publisher's site but not licensed for reuse, so the full
+#                 text isn't republished here (no viewer); still gets the full
+#                 set of top matched sentences.
+#   "restricted"  everything else (closed, no status, not in the manifest):
+#                 only the top few matched sentences.
 #
 # Ontology annotations are never gated (separate /api/annotate call). If the
 # manifest can't be read, every paper is treated as restricted rather than
@@ -277,7 +284,7 @@ OA_MANIFEST = Path(os.environ.get(
     "//wsl.localhost/Ubuntu/home/ltibbs/maize_pipeline/pipeline/download_manifest.csv"))
 _OPEN_STATUSES = {"gold", "green", "hybrid"}
 _PUBLISHER_STATUSES = {"bronze"}
-_OA_STATUSES = None  # accession-form DOI -> Unpaywall oa_status
+_OA_STATUSES = None  # accession-form DOI -> (Unpaywall oa_status, Europe PMC licence)
 _OA_LOCK = threading.Lock()
 
 MAX_SNIPPETS = {"open": 8, "publisher": 8, "restricted": 3}
@@ -292,7 +299,9 @@ def _load_oa_statuses() -> dict:
                 with open(OA_MANIFEST, encoding="utf-8", errors="replace", newline="") as f:
                     for row in csv.DictReader(f):
                         if row.get("doi"):
-                            table[_abstract_key(row["doi"])] = (row.get("oa_status") or "").strip().lower()
+                            table[_abstract_key(row["doi"])] = (
+                                (row.get("oa_status") or "").strip().lower(),
+                                (row.get("epmc_license") or "").strip().lower())
             except OSError as e:
                 print(f"  [OA manifest not readable ({e}); treating every paper as restricted]",
                       file=sys.stderr)
@@ -300,16 +309,20 @@ def _load_oa_statuses() -> dict:
         return _OA_STATUSES
 
 
-def _oa_status(identifier: str) -> str:
-    """Unpaywall oa_status for a paper ("gold", "bronze", "closed", ...), or ""."""
+def _oa_info(identifier: str) -> tuple:
+    """(Unpaywall oa_status, Europe PMC licence) for a paper; "" where unknown."""
     # "MaizeOA/<acc>/<acc>.tpcas" -> <acc>, which is the DOI with "/" -> "_"
     parts = [p for p in identifier.split("/") if p]
-    return _load_oa_statuses().get(parts[1].lower(), "") if len(parts) > 1 else ""
+    return _load_oa_statuses().get(parts[1].lower(), ("", "")) if len(parts) > 1 else ("", "")
+
+
+def _oa_status(identifier: str) -> str:
+    return _oa_info(identifier)[0]
 
 
 def _access_level(identifier: str) -> str:
-    status = _oa_status(identifier)
-    if status in _OPEN_STATUSES:
+    status, license_ = _oa_info(identifier)
+    if status in _OPEN_STATUSES or license_.startswith("cc"):
         return "open"
     if status in _PUBLISHER_STATUSES:
         return "publisher"
@@ -966,7 +979,7 @@ def post_search(req: SearchRequest):
 
     for doc in results:
         doc["access"] = _access_level(doc.get("identifier") or "")  # open | publisher | restricted
-        doc["oa_status"] = _oa_status(doc.get("identifier") or "") or None
+        doc["oa_status"], doc["license"] = (v or None for v in _oa_info(doc.get("identifier") or ""))
         doc["open_access"] = doc["access"] == "open"
         doc["viewer_allowed"] = (_can_view_full_text(doc.get("identifier") or "")
                                  and _has_local_cas(doc.get("identifier") or ""))

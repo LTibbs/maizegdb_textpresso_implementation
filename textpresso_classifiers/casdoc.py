@@ -163,12 +163,16 @@ def parse_cas_document(cas_path):
     sections = []
     for m in _elements(content, "section"):
         el = m.group(0)
-        sections.append({"begin": remap(int(_attr(el, "begin"))),
-                         "end": remap(int(_attr(el, "end"))),
+        sections.append({"begin": int(_attr(el, "begin")),
+                         "end": int(_attr(el, "end")),
                          "type": _attr(el, "type") or "",
                          "content": _attr(el, "content")})
-    # Same false-heading repair the search's section filtering uses.
-    sections = _ca.repair_sections(sections)
+    # Same heading fixes the search's section filtering uses (casannot.py),
+    # judged on the raw sofaString (line breaks intact), then remapped.
+    sections = _ca.repair_sections(_ca.add_letter_spaced_headings(sections, sofa), sofa,
+                                   _ca.page_starts(content, sofa))
+    for s in sections:
+        s["begin"], s["end"] = remap(s["begin"]), remap(s["end"])
 
     sentences = []
     for m in _elements(content, "sentence"):

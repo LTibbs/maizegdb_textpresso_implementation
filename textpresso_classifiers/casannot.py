@@ -86,9 +86,34 @@ _PDF_TAG_RE = re.compile(r"<_pdf[^/]*/>")
 _BODY_SECTIONS = {"introduction", "background", "result", "discussion", "conclusion",
                   "materials and methods", "design"}
 _FRAME_SECTIONS = {"beginning of article", "end of article"}
-# Text right after a real heading starts a new sentence or title; a lowercase
-# word or closing punctuation means the "heading" was mid-sentence.
+# A real heading starts its line, possibly after a section number ("3 | ",
+# "2.1 ", "IV. "); a false one has prose before it ("...(Fig. 2; see
+# Materials\nand methods)"). A heading on a line of its own is false if it's
+# sandwiched mid-sentence: the previous line is non-blank and doesn't end a
+# sentence, and the text after it continues that sentence. (Text after a real
+# heading can itself start lowercase in two-column PDFs -- the rest of a
+# hyphenated word from the other column -- so that alone isn't enough.)
+_NUMBERING_RE = re.compile(r"[\s\d.|:()\-–—•]*(?:[IVXivx]{1,4}[.)])?[\s\d.|:()\-–—•]*")
 _CONTINUATION_RE = re.compile(r"^\s*[a-z)\]},;.:]")
+_SENTENCE_END_RE = re.compile(r"[.!?:]\s*$")
+_PDF_ANY_TAG_RE = re.compile(r"<_pdf[^<>]*/>")
+
+
+def _heading_misplaced(text, pos, content):
+    """True if the heading at text[pos] is mid-sentence rather than a heading."""
+    line_start = text.rfind("\n", max(0, pos - 2000), pos) + 1
+    if line_start == 0 and pos > 2000:
+        return True  # no line break anywhere near: deep inside prose
+    prefix = _PDF_ANY_TAG_RE.sub("", text[line_start:pos])
+    # Prose = other words, then a space, then the heading word. Text glued to
+    # the heading word is part of it ("STAR+METHODS", Cell's "STAR★Methods").
+    if not _NUMBERING_RE.fullmatch(prefix) and prefix[-1:].isspace() and re.search(r"[A-Za-z]", prefix):
+        return True
+    if content is None or not _CONTINUATION_RE.match(content) or line_start == 0:
+        return False
+    prev_start = text.rfind("\n", max(0, line_start - 2000), line_start - 1) + 1
+    prev = _PDF_ANY_TAG_RE.sub("", text[prev_start:line_start - 1]).strip()
+    return bool(prev) and not _SENTENCE_END_RE.search(prev)
 # A reference-list entry at line start: "Surname AB, ...", "Surname, A. B.,",
 # "1. Surname AB", "[12] Surname, A." -- at least a few within the first 3000
 # characters of a real reference list.
@@ -96,23 +121,116 @@ _REF_ENTRY_RE = re.compile(
     r"^\s*(?:\[?\d{1,3}[\].)]?\s+)?[A-Z][\w'’\-]+(?:\s[A-Z][\w'’\-]+)?,?\s(?:[A-Z]\.?\s?-?){1,3}[,.]",
     re.M)
 _MIN_REF_ENTRIES = 3
+_MAX_ABSTRACT_CHARS = 6000  # abstract + plain-language summary is ~3-5k
+
+
+# Heading words TdTokenizer knows (agr_textpresso uimaglobaldefinitions.h,
+# section*() sets), with spaces removed and lowercased -> section type(s).
+_HEADING_WORDS = {}
+for _types, _words in [
+    (("abstract",), "abstract summary"),
+    (("introduction",), "introduction literaturereview"),
+    (("result",), "result results"),
+    (("result", "discussion"), "resultsanddiscussion"),
+    (("discussion",), "discussion"),
+    (("discussion", "conclusion"), "discussionandconclusion discussionandconclusions"),
+    (("conclusion",), "concludingremarks conclusion conclusions"),
+    (("background",), "background"),
+    (("materials and methods",), "experimentalprocedures material materialandmethod materialandmethods "
+                                 "materials materialsandmethod materialsandmethods method methods "
+                                 "methodssummary onlinemethods"),
+    (("design",), "design designs"),
+    (("acknowledgments",), "acknowledgement acknowledgements acknowledgment acknowledgments"),
+    (("references",), "bibliography literaturecited reference references referencescited workscited"),
+]:
+    for _w in _words.split():
+        _HEADING_WORDS[_w] = _types
+# A whole line of 1-3 letter fragments separated by single spaces -- how PDF
+# extraction renders a letter-spaced heading, unevenly:
+# "AC K N OW L E D G M E N T S", "M ATE R I A L S A N D M E TH O DS". The
+# tokenizer only knows the evenly spaced form, so these were missed (35
+# MaizeOA papers, 2026-10-14), and the section before them ran on -- e.g. an
+# "abstract" covering a whole review up to its References.
+_LETTER_SPACED_RE = re.compile(r"[ \t]*((?:[A-Za-z]{1,5} ){2,}[A-Za-z]{1,5})[ \t]*")
+
+
+def add_letter_spaced_headings(sections, text):
+    """Insert sections for letter-spaced heading lines the tokenizer missed.
+
+    sections -- as for repair_sections() (begin, end, type, content); text --
+    the string their offsets index into. A heading line found where no section
+    already starts splits the section containing it: that section now ends at
+    the heading, and the new section(s) take over the rest of its span.
+    Returns a new list; run repair_sections() on it afterwards so the same
+    false-heading checks apply to these headings too. Also works on a paper
+    the tokenizer gave no sections at all (each heading found splits the one
+    before it).
+    """
+    out = [dict(s) for s in sections]
+    starts = {s["begin"] for s in out}
+    pos = 0
+    for line in text.split("\n"):
+        line_start, pos = pos, pos + len(line) + 1
+        m = _LETTER_SPACED_RE.fullmatch(line)
+        if not m:
+            continue
+        types = _HEADING_WORDS.get(m.group(1).replace(" ", "").lower())
+        if not types or any(abs(line_start - b) <= 3 for b in starts):
+            continue
+        containing = [s for s in out if s["type"] not in _FRAME_SECTIONS
+                      and s["begin"] < line_start < s["end"]]
+        if containing:
+            end = max(s["end"] for s in containing)
+            for s in containing:
+                s["end"] = line_start
+        else:
+            end = min((b for b in starts if b > line_start), default=len(text))
+        content = text[pos:min(end, pos + 3000)]
+        out.extend({"begin": line_start, "end": end, "type": t, "content": content} for t in types)
+        starts.add(line_start)
+    return sorted(out, key=lambda s: (s["begin"], s["end"]))
+
+
+_PDF_PAGE_TAG_RE = re.compile(r"<_pdf\s+_page=")
+
+
+def page_starts(content, sofa):
+    """Sorted sofa offsets where pages begin: <textpresso:page> elements (tai
+    layout) or <_pdf _page=N/> tags in the sofaString (pdf layout)."""
+    starts = [int(m.group(1)) for m in re.finditer(r'<textpresso:page\s[^>]*?\bbegin="(\d+)"', content)]
+    starts += [m.start() for m in _PDF_PAGE_TAG_RE.finditer(sofa)]
+    return sorted(set(starts))
+
+
+# The rest of a citation: volume(issue):pages, a DOI, or a "(2019)" year.
+_CITATION_TAIL_RE = re.compile(r"\b\d+\s*\(\d+\)\s*:|doi\.org/|\bdoi:|\(\s*(?:19|20)\d{2}[a-z]?\s*\)")
+
+
+def continues_citation(text):
+    """True if the first non-empty line of text is the tail of a citation."""
+    first = next((line for line in text.split("\n") if line.strip()), "")
+    return bool(_CITATION_TAIL_RE.search(first))
 
 
 def looks_like_reference_list(text):
     return len(_REF_ENTRY_RE.findall(text[:3000])) >= _MIN_REF_ENTRIES
 
 
-def repair_sections(sections):
+def repair_sections(sections, text=None, pages=None):
     """Undo TdTokenizer's false section headings (see the note above).
 
     sections -- dicts with begin, end, type and optionally content (the CAS
-    section element's content attribute: the text after the heading). Without
-    content nothing can be judged, so such sections are kept as they are.
+    section element's content attribute: the text after the heading).
+    text -- the string the offsets index into (the sofaString, PDF tags and
+    all). Without it the line-position checks are skipped; without content
+    the reference-list checks are.
+    pages -- sorted offsets where pages begin (see page_starts()); used
+    to end an abstract that ran on (below). Optional.
 
-    A heading is false if the text after it continues a sentence; if it is a
-    "references" heading that comes before body text and isn't followed by a
-    reference list; or if it comes right after a references section and its
-    text is still reference entries. A false heading's span is folded into the section
+    A heading is false if it is mid-sentence (see _heading_misplaced); if it
+    is a "references" heading that comes before body text and isn't followed
+    by a reference list; or if it comes right after a references section and
+    its text is still reference entries. A false heading's span is folded into the section
     before it (which is what it would have been without that heading); then
     adjacent spans of the same type(s) are merged. "beginning/end of article"
     are left alone. Returns new dicts with begin, end and type only.
@@ -126,19 +244,25 @@ def repair_sections(sections):
         else:
             groups.append([s])
 
-    def continues_sentence(group):
-        return any(s.get("content") is not None and _CONTINUATION_RE.match(s["content"]) for s in group)
+    def misplaced(group):
+        return text is not None and _heading_misplaced(text, group[0]["begin"], group[0].get("content"))
 
-    last_body = max((g[0]["begin"] for g in groups if not continues_sentence(g)
+    last_body = max((g[0]["begin"] for g in groups if not misplaced(g)
                      and any(s["type"] in _BODY_SECTIONS for s in g)), default=-1)
 
     def is_false(group):
-        if continues_sentence(group):
+        if misplaced(group):
             return True
         if all(s["type"] == "references" for s in group):
             content = group[0].get("content")
-            return (content is not None and not content.startswith("(implicit")
-                    and group[0]["begin"] < last_body and not looks_like_reference_list(content))
+            if content is None or content.startswith("(implicit") or looks_like_reference_list(content):
+                return False
+            # Not followed by a reference list (a table column header
+            # "Reference", say): false if it comes before body text, or if a
+            # later "references" heading is followed by the real list.
+            return group[0]["begin"] < last_body or any(
+                g[0]["begin"] > group[0]["begin"] and all(s["type"] == "references" for s in g)
+                and looks_like_reference_list(g[0].get("content") or "") for g in groups)
         return False
 
     # A heading inside a reference list whose text is still reference entries
@@ -146,11 +270,14 @@ def repair_sections(sections):
     # journal Methods in Ecology and Evolution -- is part of that list. A real
     # Methods section after the references (Nature/Cell style) isn't
     # reference entries, so it stays.
+    # Judged on the line right after the heading only: in two-column layouts
+    # a real heading after the references (Acknowledgments, say) can be
+    # followed a few lines later by more of the reference list.
     def inside_reference_list(group, previous):
         content = group[0].get("content")
         return (previous is not None and any(s["type"] == "references" for s in previous)
                 and not any(s["type"] == "references" for s in group)
-                and content is not None and looks_like_reference_list(content))
+                and content is not None and continues_citation(content))
 
     kept = []
     for group in groups:
@@ -168,6 +295,17 @@ def repair_sections(sections):
                 s["end"] = max(s["end"], end)
             continue
         kept.append(group)
+
+    # An abstract that runs on for pages -- because the paper's body headings
+    # weren't recognised (a review with topical headings, say) -- ends at the
+    # first page break after it starts; the body after that stays unlabelled
+    # rather than being called "abstract".
+    for group in kept:
+        if (pages and [s["type"] for s in group] == ["abstract"]
+                and group[0]["end"] - group[0]["begin"] > _MAX_ABSTRACT_CHARS):
+            cut = next((p for p in pages if p > group[0]["begin"] + 200), None)
+            if cut is not None and cut < group[0]["end"]:
+                group[0]["end"] = cut
 
     out = [{"begin": s["begin"], "end": s["end"], "type": s["type"]} for s in frames]
     out += [s for group in kept for s in group]
@@ -317,7 +455,9 @@ def parse_cas_file(cas_path):
         section_type = html.unescape(tm.group(1)) if tm else ""
         sections.append({"begin": begin, "end": end, "type": section_type,
                          "content": html.unescape(cm.group(1)) if cm else None})
-    sections = repair_sections(sections)  # sorted; drops false headings (see above)
+    sofa = _get_sofa(content)
+    sections = add_letter_spaced_headings(sections, sofa)
+    sections = repair_sections(sections, sofa, page_starts(content, sofa))
 
     return sentences, annotations, sections
 

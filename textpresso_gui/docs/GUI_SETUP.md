@@ -114,7 +114,10 @@ Each panel's open/closed state is remembered in the browser. The steppers
 - **Contents.** Jump to a section or figure. Sections come from the CAS2
   section labels after `casannot.repair_sections()` removes the tokenizer's
   false headings. These include a wrapped "(see Materials / and methods)" or
-  a table column header "Reference". See the 2026-10-14 work-log entry.
+  a table column header "Reference". The fixes also add letter-spaced
+  headings the tokenizer missed ("AC K N OW L E D G M E N T S"), and end an
+  abstract that ran on for pages at the next page break. See the 2026-10-14
+  work-log entry and its addendum.
 - **Previous/next paper**, following the result list the search page last
   showed (saved in `localStorage`).
 

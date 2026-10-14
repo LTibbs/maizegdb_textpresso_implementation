@@ -772,11 +772,12 @@
       tip: "Not open access: only the top few matching sentences are shown." },
   };
   const accessLevel = (doc) => (ACCESS[doc.access] ? doc.access : (doc.open_access === false ? "restricted" : "open"));
-  const isOpenAccess = (doc) => accessLevel(doc) === "open";
 
   function accessBadge(doc) {
     const level = accessLevel(doc);
-    const tip = ACCESS[level].tip + (doc.oa_status ? ` (Unpaywall: ${doc.oa_status})` : "");
+    const sources = [doc.license && `licence: ${doc.license.toUpperCase()}`,
+                     doc.oa_status && `Unpaywall: ${doc.oa_status}`].filter(Boolean);
+    const tip = ACCESS[level].tip + (sources.length ? ` (${sources.join("; ")})` : "");
     return `<span class="access-badge ${level}" title="${escapeHtml(tip)}">${ACCESS[level].label}</span>`;
   }
 
@@ -1164,7 +1165,7 @@
 
   els.exportCsv.addEventListener("click", () => {
     if (!lastResults.length) return;
-    const cols = ["title", "author", "year", "journal", "score", "access", "oa_status", "accession", "identifier"];
+    const cols = ["title", "author", "year", "journal", "score", "access", "oa_status", "license", "accession", "identifier"];
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const rows = [cols.join(",")].concat(
       sortedResults(lastResults).map((d) => cols.map((c) => esc(c === "access" ? accessLevel(d) : d[c])).join(","))
