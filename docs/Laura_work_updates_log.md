@@ -5652,3 +5652,78 @@ Still uncommitted:
   - `pld3.492`: a 101-char Introduction, also from reading order.
 - **Tests:** the full `tests/` suite wasn't run as a whole today; sessions
   ran their own test files (34/34 section/CAS tests pass).
+
+## Update log — 2026-10-15: image rebuilt with the section-heading tokenizer fix; all maize papers re-run as one corpus, `MaizeOpenAccess`
+
+**Rebuild (local WSL instance, `~/agr_textpresso`).**
+- Fast-forwarded the WSL clone to `78c00a0` (open-access gating + sidecar
+  logging fix) and copied in the uncommitted `TdTokenizer.cpp/.h` from the
+  Windows clone (sha256-checked).
+- `docker compose build textpresso` first **failed**: `requirements.txt` is
+  unpinned, and `linkml-runtime` now needs `pyoxigraph>=0.5.11`, which has no
+  wheel here and needs C++20 (the base image has gcc 7.5). Pinned
+  `linkml==1.11.1` and `linkml-runtime==1.11.1` (what the working image had).
+  Uncommitted in both clones.
+- Recreated the container, redeployed `generate_pdf_bib.py`. Ontologies
+  unchanged: `go,po,to,zmays_genes_20260813`.
+- The GUI backend on :8010 was already newer than every backend file; no
+  restart needed.
+
+**New corpus `MaizeOpenAccess` (3,299 papers)** replaces `MaizeOA`,
+`MaizeTest` and `MaizeTest100`:
+- the 3,297 PDFs in `~/maize_pipeline/pipeline/pdfs` (pipeline copies, with
+  supplements merged, used wherever a paper was in an old corpus too);
+- plus 2 papers only in old corpora: `10.1186_s12862-015-0382-5` (MaizeOA)
+  and `10.1101_gad.6.11.2152` (MaizeTest).
+- All 110 MaizeTest100 papers and 1,437 of 1,438 MaizeOA papers were already
+  in the pipeline set.
+
+**Metadata.** Ran the pipeline's `build_metadata.py` →
+`~/maize_pipeline/pipeline/MaizeAll_papers.csv` (8,040 rows). From it,
+`MaizeOpenAccess_papers.csv` (one row per accession, plus a `prior_corpora`
+column) is now the only CSV in `.data/imports/metadata/`. The old
+`MaizeOA_papers.csv` moved to `imports/metadata_inactive/`.
+- 10 PDF filenames didn't equal their CSV `doi` (the fetcher writes `:<>` as
+  `_`; 3 files are PMCID-named with no DOI). Their `doi` was set to the
+  filename, or they'd have had placeholder `.bib`s and been dropped at index
+  time.
+
+**Run.** `process_batch.sh -c MaizeOpenAccess -P 2 -t 4 -O ...`, 16:17–17:41
+UTC: 3,299 CAS-1, 3,299 CAS-2, 21,653 section tags. Then:
+- `10.1107_s1399004715015205`: no `.bib`. `generate_pdf_bib.py` crashed on
+  non-UTF-8 `pdfinfo` output. Fixed (`errors="replace"`, uncommitted in both
+  clones) and regenerated.
+- `10.1093_jxb_erae500`: the pipeline PDF is **supplement only** (68
+  sentences vs 551). Replaced with the old MaizeOA full-article PDF and
+  re-run (551 sentences, full IMRaD). The pipeline's own `pdfs/` copy is
+  still wrong.
+- `10.1016_j.tibtech.2025.01.006`: also supplement-only (29 pages of
+  Figure S…); no other copy, left as is. Both came via
+  `unpaywall_pdf_repository`, which is worth spot-checking.
+- Zero sentences (no text layer; metadata-only): `plcell_koaf162` (40 pages
+  of figure panels), `yakushi1947.115.3_189`, `thwcap` (1996),
+  `shokueishi.42.197`, `shokueishi.42.24`.
+
+**Tokenizer effect, same 1,438 papers, old MaizeOA run vs new:**
+
+| | old | new |
+|---|---|---|
+| zero-section papers | 39 | 33 (10 gained, 4 lost) |
+| with a References section | 1,389 | 1,388 |
+
+- `koae007` now reads Abstract, Introduction, Results, Discussion, Methods,
+  Acknowledgments, References (it had repeated Methods/References before).
+- **Side effect:** the score gate counts only validated headings, and
+  Abstract/Acknowledgments don't score. A review whose only real headings are
+  Abstract/Acknowledgments/References (`tpg2.20451`) now scores 1 and gets
+  **no** sections. Before, a false "Materials and methods" heading pushed it
+  over. Not changed; read-time repair still labels these in the GUI.
+
+**Export:** `~/agr_textpresso/.data/handoff/maizeopenaccess-20261015-final.tgz`
+(23 GB; raw PDFs + per-page text, tpcas-1, tpcas-2, metadata CSV) and its
+`.manifest.txt`. The manifest lists the fixes above and says to remove
+`MaizeOA`/`MaizeTest`/`MaizeTest100` before indexing. `index` dedups by
+accession across corpora.
+
+**Not done:** not indexed locally or on the server. The GUI still defaults
+to `MaizeOA`, and its local CAS-2 lookups point at `tpcas-2/MaizeOA`.
