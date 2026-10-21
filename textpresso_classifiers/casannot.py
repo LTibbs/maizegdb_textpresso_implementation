@@ -52,6 +52,10 @@ SECTION_TYPES = [
     "design",
     "acknowledgments",
     "references",
+    # jats layout only (jats_text.py): PDF supplement text appended after the
+    # JATS article, so it can be told apart from -- or excluded like -- the
+    # rest of the paper.
+    "supplementary material",
 ]
 
 # Each entry maps a short label to the regex that identifies its ontology IDs
