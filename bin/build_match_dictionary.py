@@ -132,6 +132,24 @@ def make_tier_fn(zipf):
 # ------------------------------------------------------------------ parsing
 
 _SYN = re.compile(r'^synonym: "((?:[^"\\]|\\.)*)" (EXACT|RELATED|BROAD|NARROW)', re.M)
+_OBO_ESCAPE = re.compile(r"\\(.)")
+_OBO_ESCAPES = {"n": "\n", "t": "\t", "W": " "}
+
+
+def obo_unescape(s):
+    """OBO 1.2 escapes -> text: ChEBI writes "\\{(Z)-pent-2-en-1-yl\\}", which
+    must reach match_dictionary.csv (and the matcher) as "{...}"."""
+    return _OBO_ESCAPE.sub(lambda m: _OBO_ESCAPES.get(m.group(1), m.group(1)), s)
+
+
+def obo_quoted(s):
+    """Text -> the inside of an OBO quoted value."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def obo_unquoted(s):
+    """Text -> an OBO name: value ({ starts trailing modifiers, ! a comment)."""
+    return re.sub(r'([\\{}!])', r"\\\1", s)
 
 
 def parse_obo(path, want_roles=False):
@@ -151,8 +169,8 @@ def parse_obo(path, want_roles=False):
         name = re.search(r"^name: (.+)$", block, re.M)
         rec = {
             "id": m.group(1),
-            "name": name.group(1).strip() if name else None,
-            "synonyms": [(s.replace('\\"', '"'), sc) for s, sc in _SYN.findall(block)],
+            "name": obo_unescape(name.group(1).strip()) if name else None,
+            "synonyms": [(obo_unescape(s), sc) for s, sc in _SYN.findall(block)],
             "subsets": re.findall(r"^subset: (\S+)", block, re.M),
             "is_a": re.findall(r"^is_a: (\S+)", block, re.M),
             "obsolete": "is_obsolete: true" in block,
@@ -173,6 +191,18 @@ def obo_header_version(path):
             if line.startswith("[Term]"):
                 break
     return "unknown"
+
+
+def obo_subsetdefs(path):
+    """-> ["goslim_plant \"Plant GO slim\"", ...], the header's subsetdef values."""
+    out = []
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("[Term]"):
+                break
+            if line.startswith("subsetdef:"):
+                out.append(line.split(":", 1)[1].strip())
+    return out
 
 
 # -------------------------------------------------------------- ChEBI scope
@@ -285,6 +315,7 @@ def build(args):
     }
     rows = []
     annot_terms = defaultdict(list)
+    sources = {}     # channel -> ({id: parsed term}, header subsetdefs), for write_outputs
 
     channels = list(CHANNELS)
     if not args.chebi_skip:
@@ -296,6 +327,7 @@ def build(args):
             sys.exit("missing input for channel %s: %s" % (channel, path))
         terms = parse_obo(path, want_roles=(channel == "ChEBI"))
         report["versions"][channel] = obo_header_version(path)
+        sources[channel] = ({t["id"]: t for t in terms}, obo_subsetdefs(path))
 
         keep_ids, scope_reason = None, {}
         if channel == "ChEBI":
@@ -362,11 +394,18 @@ def build(args):
             annot_terms[channel].append((term, kept_strings))
         report["channels"][channel] = dict(stats)
 
-    write_outputs(args, rows, annot_terms, report)
+    write_outputs(args, rows, annot_terms, report, sources)
     return report
 
 
-def write_outputs(args, rows, annot_terms, report):
+def write_outputs(args, rows, annot_terms, report, sources=None):
+    """sources: channel -> ({id: parsed term}, subsetdefs) from the input OBO.
+    Source subsets (goslim_plant, ...) are carried onto every stanza and stub,
+    because tpso's ontology.conf can restrict a channel's categories to them;
+    without them a restricted channel collapses to its root. Stubs carry the
+    source label as property_value stub_label, which tpso uses for the
+    category name (a stub has no name: line, so it adds no match string)."""
+    sources = sources or {}
     os.makedirs(args.outdir, exist_ok=True)
     cols = ["match_string", "tier", "channel", "term_id", "term_label", "string_kind",
             "inclusion_reason", "species_scope", "n_chars", "n_tokens", "zipf_freq"]
@@ -384,11 +423,25 @@ def write_outputs(args, rows, annot_terms, report):
         # out-of-scope ChEBI, imported stanzas) are re-emitted as nameless
         # stubs: ancestor expansion keeps working, and a stub contributes no
         # match strings -- the same shape TO and PECO already ship upstream.
-        dangling = sorted({p for term, _kept in items for p in term["is_a"]} - written)
+        by_id, subsetdefs = sources.get(channel, ({}, []))
+        # Stubs keep their own source is_a (closed transitively), so the graph
+        # above a pruned class still reaches the root and depths stay right.
+        dangling, todo = set(), {p for term, _kept in items for p in term["is_a"]} - written
+        while todo:
+            stub = todo.pop()
+            dangling.add(stub)
+            todo |= set(by_id.get(stub, {}).get("is_a", ())) - written - dangling
+        dangling = sorted(dangling)
+        tier_names = sorted({"tier_%s" % t for _term, kept in items for _, _, t in kept})
         with open(out, "w", encoding="utf-8") as fh:
             fh.write("format-version: 1.2\n")
             fh.write("data-version: %s/annotation-build\n"
                      % report["versions"].get(channel, "unknown"))
+            for sd in subsetdefs:
+                fh.write("subsetdef: %s\n" % sd)
+            for tn in tier_names:
+                fh.write('subsetdef: %s "match-string tier %s (annotation build)"\n'
+                         % (tn, tn[len("tier_"):]))
             fh.write("ontology: %s\n" % channel.lower())
             fh.write("remark: matchable strings only; per-term tiers in subset tier_T0..T2\n")
             fh.write("remark: obsolete stanzas retained for id resolution with their label\n")
@@ -400,7 +453,7 @@ def write_outputs(args, rows, annot_terms, report):
                     fh.write("is_obsolete: true\n")
                     if term["name"]:
                         fh.write('property_value: retired_label "%s" xsd:string\n'
-                                 % term["name"].replace('"', '\\"'))
+                                 % obo_quoted(term["name"]))
                     for rb in term["replaced_by"]:
                         fh.write("replaced_by: %s\n" % rb)
                     for c in term["consider"]:
@@ -409,23 +462,34 @@ def write_outputs(args, rows, annot_terms, report):
                     continue
                 label = next((t for t, k, _ in kept if k == "label"), None)
                 if label:
-                    fh.write("name: %s\n" % label)
+                    fh.write("name: %s\n" % obo_unquoted(label))
                 elif term["name"]:
                     fh.write('property_value: unmatchable_label "%s" xsd:string\n'
-                             % term["name"].replace('"', '\\"'))
+                             % obo_quoted(term["name"]))
                 for text, kind, _tier in kept:
                     if kind != "label":
                         fh.write('synonym: "%s" %s []\n'
-                                 % (text.replace('"', '\\"'), kind.upper()))
+                                 % (obo_quoted(text), kind.upper()))
                 for tier in sorted({t for _, _, t in kept}):
                     fh.write("subset: tier_%s\n" % tier)
+                for subset in term["subsets"]:
+                    fh.write("subset: %s\n" % subset)
                 for parent in term["is_a"]:
                     fh.write("is_a: %s\n" % parent)
                 fh.write("\n")
             for stub in dangling:
+                src = by_id.get(stub)
                 fh.write("[Term]\n")
                 fh.write("id: %s\n" % stub)
-                fh.write("property_value: graph_stub \"true\" xsd:string\n\n")
+                fh.write("property_value: graph_stub \"true\" xsd:string\n")
+                if src and src["name"]:
+                    fh.write('property_value: stub_label "%s" xsd:string\n'
+                             % obo_quoted(src["name"]))
+                for subset in (src["subsets"] if src else []):
+                    fh.write("subset: %s\n" % subset)
+                for parent in (src["is_a"] if src else []):
+                    fh.write("is_a: %s\n" % parent)
+                fh.write("\n")
             report["channels"].setdefault(channel, {})["graph_stubs"] = len(dangling)
 
     report["drops"] = dict(report["drops"])

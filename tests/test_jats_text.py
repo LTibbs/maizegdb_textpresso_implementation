@@ -36,7 +36,7 @@ ARTICLE = """<?xml version="1.0" encoding="UTF-8"?>
       <list-item><p>second item</p></list-item></list> and the paragraph continues.</p>
   </sec>
   <sec><label>2</label><title>Methods and materials</title>
-    <sec><title>Plant growth</title><p>Grown at 25\u00a0\u00b0C.</p></sec>
+    <sec><title>Plant growth</title><p>Grown at 25\u00a0\u00b0C in 10 \u00b5M ABA.</p></sec>
   </sec>
   <sec sec-type="results|discussion"><title>Results and Discussion</title>
     <p>Significant at <italic>P</italic> \u2264 1 \u00d7 10<sup>\u22125</sup> and
@@ -101,7 +101,7 @@ class TestJatsText(unittest.TestCase):
 
     def test_whitespace_collapses_including_nbsp(self):
         self.assertIn("We describe vpp5s and ZmPR-1-8.", self.text)
-        self.assertIn("Grown at 25 \u00b0C.", self.text)
+        self.assertIn("Grown at 25 degree C in 10 \u03bcM ABA.", self.text)
 
     def test_front_matter_other_than_title_and_abstract_dropped(self):
         self.assertEqual(self.block_texts("title"), ["The vpp5 gene of maize"])
@@ -117,6 +117,13 @@ class TestJatsText(unittest.TestCase):
         self.assertIn("first item\nsecond item\n", self.text)
 
     # -- characters the PDF path loses --------------------------------------
+
+    def test_text_is_all_bmp(self):
+        # code point offsets == UTF-16 offsets, so Python consumers can slice
+        # the sofa with UIMA offsets
+        doc = jats_text.convert(ARTICLE.replace(b"Plant growth", "\U0001d452 growth".encode("utf-8")))
+        self.assertIn("e growth", doc.text)
+        self.assertTrue(all(ord(c) <= 0xFFFF for c in doc.text))
 
     def test_hyphen_normalised_minus_kept(self):
         self.assertNotIn("\u2010", self.text)
@@ -179,8 +186,9 @@ class TestJatsText(unittest.TestCase):
         self.assertEqual(fig["graphic"], "fig1.jpg")
         self.assertEqual(_span(self.doc, fig), "Figure 1 Expression of vpp5. Bars show SD.")
 
-    def test_table_rows_tab_separated_empty_row_dropped(self):
-        self.assertEqual(self.block_texts("table-row"), ["Gene\tPrimer", "vpp5\tACGT"])
+    def test_table_rows_cells_separated_empty_row_dropped(self):
+        self.assertEqual(self.block_texts("table-row"), ["Gene | Primer", "vpp5 | ACGT"])
+        self.assertNotIn("\t", self.text)                      # tabs don't survive XMI
         self.assertIn("Table 1 Primers.", self.block_texts("caption"))
 
     # -- errors -------------------------------------------------------------
@@ -234,7 +242,7 @@ class TestPdfSupplement(unittest.TestCase):
         (sup,) = [s for s in doc.sections if s["type"] == jats_text.SUPPLEMENT_SECTION]
         span = doc.text[sup["begin"]:sup["end"]]
         self.assertTrue(span.startswith("SUPPLEMENTARY MATERIAL\nPLD3-7-e492-s001.pdf"))
-        self.assertIn("Table S1: vpp5 and bx1-like genes.\nGene\tFold", span)   # lines kept
+        self.assertIn("Table S1: vpp5 and bx1-like genes.\nGene Fold", span)   # lines kept, tab -> space
         self.assertTrue(span.endswith("inserted by the MaizeGDB literature pipeline"))
         refs = [s for s in doc.sections if s["type"] == "references"][0]
         end = [s for s in doc.sections if s["type"] == "end of article"][0]

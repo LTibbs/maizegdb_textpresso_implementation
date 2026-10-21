@@ -20,9 +20,12 @@ explicitly, so this module turns one JATS article into:
                what annotation_italics' never-italicised rule needs
   figures   -- [{begin, end, id, graphic}] caption span and image href
 
-This is the specification the C++ annotator (agr_textpresso
-libtpc/uima-annotators/TjTokenizer) must reproduce; its tests compare against
-this module's output.
+This module is the only implementation of these rules. bin/fetch_jats.py
+stages its output as <accession>.jats.json, and the C++ annotator
+(agr_textpresso libtpc/uima-annotators/TjTokenizer) reads that JSON to build
+the CAS -- adding tokens and block-bounded sentences -- rather than parsing
+JATS itself. Offsets are Python str (code point) indices; TjTokenizer
+converts them to UIMA's UTF-16 offsets.
 
 Layout
 ------
@@ -30,7 +33,10 @@ Blocks are separated by a blank line, except that a heading is followed by a
 single newline, and consecutive table rows / list items / references are one
 per line. Inside a block, runs of whitespace (including the pretty-printing
 newlines in the XML, non-breaking and thin spaces) collapse to one space;
-table cells are separated by a tab. Unicode is kept as written, so
+table cells are separated by " | ". The text has no tabs at all: UIMA's XMI
+writer escapes newlines in the sofaString attribute but not tabs, so every
+XML reader of the CAS (Xerces in the CAS1 -> CAS2 step included) turns a tab
+into a space. Unicode is kept as written, so
 ``P < 1 × 10<sup>−5</sup>`` becomes ``P < 1 × 10−5`` with a ``sup`` span over
 ``−5``.
 
@@ -79,6 +85,7 @@ import glob
 import importlib.util
 import os
 import re
+import unicodedata
 import xml.etree.ElementTree as ET
 
 try:
@@ -96,6 +103,7 @@ RAWSOURCE = "jats"
 FRAME_BEGIN = "Beginning of Article"
 FRAME_END = "End of Article"
 SUPPLEMENT_SECTION = "supplementary material"
+CELL_SEPARATOR = " | "
 
 # The cover page the literature pipeline puts in front of each merged supplement.
 _SUPPLEMENT_COVER_RE = re.compile(
@@ -139,7 +147,27 @@ _WORD_END_TAGS = {
 # U+2010 HYPHEN and U+2011 NON-BREAKING HYPHEN (Wiley, Springer) -> "-", so a
 # form like "ZmPR-1-8" matches the ASCII hyphen the OBO uses. Dashes and the
 # minus sign (U+2212, as in "10\u22125") are kept.
-_CHAR_MAP = {"\u2010": "-", "\u2011": "-"}
+# The degree sign becomes " degree " and MICRO SIGN U+00B5 becomes GREEK SMALL
+# MU U+03BC, as on the tai (PDF) path (agr_textpresso
+# libtpc/uima-annotators/PdfTextNormalizer.h), so a paper reads the same
+# whichever path ingested it. Lucene indexes "\u00b5M" and "\u03bcM" as
+# different tokens. The surrounding spaces collapse with the text's own.
+_CHAR_MAP = {"\u2010": "-", "\u2011": "-", "\u00ad": "",   # U+00AD soft hyphen: dropped
+             "\u00b0": " degree ", "\u00b5": "\u03bc"}
+
+
+def _map_char(ch):
+    """The text a source character becomes. Besides _CHAR_MAP, characters
+    outside the BMP (mathematical italic letters such as U+1D452, emoji) are
+    NFKC-normalised ("\U0001d452" -> "e"), or replaced by U+FFFD if that
+    leaves them outside the BMP. jats text is then entirely BMP, so its code
+    point offsets (Python, casannot, casdoc) and UTF-16 offsets (UIMA) agree."""
+    if ch in _CHAR_MAP:
+        return _CHAR_MAP[ch]
+    if ord(ch) <= 0xFFFF:
+        return ch
+    folded = unicodedata.normalize("NFKC", ch)
+    return "".join(c if ord(c) <= 0xFFFF else "\ufffd" for c in folded)
 # In references only: pretty-printed citation XML leaves a space before
 # punctuation ("Ananiev, E. V. , Wu, C.").
 _SPACE_BEFORE_PUNCT_RE = re.compile(r" (?=[,;:.)])")
@@ -257,20 +285,22 @@ class _Writer:
             return None
         chars, fmts_at = [], []
         for s, fmts, literal in runs:
-            for ch in s:
-                if ch == "\u00ad":                     # soft hyphen
-                    continue
-                ch = _CHAR_MAP.get(ch, ch)
-                if not literal and ch.isspace():
-                    if not chars or chars[-1] in " \t":
-                        continue
-                    ch = " "
-                chars.append(ch)
-                fmts_at.append(fmts)
+            for source_ch in s:
+                for ch in _map_char(source_ch):
+                    if not literal and ch.isspace():
+                        if not chars or chars[-1] in " \t":
+                            continue
+                        ch = " "
+                    chars.append(ch)
+                    fmts_at.append(fmts)
         while chars and chars[-1] == " ":
             chars.pop()
             fmts_at.pop()
-        if not chars or all(ch.isspace() for ch in chars):   # e.g. a row of empty cells
+        lead = 0
+        while lead < len(chars) and chars[lead] == " ":   # " | x": leading empty cells
+            lead += 1
+        chars, fmts_at = chars[lead:], fmts_at[lead:]
+        if not chars or all(ch.isspace() or ch == "|" for ch in chars):   # a row of empty cells
             return None
         if kind == "ref":
             drop = {m.start() for m in _SPACE_BEFORE_PUNCT_RE.finditer("".join(chars))}
@@ -308,7 +338,7 @@ class _Writer:
         """A block written as given, newlines included (PDF-derived text)."""
         if self._runs is not None:
             self.end_block()
-        lines = ["".join(_CHAR_MAP.get(ch, ch) for ch in line if ch != "\u00ad").rstrip()
+        lines = ["".join(_map_char(ch) for ch in line).replace("\t", " ").rstrip()
                  for line in text.replace("\r", "").replace("\f", "").split("\n")]
         text = "\n".join(lines).strip("\n")
         if not text.strip():
@@ -566,7 +596,7 @@ class _Converter:
                 if _tag(cell) not in ("td", "th"):
                     continue
                 if not first:
-                    self.w.add("\t", literal=True)
+                    self.w.add(CELL_SEPARATOR, literal=True)
                 first = False
                 self.inline(cell, frozenset(), "table-row")
             self.w.end_block()

@@ -374,6 +374,9 @@ def _ontology_of(category):
     return "OTHER"
 
 
+_JATS_RAWSOURCE_RE = re.compile(r'<textpresso:rawsource\s[^>]*\bvalue="jats"')
+
+
 def parse_cas_file(cas_path):
     """Parse a CAS2 file and return (sentences, annotations, sections).
 
@@ -459,9 +462,12 @@ def parse_cas_file(cas_path):
         section_type = html.unescape(tm.group(1)) if tm else ""
         sections.append({"begin": begin, "end": end, "type": section_type,
                          "content": html.unescape(cm.group(1)) if cm else None})
-    sofa = _get_sofa(content)
-    sections = add_letter_spaced_headings(sections, sofa)
-    sections = repair_sections(sections, sofa, page_starts(content, sofa))
+    # jats layout: sections come from the JATS structure (jats_text.py), not
+    # from heading lines, so the PDF heading repairs don't apply.
+    if not _JATS_RAWSOURCE_RE.search(content):
+        sofa = _get_sofa(content)
+        sections = add_letter_spaced_headings(sections, sofa)
+        sections = repair_sections(sections, sofa, page_starts(content, sofa))
 
     return sentences, annotations, sections
 

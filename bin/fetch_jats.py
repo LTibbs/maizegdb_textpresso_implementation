@@ -10,14 +10,19 @@ front matter only, and those papers stay on the PDF path.
 
 Files land where articles2cas -t 5 -p expects them, named by accession:
 
-    OUT_DIR/<accession>/<accession>.nxml.gz
+    OUT_DIR/<accession>/<accession>.jats.json   what the ingest reads
+                                                (TjTokenizer): jats_text.py's
+                                                text and standoff annotations
+    OUT_DIR/<accession>/<accession>.nxml.gz     the JATS as fetched
     OUT_DIR/<accession>/<accession>.suppl.txt   (only with --pdf-dir, and only
                                                  if the PDF has supplements)
 
 The .suppl.txt file is the merged PDF's page text from the first supplement
 cover page on (jats_text.read_pdf_supplement), pages joined by blank lines;
-the jats ingest appends it as the "supplementary material" section, so a
-paper keeps its supplementary tables when its main text comes from JATS.
+it is already appended in the .jats.json as the "supplementary material"
+section, so a paper keeps its supplementary tables when its main text comes
+from JATS. Re-running over staged papers re-converts them from the local
+.nxml.gz without fetching (use --refresh to fetch again).
 
 Every paper gets a row in the status TSV (accession, pmcid, status, bytes,
 supplement_pages, checked), status one of: ok, exists, no_pmcid, no_body,
@@ -135,19 +140,27 @@ def fetch_jats(pmcid, email=None):
 
 
 SUPPLEMENT_SUFFIX = ".suppl.txt"
+JSON_SUFFIX = ".jats.json"
 
 
 def stage(acc, pmcid, out_dir, pdf_dir=None, text_dir=None, refresh=False, email=None):
-    """-> (status, bytes, supplement_pages)"""
+    """-> (status, bytes, supplement_pages)
+
+    A paper already staged is not fetched again, but is re-converted from its
+    local .nxml.gz, so a change to jats_text.py or to the PDF supplements
+    reaches the .jats.json with a re-run and no network traffic."""
     dest = os.path.join(out_dir, acc, acc + ".nxml.gz")
     pages = jats_text.read_pdf_supplement(os.path.join(pdf_dir, acc)) if pdf_dir else []
     if os.path.exists(dest) and not refresh:
-        _write_supplement(dest, acc, pages)
-        return "exists", os.path.getsize(dest), len(pages)
-    try:
-        xml = fetch_jats(pmcid, email)
-    except HttpFailure as e:
-        return f"http_{e.code}", 0, len(pages)
+        with gzip.open(dest, "rb") as f:
+            xml = f.read()
+        status = "exists"
+    else:
+        try:
+            xml = fetch_jats(pmcid, email)
+        except HttpFailure as e:
+            return f"http_{e.code}", 0, len(pages)
+        status = "ok"
     try:
         doc = jats_text.convert(xml, pages)
     except jats_text.NoBodyError:
@@ -156,16 +169,17 @@ def stage(acc, pmcid, out_dir, pdf_dir=None, text_dir=None, refresh=False, email
         print(f"[error] {acc} {pmcid}: {e!r}", file=sys.stderr)
         return "error", len(xml), len(pages)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    with gzip.open(dest, "wb") as f:
-        f.write(xml)
+    if status == "ok":
+        with gzip.open(dest, "wb") as f:
+            f.write(xml)
     _write_supplement(dest, acc, pages)
+    with open(os.path.join(os.path.dirname(dest), acc + JSON_SUFFIX), "w", encoding="utf-8") as f:
+        json.dump(doc.as_dict(), f, ensure_ascii=False)
     if text_dir:
         os.makedirs(text_dir, exist_ok=True)
         with open(os.path.join(text_dir, acc + ".txt"), "w", encoding="utf-8") as f:
             f.write(doc.text)
-        with open(os.path.join(text_dir, acc + ".jats.json"), "w", encoding="utf-8") as f:
-            json.dump(doc.as_dict(), f, ensure_ascii=False)
-    return "ok", len(xml), len(pages)
+    return status, len(xml), len(pages)
 
 
 def _write_supplement(dest, acc, pages):
@@ -191,7 +205,7 @@ def main():
                                           "each paper's merged supplements as <acc>.suppl.txt")
     parser.add_argument("--annotate-csv", help="write the metadata CSV here with text_source / "
                                                "jats_status / jats_pmcid / jats_checked added")
-    parser.add_argument("--text-dir", help="also write jats_text output (<acc>.txt, <acc>.jats.json)")
+    parser.add_argument("--text-dir", help="also write each paper's plain text here (<acc>.txt)")
     parser.add_argument("--refresh", action="store_true", help="re-fetch papers already staged")
     parser.add_argument("--rate", type=float, default=3.0, help="requests/second (default 3)")
     parser.add_argument("--email", help="contact address sent to NCBI with each request")
