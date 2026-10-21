@@ -227,7 +227,10 @@ a lexicon change plus re-index.
 - Gene annotations: `ontology=MAIZE_GENES` is **EXACT only**;
   `MAIZE_GENES_RELATED` is a separate channel. Requesting only the first
   silently measures half the system.
-- `search_documents` caps at 200 results, no offset/cursor, no date filter
+- `search_documents` returns at most 200 results per call, but `since_num` is an
+  offset, so `tpc_search_combined.search()` pages past it (each page re-runs the
+  ~6s search; pages run in parallel). `get_documents_count` gives the total. No
+  date filter
 - `/annotate` returns the **full** sentence list, so concatenating
   `sentences[].text` reconstructs the ingested body text
 
@@ -311,11 +314,21 @@ a lexicon change plus re-index.
    destroys italics, p-value exponent signs (474 affected matches in 102
    papers), `q <= 0.05` (becomes `q # 0.05`), hyphenation across line breaks
    (470 occurrences) and table structure. Every MaizeOpenAccess paper is open
-   access, but PMC efetch returns a JATS `<body>` for only **1,627 of 3,299**:
-   some have no PMC record, and publishers such as Genetics, PNAS and
+   access, but PMC efetch returns the paper's own JATS `<body>` for only
+   **1,623 of 3,299** (1,560 with italic markup; an earlier count of 1,627
+   included 77 papers fetched under the wrong PMCID): some have no PMC record, and publishers such as Genetics, PNAS and
    Bioinformatics block full-text XML download. A JATS ingest path would fix
    all of it at once for the covered papers; the italics sidecar is a bridge,
    not the destination.
+
+   No other bulk route closes that gap (checked 2026-10-21). Of the 1,108
+   missing papers that have a PMCID, the PMC S3 bucket and Europe PMC
+   `fullTextXML` return only 16. The rest are PMC "free to read" without a
+   reuse licence. Elsevier (126 papers) has Crossref TDM XML links but needs an
+   API key; Wiley (346) needs a TDM token. The italics gap is instead filled
+   from the source PDFs by `pdf_italics.py`, which takes coverage to **2,888
+   of 3,299** (1,560 JATS + 1,328 PDF). The remaining 411 are mostly 1980s-90s scanned backfiles with
+   a Courier OCR layer, where no italics exist to recover.
 
 ### Shared modules (drop-in, no framework)
 
@@ -344,7 +357,29 @@ Place beside `casannot.py` in **both** `textpresso_classifiers/` (CLI) and
   from the **full** `chebi.obo` — the lite file in the collection has zero
   synonyms, so a build against it silently loses every chemical name.
 - `bin/jats_italics.py` — builds the italic index from PubMed Central JATS,
-  excluding references/acknowledgments.
+  excluding references/acknowledgments. Two guards, both added 2026-10-21
+  after they were found in the live index. First, esearch's `[DOI]` field also
+  returns papers that *cite* the DOI, so each candidate's own
+  `<article-meta>` DOI is checked; 77 of 1,625 entries had been built from
+  someone else's paper. Second, a body with under 20 characters of italic
+  text abstains, because some publishers deposit JATS with no italic markup
+  at all and would otherwise read as "never italicised" for every form.
+  `--cache-dir` keeps the esearch/efetch responses so a rebuild is offline.
+- `bin/pdf_italics.py` — fills the same index from the source PDFs' fonts
+  (PyMuPDF, build-time only) for accessions JATS lacks; JATS wins where both
+  exist. Opaque typesetter fonts (`AdvP4041BD`, which report `ItalicAngle 0`
+  even for the italic face) are calibrated per paper from conventionally
+  italic words. A paper with no detectable italics is left **out** of the
+  index, never written as zeros, so the rule abstains. Measured against JATS
+  on the 1,500 papers both cover: 98.0% agreement on the zero/non-zero
+  decision for non-exempt forms, 0.23% wrong-drop.
+- Both italics builders tokenise through `jats_italics.fold_text()`, which
+  mirrors the ingest's character fold (`jats_text._map_char`,
+  `PdfTextNormalizer.h`): U+2010/U+2011 -> `-`, soft hyphen dropped, non-BMP
+  NFKC-folded, plus ligatures and zero-width characters on the PDF path. The
+  index is keyed by surface form, so if the fold and the CAS text disagree
+  (`PYR1‐LIKE` split vs `pyr1-like`) the lookup misses and the rule
+  abstains. **Change all three together**, then rebuild the index.
 - `bin/build_class_map.py` — builds the ~98 KB surface-form provenance map, so
   the server need not parse a 10.5 MB OBO at startup. **Rebuild it with the
   italic index whenever the OBO changes**: unlisted forms resolve to `unknown`,
@@ -361,7 +396,14 @@ Rebuild the index after a corpus refresh (`bin/` is this repo, `.data/` is
 ```bash
 python3 $IMPL/bin/jats_italics.py --accession-file maizeopenaccess_accessions.txt \
     --obo .data/obofiles4production/zmays_genes_20260708.obo \
-    --out .data/italics/MaizeOpenAccess.json  # ~1 MB, ~65 min for 3,299 papers
+    --cache-dir .data/italics/jats_cache \
+    --out .data/italics/MaizeOpenAccess.jats.json  # ~65 min first run; offline with a warm cache
+python3 $IMPL/bin/pdf_italics.py --accession-file maizeopenaccess_accessions.txt \
+    --pdf-root /data/textpresso/raw_files/pdf/MaizeOpenAccess \
+    --obo .data/obofiles4production/zmays_genes_20260708.obo \
+    --jats-index .data/italics/MaizeOpenAccess.jats.json \
+    --provenance-out .data/italics/MaizeOpenAccess.provenance.json \
+    --out .data/italics/MaizeOpenAccess.json  # ~1.5 MB, ~2 min with 8 workers
 python3 $IMPL/bin/build_class_map.py \
     --obo .data/obofiles4production/zmays_genes_20260708.obo \
     --out .data/italics/obo_short_form_classes.json   # ~98 KB
@@ -381,13 +423,23 @@ there, so moving them in is the re-index step, not a file copy.
 
 ### Rollout convention
 
-Default the hygiene layer **off** (`TEXTPRESSO_HYGIENE_DEFAULT=0`) for one
-release, announce, then flip — turning it on changes what existing published API
-scripts receive. Always surface the drop counts to curators ("96 shown, 66
-filtered — 42 references, 23 broader terms, 1 case mismatch") rather than
+The hygiene layer is **on by default** everywhere since the 2026-10 rollout:
+the server (`TEXTPRESSO_HYGIENE_DEFAULT`, default `1`; set `0` to revert), the
+CLI (`--no-hygiene` opts out; `--hygiene` is still accepted) and the GUI. It
+was flipped without the planned off-by-default release because the instance
+had not yet been shared publicly. Once it has, treat further changes to what
+the default drops the same way: they change what published API scripts
+receive, so announce them first.
+
+Always surface the drop counts to curators ("96 shown, 66 filtered: 42
+references/acknowledgments, 23 broader terms, 1 case mismatch") rather than
 silently returning fewer rows, and keep the opt-out so borderline mentions stay
 inspectable. For a curation database the borderline mentions are the ones a
-curator needs to see.
+curator needs to see. The API returns the report in its `hygiene` field; the CLI
+prints it under `--annotate` and adds it to JSON output; the GUI shows it under
+each annotation panel with a "Show unfiltered" toggle. Search-hit verification
+(`filter_gene_category_results`) deliberately runs with hygiene **off**, so the
+filter never removes a paper from search results.
 
 ### Testing against the live API
 
@@ -396,5 +448,5 @@ python3 bin/tpc_search_combined.py --list-corpora
 python3 bin/tpc_search_combined.py -c MaizeOpenAccess --type document "anthocyanin" --count 3 --format json
 curl -s -G "https://textpresso.maizegdb.org/v1/textpresso/annotate" \
   --data-urlencode "identifier=MaizeOpenAccess/10.1093_jxb_erad297/10.1093_jxb_erad297.tpcas" \
-  --data-urlencode "ontology=MAIZE_GENES" --data-urlencode "hygiene=1" | jq '.hygiene'
+  --data-urlencode "ontology=MAIZE_GENES" | jq '.hygiene'
 ```

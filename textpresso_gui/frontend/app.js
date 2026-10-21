@@ -3,6 +3,7 @@
 
   // Adjust if the backend is running on a different port -- see GUI_SETUP.md.
   const API_BASE = window.TEXTPRESSO_API_BASE || "http://127.0.0.1:8010";
+  const MAX_RESULTS = 1000;  // backend MAX_RESULTS: the most one search returns
 
   const $ = (id) => document.getElementById(id);
 
@@ -38,6 +39,7 @@
     resetBtn: $("resetBtn"),
     resultsSummary: $("resultsSummary"),
     resultsCount: $("resultsCount"),
+    resultsNotes: $("resultsNotes"),
     resultsList: $("resultsList"),
     exportCsv: $("exportCsv"),
     exportJson: $("exportJson"),
@@ -52,10 +54,13 @@
   let lastResults = [];             // raw docs from the last successful search
   let lastQueryBody = null;         // the request body used, for "Load more"
   let lastCategoryDesc = "";        // readable categories of the last search, for the summary
-  let lastScopeDesc = "";           // e.g. "in the abstract" when keywords were limited to one section
+  let lastScopeDesc = "";           // e.g. "in the abstract" when the search was limited to one section
   let viewMode = "table";           // "table" | "cards"
   let tableSort = null;             // { key, dir: 1 | -1 } from a column header, or null = server order
-  const annotateCache = new Map();  // identifier|exclude_sections -> Promise<{ summary } | { error }>
+  const annotateCache = new Map();  // identifier|exclude_sections|hygiene -> Promise<{ summary, hygiene } | { error }>
+  // Papers whose annotation panel shows the unfiltered set (hygiene off).
+  // Kept outside the DOM so the choice survives a re-render (sort, view switch).
+  const unfilteredIds = new Set();
   const citationCache = new Map();  // identifier -> PubMed citation details (see /api/citations)
 
   function escapeHtml(s) {
@@ -534,10 +539,11 @@
     // The section dropdown lives in Advanced, so say so in the summary
     // rather than let a non-default scope go unnoticed.
     const scopeOption = els.searchIn.selectedOptions[0];
-    lastScopeDesc = body.keywords && els.searchIn.value !== "full_text" && scopeOption
+    lastScopeDesc = (body.keywords || body.category) && els.searchIn.value !== "full_text" && scopeOption
       ? `in the ${scopeOption.textContent.trim().toLowerCase()}` : "";
     els.resultsList.innerHTML = `<div class="empty-state">Searching&hellip;</div>`;
     els.resultsSummary.hidden = true;
+    els.resultsNotes.hidden = true;
     els.loadMoreRow.hidden = true;
 
     try {
@@ -548,6 +554,10 @@
       });
       lastResults = data.results || [];
       renderResults(lastResults, body.keywords || "");
+      // Caveats from the backend, e.g. that only the top N papers could be checked.
+      const notes = data.notes || [];
+      els.resultsNotes.textContent = notes.join(" ");
+      els.resultsNotes.hidden = !notes.length;
       loadCitations(lastResults);
     } catch (e) {
       els.resultsList.innerHTML = `<div class="error-state">Search failed: ${escapeHtml(e.message)}</div>`;
@@ -738,8 +748,8 @@
     els.resultsSummary.hidden = false;
     els.resultsCount.innerHTML = `<strong>${results.length}</strong> result${results.length === 1 ? "" : "s"}`
       + (keywords ? ` for &ldquo;${escapeHtml(keywords)}&rdquo;` : "")
-      + (keywords && lastScopeDesc ? ` ${escapeHtml(lastScopeDesc)}` : "")
-      + (lastCategoryDesc ? ` with ${escapeHtml(lastCategoryDesc)}` : "");
+      + (lastCategoryDesc ? ` with ${escapeHtml(lastCategoryDesc)}` : "")
+      + (lastScopeDesc ? ` ${escapeHtml(lastScopeDesc)}` : "");
 
     if (!results.length) {
       els.resultsList.innerHTML = `<div class="empty-state">No results. Try broadening your search or removing filters.</div>`;
@@ -1086,23 +1096,25 @@
 
   const ANNOTATE_TIMEOUT_MS = 60000;
 
-  // Resolves to { summary } or { error, retryable }. Cached as a promise, so a
+  // Resolves to { summary, hygiene } or { error, retryable }. Cached as a promise, so a
   // panel re-rendered while its request is still in flight (sort, view
   // switch) waits on the same request instead of starting another. Only a
   // definite answer stays cached: a timeout or network failure is dropped
   // from the cache, so collapsing and reopening the panel tries again.
-  function getAnnotations(identifier) {
+  function getAnnotations(identifier, unfiltered) {
     const excludeSections = (lastQueryBody && lastQueryBody.exclude_sections) || [];
-    const cacheKey = `${identifier}|${excludeSections.join(",")}`;
+    const cacheKey = `${identifier}|${excludeSections.join(",")}|${unfiltered ? "all" : "clean"}`;
     if (!annotateCache.has(cacheKey)) {
       annotateCache.set(cacheKey, withAnnotateSlot(async () => {
         try {
           // Always ask for RELATED-synonym hits here: the panel shows them as their
           // own MAIZE_GENES_RELATED row, so there's no ambiguity with EXACT hits.
-          const params = new URLSearchParams({ identifier, related_synonyms: "true" });
+          const params = new URLSearchParams({
+            identifier, related_synonyms: "true", hygiene: unfiltered ? "false" : "true",
+          });
           excludeSections.forEach((s) => params.append("exclude_sections", s));
           const data = await fetchJSON(`${API_BASE}/api/annotate?${params}`, undefined, ANNOTATE_TIMEOUT_MS);
-          return { summary: data.ontology_summary };
+          return { summary: data.ontology_summary, hygiene: data.hygiene };
         } catch (e) {
           if (e.status === 404 || e.status === 502) {
             return { error: "Ontology annotations are unavailable for this paper right now (the Textpresso annotation service is currently down)." };
@@ -1117,18 +1129,41 @@
 
   async function loadAnnotations(doc, panel) {
     panel.innerHTML = `<div class="annotate-unavailable">Loading&hellip;</div>`;
-    const result = await getAnnotations(doc.identifier);
+    const unfiltered = unfilteredIds.has(doc.identifier);
+    const result = await getAnnotations(doc.identifier, unfiltered);
     if (result.error) {
       panel.innerHTML = `<div class="annotate-unavailable">${escapeHtml(result.error)}</div>`;
       if (result.retryable) delete panel.dataset.loaded; // reopening fetches again
     } else {
-      renderAnnotatePanel(panel, result.summary);
+      renderAnnotatePanel(panel, result.summary, result.hygiene, unfiltered);
+      const toggle = panel.querySelector(".annotate-hygiene-toggle");
+      if (toggle) {
+        toggle.addEventListener("click", () => {
+          if (unfiltered) unfilteredIds.delete(doc.identifier);
+          else unfilteredIds.add(doc.identifier);
+          loadAnnotations(doc, panel);
+        });
+      }
     }
   }
 
-  function renderAnnotatePanel(panel, summary) {
+  // The filter report under the panel: what the hygiene layer removed, with a
+  // way back to the unfiltered set. Borderline mentions are exactly the ones a
+  // curator may need to inspect, so the filter is never silent.
+  function hygieneFooter(hygiene, unfiltered) {
+    if (unfiltered) {
+      return `<div class="annotate-hygiene">Showing all annotations, unfiltered.
+        <button type="button" class="annotate-hygiene-toggle">Apply filter</button></div>`;
+    }
+    if (!hygiene || !hygiene.enabled || !hygiene.dropped) return "";
+    return `<div class="annotate-hygiene">${escapeHtml(hygiene.summary)}.
+      <button type="button" class="annotate-hygiene-toggle">Show unfiltered</button></div>`;
+  }
+
+  function renderAnnotatePanel(panel, summary, hygiene, unfiltered) {
+    const footer = hygieneFooter(hygiene, unfiltered);
     if (!summary || !Object.keys(summary).length) {
-      panel.innerHTML = `<div class="annotate-unavailable">No ontology annotations available for this paper.</div>`;
+      panel.innerHTML = `<div class="annotate-unavailable">No ontology annotations available for this paper.</div>${footer}`;
       return;
     }
     const colors = { GO: "#1565c0", PO: "#6a3fb5", TO: "#b5541f", MAIZE_GENES: "#2e7d32", MAIZE_GENES_RELATED: "#689f38" };
@@ -1137,11 +1172,11 @@
         <span class="annotate-onto" style="color:${colors[onto] || "#5f6368"}">${escapeHtml(onto)}</span>
         <div class="annotate-terms">${terms.map((t) => `<span class="annotate-term">${escapeHtml(t)}</span>`).join("")}</div>
       </div>
-    `).join("");
+    `).join("") + footer;
   }
 
   els.loadMoreBtn.addEventListener("click", () => {
-    const nextCount = Math.min((lastQueryBody.count || 50) + 25, 200);
+    const nextCount = Math.min((lastQueryBody.count || 50) + 25, MAX_RESULTS);
     runSearch(nextCount);
   });
 

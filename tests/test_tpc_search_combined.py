@@ -227,5 +227,56 @@ class TestUnavailableRelationshipTypeWarning(unittest.TestCase):
         fake_stderr.write.assert_not_called()
 
 
+class TestSearchPaging(unittest.TestCase):
+    """search() pages past the API's 200-per-call limit via since_num."""
+
+    def _fake_server(self, total, calls, fail_once=()):
+        hits = [{"identifier": f"C/{i}/{i}.tpcas"} for i in range(total)]
+        failed = set()
+
+        def fake_page(payload, url, api_key):
+            since, count = payload.get("since_num", 0), payload["count"]
+            calls.append((since, count))
+            if since in fail_once and since not in failed:
+                failed.add(since)
+                raise ConnectionResetError("reset by peer")
+            return hits[since:since + min(count, 200)]
+        return fake_page
+
+    def _search(self, total, count, fail_once=()):
+        calls = []
+        with mock.patch.object(_search_combined, "_search_page",
+                               self._fake_server(total, calls, fail_once)), \
+                mock.patch.object(_search_combined, "documents_count", return_value=total):
+            results = _search_combined.search({"query": {"type": "document"}, "count": count})
+        return results, calls
+
+    def test_count_within_one_page_is_a_single_call(self):
+        results, calls = self._search(total=665, count=50)
+        self.assertEqual(len(results), 50)
+        self.assertEqual(calls, [(0, 50)])
+
+    def test_pages_in_rank_order_up_to_count(self):
+        results, calls = self._search(total=665, count=450)
+        self.assertEqual([d["identifier"] for d in results],
+                         [f"C/{i}/{i}.tpcas" for i in range(450)])
+        self.assertEqual(sorted(calls), [(0, 200), (200, 200), (400, 50)])
+
+    def test_stops_at_the_total(self):
+        results, calls = self._search(total=665, count=5000)
+        self.assertEqual(len(results), 665)
+        self.assertEqual(sorted(calls), [(0, 200), (200, 200), (400, 200), (600, 65)])
+
+    def test_short_first_page_means_no_more_pages(self):
+        results, calls = self._search(total=120, count=1000)
+        self.assertEqual(len(results), 120)
+        self.assertEqual(calls, [(0, 200)])
+
+    def test_a_dropped_page_is_retried_once(self):
+        results, calls = self._search(total=665, count=665, fail_once={400})
+        self.assertEqual(len(results), 665)
+        self.assertEqual(calls.count((400, 200)), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

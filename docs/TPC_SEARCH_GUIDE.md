@@ -79,7 +79,7 @@ operators are supported:
 ```
 keywords                  Search keywords
 -c CORPUS                 Corpus to search (repeatable; default: all)
---count N                 Max results (default: 50, API max: 200)
+--count N                 Max results (default: 50; above 200, fetched in pages)
 --type TYPE               Search scope (default: sentence)
 --exclude KEYWORDS        Keywords to exclude from results
 --case-sensitive          Case-sensitive keyword matching
@@ -155,7 +155,9 @@ It is sent as the `X-API-Key` header on search and annotation requests.
 # Basic sentence search
 python3 bin/tpc_search_combined.py -c MaizeTest100 "flowering time"
 
-# Top N results -- --count caps how many come back (default 50, API max 200);
+# Top N results -- --count caps how many come back (default 50). The API returns
+# 200 per call, so a larger count is fetched in parallel pages, each another
+# full ~6s search on the server (665 results took ~14s on MaizeOA);
 # results are already ranked by relevance score by default, so this gives the
 # top N matches. --sort-by-year switches the ranking to year instead.
 python3 bin/tpc_search_combined.py -c MaizeTest100 "flowering time" --count 5

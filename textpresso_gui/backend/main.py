@@ -88,7 +88,7 @@ BIN_DIR = REPO_ROOT / "bin"
 # directly with no WSL mount needed). If neither path exists (WSL not
 # running, wrong machine), falls back to the live HTTP endpoint rather than
 # failing every annotation lookup.
-_LOCAL_CAS_ROOT_DEFAULT = "//wsl.localhost/Ubuntu/home/ltibbs/agr_textpresso/.data/tpcas-2"
+_LOCAL_CAS_ROOT_DEFAULT = "/Users/laura/Documents/Textpresso_files/maizeopenaccess-20261015/tpcas-2"
 _env_cas_root = os.environ.get("TEXTPRESSO_CAS_ROOT")
 if _env_cas_root:
     CAS_ROOT = _env_cas_root
@@ -96,6 +96,15 @@ elif Path(_LOCAL_CAS_ROOT_DEFAULT).is_dir():
     CAS_ROOT = _LOCAL_CAS_ROOT_DEFAULT
 else:
     CAS_ROOT = None
+
+# Old live-server corpus names -> local directory name. MaizeOpenAccess
+# supersedes all three; identifiers from the live API still carry the old names
+# while the local CAS tree already has everything under MaizeOpenAccess.
+_CORPUS_REMAP = {
+    "MaizeOA": "MaizeOpenAccess",
+    "MaizeTest": "MaizeOpenAccess",
+    "MaizeTest100": "MaizeOpenAccess",
+}
 
 # See module docstring: the public host 403s urllib's default User-Agent on
 # /api/*. Installed before importing tpc_search_combined so every HTTP call
@@ -169,7 +178,8 @@ def _sidecar_note(ok: bool):
                     _SIDECAR_STATE["down_until"] = time.time() + _SIDECAR_COOLDOWN_SECONDS
 
 
-def _load_annotations_with_retry(doc, args, ontology_filter=None, include_related=False, retries=4):
+def _load_annotations_with_retry(doc, args, ontology_filter=None, include_related=False,
+                                 retries=4, **kwargs):
     """Local CAS2 first, else the HTTP /annotate sidecar with retry + circuit breaker.
 
     Local files are read directly and never touch the breaker. Previously a
@@ -184,15 +194,23 @@ def _load_annotations_with_retry(doc, args, ontology_filter=None, include_relate
     (http.client.IncompleteRead), which tpc._load_annotations() itself
     doesn't catch (only urllib.error.HTTPError/URLError) -- harmless
     defensive measure, separate from the circuit breaker above.
+
+    Other keyword arguments (hygiene, hygiene_report) pass straight through.
     """
     if getattr(args, "cas_root", None) and _has_local_cas(doc.get("identifier") or ""):
-        return _orig_load_annotations(doc, args, ontology_filter, include_related)
+        raw_id = doc.get("identifier") or ""
+        id_parts = [p for p in raw_id.split("/") if p]
+        if len(id_parts) >= 1 and id_parts[0] in _CORPUS_REMAP:
+            remapped = _CORPUS_REMAP[id_parts[0]] + "/" + "/".join(id_parts[1:])
+            doc = {**doc, "identifier": remapped}
+        return _orig_load_annotations(doc, args, ontology_filter, include_related, **kwargs)
     http_args = argparse.Namespace(**{**vars(args), "cas_root": None})
     if _sidecar_is_down():
         return None, None, None, False
     for attempt in range(retries):
         try:
-            result = _orig_load_annotations(doc, http_args, ontology_filter, include_related)
+            result = _orig_load_annotations(doc, http_args, ontology_filter, include_related,
+                                            **kwargs)
             _sidecar_note(result[0] is not None)
             return result
         except (http.client.IncompleteRead, ConnectionError) as e:
@@ -254,6 +272,16 @@ SEARCH_SCOPES = {
 # opt in under Advanced options to include citations/funding boilerplate).
 DEFAULT_EXCLUDED_SECTIONS = {"references", "acknowledgments"}
 
+# The search API returns 200 results per call; tpc.search() pages past that,
+# at the cost of one more ~6s server-side search per extra 200 (run in
+# parallel). MAX_RESULTS is the most a search returns ("Load more" stops
+# there). MAX_CANDIDATES is how far down the ranking a search looks when it
+# has to filter results itself afterwards -- categories limited to a section,
+# keywords in a section plus categories, "all of" with expanded categories.
+# Papers ranked below it are never seen, and the response says so.
+MAX_RESULTS = 1000
+MAX_CANDIDATES = int(os.environ.get("TEXTPRESSO_GUI_MAX_CANDIDATES", "2000"))
+
 # --- Open-access gating -----------------------------------------------------
 # Per-paper access level, from what the PDF pipeline records for every paper
 # it fetched (maize_pipeline/pipeline/download_manifest.csv; covers all 1438
@@ -281,7 +309,7 @@ DEFAULT_EXCLUDED_SECTIONS = {"references", "acknowledgments"}
 # guessing that it's open.
 OA_MANIFEST = Path(os.environ.get(
     "TEXTPRESSO_OA_MANIFEST",
-    "//wsl.localhost/Ubuntu/home/ltibbs/maize_pipeline/pipeline/download_manifest.csv"))
+    "/Users/laura/Downloads/pipeline/download_manifest.csv"))
 _OPEN_STATUSES = {"gold", "green", "hybrid"}
 _PUBLISHER_STATUSES = {"bronze"}
 _OA_STATUSES = None  # accession-form DOI -> (Unpaywall oa_status, Europe PMC licence)
@@ -349,7 +377,7 @@ class SearchRequest(BaseModel):
     keywords: Optional[str] = None
     search_in: str = Field(default="full_text", description="Key from SEARCH_SCOPES")
     corpora: Optional[List[str]] = Field(default=None, description="Default: all available corpora")
-    count: int = Field(default=50, ge=1, le=200)
+    count: int = Field(default=50, ge=1, le=MAX_RESULTS)
 
     exclude_keywords: Optional[str] = None
     case_sensitive: bool = False
@@ -471,9 +499,10 @@ def get_annotate(
     ontology: Optional[List[str]] = Query(default=None),
     related_synonyms: bool = False,
     exclude_sections: Optional[List[str]] = Query(default=None),
-    # Off until the frontend has its "show unfiltered annotations" toggle and
-    # filter report, so curators are never shown fewer rows with no way back.
-    hygiene: bool = False,
+    # On by default. The frontend shows the filter report under each panel
+    # with a "show unfiltered" toggle (hygiene=false), so curators are never
+    # shown fewer rows with no way back.
+    hygiene: bool = True,
     italics: bool = True,
 ):
     # hygiene/italics are applied inside tpc._load_annotations (local CAS2) or by
@@ -481,9 +510,10 @@ def get_annotate(
     args = argparse.Namespace(cas_root=CAS_ROOT, url=tpc.DEFAULT_URL,
                               hygiene=hygiene, italics=italics)
     ontology_filter = set(ontology) if ontology else None
+    report = {}
     sentences, annotations, sections, _ = tpc._load_annotations(
         {"identifier": identifier}, args, ontology_filter=ontology_filter,
-        include_related=related_synonyms)
+        include_related=related_synonyms, hygiene_report=report)
     if annotations is None:
         raise HTTPException(status_code=404, detail=f"No CAS2 annotation data for {identifier}")
     if exclude_sections:
@@ -496,6 +526,10 @@ def get_annotate(
             "enabled": hygiene,
             "italics": italics,
             "excluded_sections": sorted(exclude_sections or ()),
+            "dropped": report.get("dropped", 0),
+            "dropped_by_reason": report.get("dropped_by_reason", {}),
+            "summary": (tpc.format_hygiene_report({**report, "kept": len(annotations)})
+                        if report.get("dropped") else ""),
         },
     }
 
@@ -696,23 +730,61 @@ def _identifier_key(doc) -> str:
     return re.sub(r"/+", "/", doc.get("identifier", ""))
 
 
-def _search_with_categories(req: SearchRequest, groups, corpora: List[str], query_type: str):
+def _candidates_note() -> str:
+    return (f"Only the top {MAX_CANDIDATES:,} papers for each part of this search could be "
+            "checked, so lower-ranked matches may be missing.")
+
+
+def _take_verified(docs, check, count: int):
+    """Run check over docs in rank order until count of them pass.
+
+    check(doc) returns True (keep), False (drop) or None (couldn't be checked
+    -- kept, the same fail-open rule as everywhere else here). Papers are
+    checked in parallel batches, so a long candidate list costs only as many
+    lookups as it takes to fill count. Returns (kept, number kept unchecked).
+    """
+    kept, unverified, i = [], 0, 0
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        while i < len(docs) and len(kept) < count:
+            batch = docs[i:i + max(count - len(kept), 20)]
+            i += len(batch)
+            for doc, ok in zip(batch, pool.map(check, batch)):
+                if ok is not False and len(kept) < count:
+                    kept.append(doc)
+                    unverified += ok is None
+    return kept, unverified
+
+
+def _gene_filter(docs, args, count: int) -> list:
+    """tpc.filter_gene_category_results() one paper at a time, in parallel,
+    stopping once count papers are kept."""
+    if not tpc._gene_category_onto_ids(args.category):
+        return docs[:count]
+    return _take_verified(docs, lambda d: bool(tpc.filter_gene_category_results([d], args)), count)[0]
+
+
+def _search_with_categories(req: SearchRequest, groups, corpora: List[str], query_type: str,
+                            notes: Optional[list] = None, verify_genes: bool = True):
     """Run the search for req, honoring any/all across category groups.
 
     Returns (results, args). groups is _category_groups(req), or None when
-    the request has no categories.
+    the request has no categories. verify_genes=False skips the EXACT-only
+    gene re-check, for a caller that checks each paper's annotations itself
+    (see _section_category_search). Notes for the user are appended to notes.
     """
     if not groups:
         args = _build_args(req, corpora, query_type)
         return _run_search(args, corpora), args
     if req.categories_and and len(groups) > 1 and any(len(g) > 1 for g in groups):
-        return _search_category_groups(req, groups, corpora, query_type)
+        return _search_category_groups(req, groups, corpora, query_type, notes, verify_genes)
     flat_req = req.copy(update={"category": list(dict.fromkeys(c for g in groups for c in g))})
     args = _build_args(flat_req, corpora, query_type)
-    return tpc.filter_gene_category_results(_run_search(args, corpora), args), args
+    docs = _run_search(args, corpora)
+    return (_gene_filter(docs, args, req.count) if verify_genes else docs), args
 
 
-def _search_category_groups(req: SearchRequest, groups, corpora: List[str], query_type: str):
+def _search_category_groups(req: SearchRequest, groups, corpora: List[str], query_type: str,
+                            notes: Optional[list] = None, verify_genes: bool = True):
     """"All of these categories" when ancestor/descendant expansion is also on.
 
     Expansion turns each category into a group (the term plus its ancestors/
@@ -723,25 +795,28 @@ def _search_category_groups(req: SearchRequest, groups, corpora: List[str], quer
     parallel) and keep only the papers found in every group, in the first
     group's relevance order.
 
-    Each group search fetches the API max (200) so the intersection isn't cut
-    short by a smaller page size -- but a paper ranked past 200 in any one
-    group can still be missed.
+    Each group search goes MAX_CANDIDATES deep so the intersection isn't cut
+    short; a paper ranked below that in any one group is missed, and a note
+    says so. The EXACT-only gene re-check runs on the intersection, not on
+    each group, so it costs one lookup per kept paper rather than per hit.
     """
     def _one_group(group):
-        group_req = req.copy(update={"category": group, "categories_and": False, "count": 200})
-        group_args = _build_args(group_req, corpora, query_type)
-        docs = _run_search(group_args, corpora)
-        return tpc.filter_gene_category_results(docs, group_args), group_args
+        group_req = req.copy(update={"category": group, "categories_and": False,
+                                     "count": MAX_CANDIDATES})
+        return _run_search(_build_args(group_req, corpora, query_type), corpora)
 
     with ThreadPoolExecutor(max_workers=len(groups)) as pool:
         results = list(pool.map(_one_group, groups))
+    if notes is not None and any(len(docs) >= MAX_CANDIDATES for docs in results):
+        notes.append(_candidates_note())
 
-    common = set.intersection(*({_identifier_key(d) for d in docs} for docs, _ in results))
-    first_docs, first_args = results[0]
-    kept = [d for d in first_docs if _identifier_key(d) in common][:req.count]
-    # Later steps only use args for CAS2/annotation lookups (cas_root, url),
-    # which are the same for every group.
-    return kept, first_args
+    common = set.intersection(*({_identifier_key(d) for d in docs} for docs in results))
+    kept = [d for d in results[0] if _identifier_key(d) in common]
+    # Gene categories are never expanded, so each is a group of one and
+    # "every group" means every gene: categories_and=True over the flat list.
+    flat_req = req.copy(update={"category": [c for g in groups for c in g], "categories_and": True})
+    args = _build_args(flat_req, corpora, query_type)
+    return (_gene_filter(kept, args, req.count) if verify_genes else kept), args
 
 
 # --- "Same paper" search: keywords AND categories anywhere in a paper -------
@@ -793,35 +868,21 @@ def _server_sentences_for_paper(doc, kw_req: SearchRequest):
     return [s for d in hits for s in d.get("matched_sentences") or []]
 
 
-def _paper_level_search(req: SearchRequest, groups, corpora: List[str], exclude_types: set,
-                        query_type: str):
-    """Keywords AND categories in the same paper, with section exclusion.
+def _paper_level_search(req: SearchRequest, groups, corpora: List[str], exclude_types: set):
+    """Keywords AND categories in the same paper (Full text), with section exclusion.
 
-    The search-scope dropdown applies to the keywords only: query_type is
-    "sentence" for Full text, or a section name (abstract, title, ...).
-    Categories always match anywhere in the paper.
-
-    Returns (results, args). For Full text, each result's matched_sentences is
-    set to its keyword sentences outside the excluded sections (for snippets);
-    section-scoped searches have no matched sentences to show.
+    Returns (results, args), each result's matched_sentences set to its
+    keyword sentences outside the excluded sections (for snippets). A single
+    section is _section_category_search's job.
     """
-    kw_req = req.copy(update={"category": None, "count": 200})
+    # The keyword search is only a source of server-matched sentences;
+    # candidates it misses are checked locally (see _keyword_sentences).
+    kw_req = req.copy(update={"category": None, "count": max(req.count, tpc.API_PAGE_SIZE)})
     with ThreadPoolExecutor(max_workers=2) as pool:
         cand_future = pool.submit(_search_with_categories, req, groups, corpora, "document")
-        kw_future = pool.submit(_run_search, _build_args(kw_req, corpora, query_type), corpora)
+        kw_future = pool.submit(_run_search, _build_args(kw_req, corpora, "sentence"), corpora)
         candidates, args = cand_future.result()
         kw_docs = kw_future.result()
-
-    if query_type != "sentence":
-        # Section scope: candidates have the keywords somewhere and the
-        # categories somewhere; also require the keywords in the chosen
-        # section. (Can't ask the API in one query -- its section-level
-        # indexes carry no category data, so e.g. type=abstract with any
-        # category always returns 0.) Limited to the keyword search's top 200.
-        in_section = {_identifier_key(d) for d in kw_docs}
-        candidates = [d for d in candidates if _identifier_key(d) in in_section]
-        if not exclude_types:
-            return candidates, args
 
     server_sentences = {_identifier_key(d): d.get("matched_sentences") or [] for d in kw_docs}
     group_ids = [{m.group(1) for c in g for m in [tpc._CATEGORY_ID_RE.search(c)] if m} for g in groups]
@@ -866,8 +927,6 @@ def _paper_level_search(req: SearchRequest, groups, corpora: List[str], exclude_
             return True
         if not _categories_ok(annotations, sections):
             return False
-        if query_type != "sentence":
-            return True  # keywords are in a section that's never excluded
         doc["_sections_by_text"] = _sections_by_text(sentences, sections)  # for _top_sentences
         kept = _keyword_sentences(doc, sentences, sections)
         if kept is None:  # server check failed -- keep, with whatever we have
@@ -881,6 +940,100 @@ def _paper_level_search(req: SearchRequest, groups, corpora: List[str], exclude_
     with ThreadPoolExecutor(max_workers=10) as pool:
         keep = list(pool.map(_check, candidates))
     return [d for d, k in zip(candidates, keep) if k], args
+
+
+# --- Categories limited to one section -----------------------------------------
+# The API's section-level indexes carry no category data (type=abstract with
+# any category always returns 0), so a section-scoped search with categories
+# runs at document level -- categories anywhere in the paper, plus the
+# keywords in the chosen section if there are any -- and then checks each
+# candidate's CAS2 annotations for the categories inside that section, in
+# rank order, until enough papers pass. Where "inside" is decided:
+#   - Body sections (Introduction, Results, ...): the annotation's position
+#     in the CAS2 section map -- the same map the API's section keyword
+#     indexes use (agreed 30/30 for Results and Methods, see below).
+#   - Abstract: whether a term the category was annotated with in this paper
+#     occurs in the .bib abstract, which is what the API's Abstract keyword
+#     scope searches. Not the CAS2 "abstract" section: only 28 of 60 sampled
+#     MaizeOA papers have one, and where present it overruns (9,099 chars
+#     against a 1,866-char abstract in 10.1371/journal.pgen.1003477, running
+#     on through the author summary and introduction). That section is the
+#     fallback only for a paper with no .bib abstract.
+#   - Title: the same term test against the title (CAS2 has no title section).
+# Annotations are loaded with the request's RELATED-synonym setting, so this
+# is also the EXACT-only gene check that filter_gene_category_results() does.
+_SCOPE_LABELS = {"result": "results"}
+
+
+def _term_in_text(term: str, text: str) -> bool:
+    """Whether an annotated term occurs as a whole word in text.
+
+    Case-insensitive, except that a term with capitals after its first letter
+    (AS, ZmCCT9) must match its case -- otherwise "AS" matches every "as".
+    """
+    if not term or not text:
+        return False
+    flags = re.IGNORECASE if term[1:] == term[1:].lower() else 0
+    return re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", text, flags) is not None
+
+
+def _section_category_search(req: SearchRequest, groups, corpora: List[str], exclude_types: set,
+                             section: str, notes: list):
+    """Categories (and keywords, if any) limited to one section.
+
+    section is a SEARCH_SCOPES value other than "sentence". Returns
+    (results, args). For a categories-only search each result's
+    matched_sentences is set to the section's sentences carrying a category;
+    keyword searches get keyword snippets later, in post_search.
+    """
+    kw_docs = None
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        cand_future = pool.submit(_search_with_categories, req.copy(update={"count": MAX_CANDIDATES}),
+                                  groups, corpora, "document", notes, False)
+        if req.keywords:
+            kw_req = req.copy(update={"category": None, "count": MAX_CANDIDATES})
+            kw_docs = pool.submit(_run_search, _build_args(kw_req, corpora, section), corpora).result()
+        candidates, args = cand_future.result()
+    if len(candidates) >= MAX_CANDIDATES or len(kw_docs or ()) >= MAX_CANDIDATES:
+        notes.append(_candidates_note())
+    if kw_docs is not None:
+        in_section = {_identifier_key(d) for d in kw_docs}
+        candidates = [d for d in candidates if _identifier_key(d) in in_section]
+
+    group_ids = [{m.group(1) for c in g for m in [tpc._CATEGORY_ID_RE.search(c)] if m} for g in groups]
+
+    def _check(doc):
+        sentences, annotations, sections, limited = tpc._load_annotations(
+            doc, args, include_related=req.related_synonyms)
+        if sentences is None:
+            return None  # no CAS2 -- can't tell
+        annotations = tpc._ca.exclude_sections(annotations, sections, exclude_types)
+        text = {"title": doc.get("title"), "abstract": _abstract_for(doc)}.get(section)
+        if text and not limited:
+            hits = [a for a in annotations if _term_in_text(a["term"], text)]
+            parts = _SENTENCE_SPLIT_RE.split(text) if section == "abstract" else []
+            snippets = [p for p in parts if any(_term_in_text(a["term"], p) for a in hits)]
+        elif section == "title" or (section == "abstract"
+                                    and not any(s["type"] == "abstract" for s in sections)):
+            return None if limited else False  # limited: terms come back blank
+        else:
+            hits = [a for a in annotations
+                    if section in tpc._ca.section_types_at(a["begin"], a["end"], sections)]
+            snippets = [s["text"] for s in sentences
+                        if any(a["begin"] < s["end"] and a["end"] > s["begin"] for a in hits)]
+        found = {a["onto_id"] for a in hits}
+        status = [bool(ids & found) for ids in group_ids]
+        if not (all(status) if req.categories_and else any(status)):
+            return False
+        if not req.keywords:
+            doc["matched_sentences"] = snippets
+        return True
+
+    kept, unverified = _take_verified(candidates, _check, req.count)
+    if unverified:
+        notes.append(f"{unverified} of these papers could not be checked for the categories in "
+                     f"the {_SCOPE_LABELS.get(section, section)} and are shown anyway.")
+    return kept, args
 
 
 # --- Snippets for section-scoped keyword searches ------------------------------
@@ -934,18 +1087,19 @@ def post_search(req: SearchRequest):
 
     groups = _category_groups(req) if req.category else None
     exclude_types = set(req.exclude_sections or ())
-    # The scope dropdown applies to keywords only. Category annotations only
-    # exist in the sentence/document indexes (any section type returns 0), so
-    # a categories-only search ignores the scope and matches at sentence level.
-    if groups and not req.keywords:
-        query_type = "sentence"
-    # Both query rows: match at paper level, not same-sentence (see
-    # _paper_level_search), which also does its own section exclusion.
-    paper_level = bool(req.keywords and groups)
-    if paper_level:
-        results, args = _paper_level_search(req, groups, corpora, exclude_types, query_type)
+    notes = []  # caveats for the user (lower-ranked papers not checked, ...)
+    # Categories with a single-section scope are checked per paper (see
+    # _section_category_search). Full text with both query rows matches at
+    # paper level, not same-sentence (see _paper_level_search). Both do their
+    # own section exclusion.
+    section_scoped = bool(groups) and query_type != "sentence"
+    paper_level = bool(req.keywords and groups) and not section_scoped
+    if section_scoped:
+        results, args = _section_category_search(req, groups, corpora, exclude_types, query_type, notes)
+    elif paper_level:
+        results, args = _paper_level_search(req, groups, corpora, exclude_types)
     else:
-        results, args = _search_with_categories(req, groups, corpora, query_type)
+        results, args = _search_with_categories(req, groups, corpora, query_type, notes)
 
     if exclude_types and query_type == "sentence" and not paper_level:
         # Same per-document filtering print_results() applies for --exclude-type
@@ -1007,7 +1161,7 @@ def post_search(req: SearchRequest):
             doc["matched_sentences"] = _top_sentences(
                 sentences, cap, terms, doc.get("title"), doc["abstract"], sections_by_text)
 
-    return {"count": len(results), "results": results}
+    return {"count": len(results), "results": results, "notes": list(dict.fromkeys(notes))}
 
 
 # --- Citation details (volume / issue / pages / real DOI) --------------------
@@ -1039,8 +1193,11 @@ def _read_bib(identifier: str) -> dict:
     """
     if not CAS_ROOT:
         return {}
-    # "MaizeOA/<acc>/<acc>.tpcas" -> CAS_ROOT/MaizeOA/<acc>/<acc>.bib
-    bib = Path(CAS_ROOT) / Path(identifier).with_suffix(".bib")
+    # "MaizeOA/<acc>/<acc>.tpcas" -> CAS_ROOT/MaizeOpenAccess/<acc>/<acc>.bib
+    id_path = Path(identifier)
+    corpus = id_path.parts[0]
+    local_corpus = _CORPUS_REMAP.get(corpus, corpus)
+    bib = Path(CAS_ROOT) / local_corpus / Path(*id_path.parts[1:]).with_suffix(".bib")
     try:
         lines = bib.read_text(encoding="utf-8", errors="replace").splitlines()
     except OSError:
@@ -1155,7 +1312,8 @@ def _has_local_cas(identifier: str) -> bool:
         return False
     try:
         corpus, acc = _split_identifier(identifier)
-        return (Path(CAS_ROOT) / corpus / acc / f"{acc}.tpcas.gz").is_file()
+        local_corpus = _CORPUS_REMAP.get(corpus, corpus)
+        return (Path(CAS_ROOT) / local_corpus / acc / f"{acc}.tpcas.gz").is_file()
     except (HTTPException, OSError):
         return False
 
@@ -1173,13 +1331,14 @@ def get_document(identifier: str):
         raise HTTPException(status_code=503, detail="Full text is unavailable: no local CAS2 tree "
                             "(set TEXTPRESSO_CAS_ROOT, see GUI_SETUP.md).")
 
-    key = f"{corpus}/{acc}"
+    local_corpus = _CORPUS_REMAP.get(corpus, corpus)
+    key = f"{local_corpus}/{acc}"
     with _DOC_CACHE_LOCK:
         if key in _DOC_CACHE:
             _DOC_CACHE.move_to_end(key)
             return _DOC_CACHE[key]
 
-    path = Path(CAS_ROOT) / corpus / acc / f"{acc}.tpcas.gz"
+    path = Path(CAS_ROOT) / local_corpus / acc / f"{acc}.tpcas.gz"
     try:
         doc = casdoc.parse_cas_document(path)
     except FileNotFoundError:
@@ -1248,13 +1407,14 @@ def _uninverted_cmyk_jpeg(path: Path) -> Optional[bytes]:
 @app.get("/api/figure")
 def get_figure(identifier: str, name: str):
     corpus, acc = _split_identifier(identifier)
+    local_corpus = _CORPUS_REMAP.get(corpus, corpus)
     if not _FIGURE_NAME_RE.match(name):
         raise HTTPException(status_code=400, detail=f"Not a figure file name: {name!r}")
     _require_viewer_access(identifier)
 
     cache_headers = {"Cache-Control": "public, max-age=86400"}
     candidates = [
-        (root / corpus / acc / sub / name, raw)
+        (root / local_corpus / acc / sub / name, raw)
         for root, sub, raw in ((Path(CAS_ROOT) if CAS_ROOT else None, "images", False),
                                (TPCAS1_ROOT, "images", False),
                                (RAW_PDF_ROOT, "", True))

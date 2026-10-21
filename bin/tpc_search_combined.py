@@ -84,6 +84,7 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 
 _BIN  = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_BIN, "..")
@@ -240,12 +241,78 @@ def fix_mojibake(text):
 _MOJIBAKE_FIELDS = ("title", "author", "journal")
 
 
+# search_documents returns at most 200 results per call, but takes a
+# since_num offset, so larger counts are fetched a page at a time. Every page
+# re-runs the whole Lucene search server-side (~6s on MaizeOA, the same for
+# count=1 as for count=200), but concurrent pages run in parallel there
+# (measured: 6 pages at once took 6.6s), so search() asks for the total and
+# the first page together, then all the remaining pages at once.
+API_PAGE_SIZE = 200
+SEARCH_PAGE_WORKERS = 8
+
+
 def search(payload, url=DEFAULT_URL, api_key=None):
     """POST a search payload and return the parsed JSON result list.
 
     api_key, if given, is sent as the X-API-Key header, which lifts the
     non-open-access limit on the returned data (see DEFAULT_API_KEY).
+
+    A payload "count" above API_PAGE_SIZE is fetched in pages (see above);
+    results stay in the server's ranking order.
     """
+    want = payload.get("count") or API_PAGE_SIZE
+    if want <= API_PAGE_SIZE:
+        return _search_page(payload, url, api_key)
+
+    def page(since, count):
+        p = {**payload, "since_num": since, "count": count}
+        try:
+            return _search_page(p, url, api_key) or []
+        except (ConnectionError, urllib.error.URLError) as e:
+            if isinstance(e, urllib.error.HTTPError):
+                raise
+            # One retry: the live server has been seen to reset a connection
+            # mid-response now and then, which would otherwise fail the
+            # whole multi-page search for one dropped page.
+            return _search_page(p, url, api_key) or []
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(page, 0, API_PAGE_SIZE)
+        total = pool.submit(documents_count, payload["query"], url)
+        results = first.result()
+        if len(results) < API_PAGE_SIZE:
+            return results
+        try:
+            want = min(want, total.result())
+        except (urllib.error.HTTPError, urllib.error.URLError, ValueError):
+            pass  # no total -- ask for every page up to want; the extra ones come back empty
+
+    offsets = range(API_PAGE_SIZE, want, API_PAGE_SIZE)
+    with ThreadPoolExecutor(max_workers=SEARCH_PAGE_WORKERS) as pool:
+        pages = list(pool.map(lambda s: page(s, min(API_PAGE_SIZE, want - s)), offsets))
+    seen = {d.get("identifier") for d in results}
+    for p in pages:
+        for doc in p:
+            if doc.get("identifier") not in seen:
+                seen.add(doc.get("identifier"))
+                results.append(doc)
+    return results
+
+
+def documents_count(query, url=DEFAULT_URL):
+    """Total number of documents matching a search_documents "query" dict."""
+    req = urllib.request.Request(
+        f"{url}/get_documents_count",
+        data=json.dumps({"query": query}).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req) as resp:
+        return int(json.loads(resp.read()))
+
+
+def _search_page(payload, url, api_key):
+    """One search_documents call (at most API_PAGE_SIZE results)."""
     data = json.dumps(payload).encode()
     headers = {"Content-Type": "application/json"}
     if api_key:
@@ -447,7 +514,8 @@ def add_search_args(parser):
     parser.add_argument("-c", "--corpus", dest="corpora", action="append", metavar="CORPUS",
                         help="Corpus to search (repeatable). Default: all available.")
     parser.add_argument("--count", type=int, default=50,
-                        help="Max results (default: 50, API hard max: 200)")
+                        help="Max results (default: 50). The API returns 200 per call, so a larger "
+                             "count is fetched in pages (~6s per round of pages)")
     parser.add_argument("--type", default="sentence", metavar="TYPE",
                         choices=SEARCH_TYPES,
                         help="Search scope (default: sentence).")
@@ -528,7 +596,8 @@ def _annotate_endpoint_url(search_url):
     return search_url.rsplit("/", 1)[0] + "/annotate"
 
 
-def _load_annotations(doc, args, ontology_filter=None, include_related=False):
+def _load_annotations(doc, args, ontology_filter=None, include_related=False,
+                      hygiene=None, hygiene_report=None):
     """Get (sentences, annotations, sections, limited) for a search result document.
 
     Returns (None, None, None, False) if the CAS2 data can't be found. Neither
@@ -551,8 +620,15 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
     By default this fetches from cas_annotate_server.py over HTTP (works from
     anywhere with network access). If args.cas_root is set, it instead parses
     the CAS2 file directly from that local directory (server-side only).
+
+    The annotation hygiene layer is on unless args.hygiene is False
+    (--no-hygiene); ``hygiene`` overrides args for one call. Pass a dict as
+    ``hygiene_report`` to receive the drop summary ({kept, dropped,
+    dropped_by_reason}) so callers can show what was filtered; it is left
+    empty when hygiene is off.
     """
     identifier = doc.get("identifier", "")
+    clean = getattr(args, "hygiene", True) if hygiene is None else hygiene
 
     if args.cas_root:
         path = _ca.identifier_to_cas_path(identifier, args.cas_root)
@@ -565,8 +641,8 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
         elif not include_related:
             annotations = [a for a in annotations
                            if not a["ontology"].endswith("_RELATED")]
-        if getattr(args, "hygiene", False):
-            annotations, _dropped = _hy.clean_annotations(
+        if clean:
+            annotations, dropped = _hy.clean_annotations(
                 annotations, sections,
                 ontology_view=getattr(args, "ontology_view", None),
                 section_types_at=_ca.section_types_at,
@@ -574,6 +650,8 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
                          if getattr(args, "italics", True) else None),
                 italic_rule=_it.never_italicised,
                 obo_class_of=_OBO_CLASS)
+            if hygiene_report is not None:
+                hygiene_report.update(_hy.hygiene_report(annotations, dropped))
         return sentences, annotations, sections, False
 
     params = [("identifier", identifier)]
@@ -581,10 +659,10 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
     if include_related:
         params.append(("related_synonyms", "1"))
     # Over HTTP the sidecar owns hygiene; ask it rather than re-filtering here,
-    # so the CLI and the API can never disagree about what was dropped.
-    if getattr(args, "hygiene", False):
-        params.append(("hygiene", "1"))
-    if not getattr(args, "italics", True):
+    # so the CLI and the API can never disagree about what was dropped. Sent
+    # explicitly either way, so the result never depends on the server default.
+    params.append(("hygiene", "1" if clean else "0"))
+    if clean and not getattr(args, "italics", True):
         params.append(("italics", "0"))
     url = f"{_annotate_endpoint_url(args.url)}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url)
@@ -602,6 +680,8 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
     except urllib.error.URLError as e:
         print(f"  [annotation API connection failed: {e.reason}]", file=sys.stderr)
         return None, None, None, False
+    if hygiene_report is not None and clean and data.get("hygiene"):
+        hygiene_report.update(data["hygiene"])
     return (data["sentences"], data["annotations"], data["sections"],
             bool(data.get("access_limited")))
 
@@ -662,8 +742,11 @@ def filter_gene_category_results(results, args):
 
     kept = []
     for doc in results:
+        # hygiene=False: this decides which search hits are kept, and the
+        # rollout rule is never to return fewer rows silently.
         _, annotations, _, _ = _load_annotations(
-            doc, args, ontology_filter=ontology_filter, include_related=args.related_synonyms)
+            doc, args, ontology_filter=ontology_filter, include_related=args.related_synonyms,
+            hygiene=False)
         if annotations is None:
             kept.append(doc)  # can't verify -- keep rather than risk dropping a real match
             continue
@@ -765,6 +848,24 @@ _ACCESS_LIMITED_NOTE = (
 )
 
 
+#: Curator-facing wording for hygiene drop reason codes (the part before ":").
+HYGIENE_REASON_LABELS = {
+    "section": "references/acknowledgments",
+    "ancestor_of_sibling_on_same_span": "broader terms",
+    "abbrev_case_mismatch": "case mismatch",
+    "not_italicised": "never italicised",
+    "excluded_form": "excluded forms",
+}
+
+
+def format_hygiene_report(report):
+    """{kept, dropped, dropped_by_reason} -> '96 shown, 66 filtered: 42 references/...'."""
+    reasons = sorted((report.get("dropped_by_reason") or {}).items(), key=lambda kv: -kv[1])
+    parts = [f"{n} {HYGIENE_REASON_LABELS.get(r, r.replace('_', ' '))}" for r, n in reasons]
+    text = f"{report.get('kept', 0)} shown, {report.get('dropped', 0)} filtered"
+    return text + (": " + ", ".join(parts) if parts else "")
+
+
 def _ontology_summary(annotations):
     """Return {ontology: sorted unique labels} for the --annotate summary.
 
@@ -828,8 +929,9 @@ def print_results(results, args):
     if args.annotate_sentences:
         output = []
         for doc in results:
+            report = {}
             sentences, annotations, sections, limited = _load_annotations(
-                doc, args, ontology_filter, include_related)
+                doc, args, ontology_filter, include_related, hygiene_report=report)
             annotated = []
             if sentences is not None:
                 if exclude_types:
@@ -844,6 +946,8 @@ def print_results(results, args):
             meta = {k: doc.get(k, "") for k in
                     ("identifier", "title", "author", "year", "journal", "accession")}
             entry = {"paper": meta, "annotated_sentences": annotated}
+            if report:
+                entry["hygiene"] = report
             if limited or doc.get("access_limited"):
                 # Non-open-access paper without a valid --api-key: sentence text
                 # and annotation term come back blank (offsets/categories kept).
@@ -861,14 +965,17 @@ def print_results(results, args):
     if args.format == "json":
         if args.annotate:
             for doc in results:
+                report = {}
                 _, annotations, sections, _ = _load_annotations(
-                    doc, args, ontology_filter, include_related)
+                    doc, args, ontology_filter, include_related, hygiene_report=report)
                 if exclude_types and annotations is not None:
                     annotations = _ca.exclude_sections(annotations, sections, exclude_types)
                 doc["ontology_summary"] = (
                     _ontology_summary(annotations)
                     if annotations is not None else {}
                 )
+                if report:
+                    doc["hygiene"] = report
         json.dump(results, sys.stdout, indent=2)
         print()
         return
@@ -881,8 +988,9 @@ def print_results(results, args):
         if doc.get("access_limited"):
             print(f"  [access limited: {_ACCESS_LIMITED_NOTE}]")
         if args.annotate:
+            report = {}
             _, annotations, sections, limited = _load_annotations(
-                doc, args, ontology_filter, include_related)
+                doc, args, ontology_filter, include_related, hygiene_report=report)
             if annotations is not None:
                 if exclude_types:
                     annotations = _ca.exclude_sections(annotations, sections, exclude_types)
@@ -890,6 +998,8 @@ def print_results(results, args):
                 print("  Ontology annotations:")
                 for ontology, terms in summary.items():
                     print(f"    {ontology}: {', '.join(terms)}")
+                if report.get("dropped"):
+                    print(f"    [{format_hygiene_report(report)}; --no-hygiene to show all]")
                 if limited:
                     print("    [ontology categories only; matched term text withheld "
                           "for this non-open-access paper -- pass --api-key for full detail]")
@@ -919,15 +1029,17 @@ def main():
                      help="Output full sentence-level annotation as JSON")
     ann.add_argument("--full-text", action="store_true",
                      help="With --annotate-sentences: include unannotated sentences too")
-    ann.add_argument("--hygiene", action="store_true",
-                     help="apply the shared annotation hygiene layer: drop "
-                          "references/acknowledgments, per-span ancestors, "
-                          "case-mismatched abbreviation synonyms, and short "
-                          "never-italicised alias forms "
+    ann.add_argument("--no-hygiene", dest="hygiene", action="store_false",
+                     help="turn off the shared annotation hygiene layer, which is "
+                          "on by default and drops references/acknowledgments, "
+                          "per-span ancestors, case-mismatched abbreviation "
+                          "synonyms and short never-italicised alias forms "
                           "(see textpresso_classifiers/annotation_hygiene.py)")
+    ann.add_argument("--hygiene", dest="hygiene", action="store_true",
+                     help=argparse.SUPPRESS)   # the default since 2026-10; kept for old scripts
     ann.add_argument("--no-italics", dest="italics", action="store_false",
-                     help="skip the typography test inside --hygiene")
-    ann.set_defaults(italics=True)
+                     help="skip the typography test inside the hygiene layer")
+    ann.set_defaults(hygiene=True, italics=True)
     ann.add_argument("--related-synonyms", action="store_true",
                      help="Include annotations matched via RELATED synonyms "
                           "(requires Textpresso rebuilt with RELATED synonym indexing; "

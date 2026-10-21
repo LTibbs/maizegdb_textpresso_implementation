@@ -16,6 +16,7 @@ Covers:
 
 import argparse
 import importlib.util
+import json
 import os
 import unittest
 from unittest import mock
@@ -132,15 +133,64 @@ class TestCliForwardsHygiene(unittest.TestCase):
                 self.tpc._load_annotations({"identifier": "MaizeOA/x/x.tpcas"}, args)
         return parse_qs(urlparse(captured["url"]).query)
 
-    def test_default_sends_no_hygiene_params(self):
+    def test_default_requests_hygiene(self):
+        # On by default, and sent explicitly so the result never depends on
+        # the server's TEXTPRESSO_HYGIENE_DEFAULT.
         q = self._params()
-        self.assertNotIn("hygiene", q)
+        self.assertEqual(q["hygiene"], ["1"])
+        self.assertNotIn("italics", q)
+
+    def test_no_hygiene_sends_zero(self):
+        q = self._params(hygiene=False)
+        self.assertEqual(q["hygiene"], ["0"])
         self.assertNotIn("italics", q)
 
     def test_hygiene_and_no_italics_forwarded(self):
         q = self._params(hygiene=True, italics=False)
         self.assertEqual(q["hygiene"], ["1"])
         self.assertEqual(q["italics"], ["0"])
+
+    def test_cli_flags(self):
+        parse = lambda *argv: self._parse(list(argv))
+        self.assertTrue(parse("x").hygiene)
+        self.assertFalse(parse("--no-hygiene", "x").hygiene)
+        self.assertTrue(parse("--hygiene", "x").hygiene)   # old scripts keep working
+
+    def _parse(self, argv):
+        """Run main()'s own parser on argv and return the namespace."""
+        orig = argparse.ArgumentParser.parse_args
+        captured = {}
+
+        class Stop(Exception):
+            pass
+
+        def spy(parser, *a, **k):
+            captured["args"] = orig(parser, argv)
+            raise Stop
+
+        with mock.patch.object(argparse.ArgumentParser, "parse_args", spy):
+            with self.assertRaises(Stop):
+                self.tpc.main()
+        return captured["args"]
+
+    def test_report_returned_over_http(self):
+        payload = {"sentences": [], "annotations": [], "sections": [],
+                   "hygiene": {"kept": 3, "dropped": 2,
+                               "dropped_by_reason": {"section": 2}}}
+
+        class Resp:
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+            def read(self): return json.dumps(payload).encode()
+
+        args = argparse.Namespace(cas_root=None, url=self.tpc.DEFAULT_URL)
+        report = {}
+        with mock.patch.object(self.tpc.urllib.request, "urlopen", lambda *a, **k: Resp()):
+            self.tpc._load_annotations({"identifier": "MaizeOA/x/x.tpcas"}, args,
+                                       hygiene_report=report)
+        self.assertEqual(2, report["dropped"])
+        self.assertEqual("3 shown, 2 filtered: 2 references/acknowledgments",
+                         self.tpc.format_hygiene_report(report))
 
 
 if __name__ == "__main__":

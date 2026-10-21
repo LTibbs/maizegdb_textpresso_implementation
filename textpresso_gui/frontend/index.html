@@ -30,12 +30,18 @@
     <div class="query-rows">
 
       <div class="query-row">
-        <label class="query-label" for="keywords">Keywords</label>
+        <label class="query-label" for="keywords">Keywords
+          <span class="info-bubble" tabindex="0" role="img" aria-label="Help: Keywords"
+                data-tooltip="Search for free-text words or phrases. Separate multiple terms with commas.">?</span>
+        </label>
         <input id="keywords" type="text" class="search-input" placeholder="e.g. anthocyanin biosynthesis, drought tolerance">
       </div>
 
       <div class="query-row">
-        <label class="query-label" for="categoryQuery">Categories</label>
+        <label class="query-label" for="categoryQuery">Categories
+          <span class="info-bubble" tabindex="0" role="img" aria-label="Help: Categories"
+                data-tooltip="Search for annotated genes and ontology terms (GO, PO, TO) rather than plain text, so results include matches tagged by these categories even if the exact word isn't in the text.">?</span>
+        </label>
         <div class="category-field">
           <div id="categoryBox" class="chip-input">
             <div id="categoryChips" class="chips"></div>
@@ -52,7 +58,10 @@
             </span>
             <label id="expandAncestorsLabel" hidden><input type="checkbox" id="expandAncestors"> Include ancestor (broader) ontology terms</label>
             <label id="expandDescendantsLabel" hidden><input type="checkbox" id="expandDescendants"> Include descendant (narrower) ontology terms</label>
-            <label id="relatedSynonymsLabel" hidden><input type="checkbox" id="relatedSynonyms"> Related gene synonyms</label>
+            <label id="relatedSynonymsLabel" hidden><input type="checkbox" id="relatedSynonyms"> Include related gene synonyms
+              <span class="info-bubble" tabindex="0" role="img" aria-label="Help: Related gene synonyms"
+                    data-tooltip="By default only exact, one-to-one gene names and synonyms are matched. Including related synonyms adds synonyms that are not one-to-one, e.g. ZmCCT10 has been used as a synonym for both cct1 and cct10.">?</span>
+            </label>
           </div>
         </div>
       </div>
@@ -102,7 +111,7 @@
       <div class="divider"></div>
 
       <div class="field scope-field">
-        <label for="searchIn">Search keywords in</label>
+        <label for="searchIn">Search in</label>
         <select id="searchIn">
           <option value="full_text" selected>Full text</option>
           <option value="title">Title</option>
@@ -114,12 +123,8 @@
           <option value="materials_and_methods">Materials and methods</option>
         </select>
         <div class="field-note">
-          Applies to keywords only &mdash; categories always match anywhere in the paper.
-          With a single section, matching sentences are taken from that section of each paper
-          (Title has none to show), and a search that also uses categories only considers the
-          top 200 papers for the keywords in that section.
         </div>
-        <div class="field-note">References and acknowledgments sections are excluded from search by default, to avoid matches on citations or funding boilerplate, but you can include them if desired:</div>
+        <div class="field-note">References and acknowledgments sections are excluded from search and full text search by default, but you can include them if desired:</div>
         <div class="checkbox-row">
           <label><input type="checkbox" id="includeReferences"> Include references section</label>
           <label><input type="checkbox" id="includeAcknowledgments"> Include acknowledgments section</label>
@@ -165,6 +170,8 @@
       <button type="button" id="exportJson" class="btn btn-outline btn-sm">Export JSON</button>
     </div>
   </div>
+
+  <div id="resultsNotes" class="field-note results-notes" hidden></div>
 
   <div id="resultsList" class="results-list"></div>
 

@@ -5868,3 +5868,166 @@ abstained (kept) on exactly the forms the revert brings back.
 - [ ] The `textpressoapi/casannot.py` mirror still lacks the 2026-10-14
   section repair (`repair_sections`), so server-side section drops differ from
   the CLI's. This was already the case; not changed here.
+
+---
+
+## Update log — 2026-10-21: italics index fixes, PDF italics builder, paginated search, GUI hygiene rollout
+
+### What was done
+
+#### `bin/jats_italics.py` — two correctness fixes + shared character-fold
+
+Two bugs found in the live index were fixed:
+
+1. **Wrong-paper esearch hits.** PMC's `[DOI]` search field also returns papers
+   that *cite* the target DOI (newest first). 77 of the 1,625 entries in the
+   2026-10-15 index had been built from someone else's paper. Fix: fetch up to
+   `MAX_CANDIDATES = 5` PMCIDs per DOI (`doi_to_pmcids()`), check each one's
+   own `<article-meta>` DOI via `article_doi()`, and use only the one that
+   matches. The old single-hit `doi_to_pmcid()` is kept as a convenience wrapper
+   but should not be used in the build.
+
+2. **Zero-italic-text abstention.** Some publishers deposit JATS with no
+   `<italic>` markup at all (bodies of 15–73 KB with zero italic tags). Without
+   a guard, those papers were indexed as "never italicised" for every form,
+   causing the rule to drop real gene mentions. Fix: if the body contains fewer
+   than `MIN_ITALIC_CHARS = 20` characters of italic text, the paper is left out
+   of the index entirely so the rule abstains. `pdf_italics.py` then fills those
+   gaps from the source PDFs.
+
+   Net JATS coverage after both fixes: **1,560 papers** (down from 1,627; the
+   delta is the 77 wrong-paper entries, minus a handful that now match on a
+   different PMCID candidate).
+
+3. **`fold_text()` — shared character normalisation.** The index keys must be
+   spelled the same way the CAS text spells forms, or lookups miss and the rule
+   abstains silently. Added `fold_text(text, pdf=False)` that mirrors the
+   ingest's character fold (`jats_text._map_char` / `PdfTextNormalizer.h`):
+   U+2010/U+2011 → `-`, soft hyphen dropped, non-BMP characters NFKC-folded.
+   The PDF path additionally drops zero-width characters and folds ligatures.
+   Both `jats_italics` and `pdf_italics` tokenise through this function. If the
+   ingest fold ever changes, all three must change together and the index must be
+   rebuilt.
+
+#### `bin/pdf_italics.py` — new builder (untracked, staged for this commit)
+
+New script that fills the italic index from source PDF font data (PyMuPDF) for
+accessions that have no JATS record. Key design decisions:
+
+- Reads the font flags of each text span; a span is italic if any glyph's font
+  reports `ItalicAngle != 0` **or** the font name contains `italic`/`oblique`.
+- Opaque typesetter fonts (`AdvP4041BD` and kin) that report `ItalicAngle 0`
+  even for their italic face are calibrated per paper from a small set of
+  "conventionally italic" seed words (Latin phrases, statistical symbols); if the
+  seed rate is above a threshold the paper is treated as having no reliable
+  italic signal and is left out of the index.
+- A paper with no detectable italic text at all is left **out** of the index
+  (never written as zeros), so the rule abstains rather than drops.
+- JATS wins where both sources exist; the PDF entry fills only the gap.
+- `--provenance-out` writes a per-accession source map (`jats` / `pdf` /
+  `none`) for audit.
+
+Measured against JATS on the 1,500 papers both cover: **98.0% agreement** on
+the zero/non-zero italic decision for non-exempt forms; **0.23% wrong-drop**
+rate. Combined JATS + PDF coverage: **2,888 of 3,299** MaizeOpenAccess papers.
+The remaining 411 are mostly 1980s–90s scanned backfiles with a Courier OCR
+layer; no italic signal exists to recover from them.
+
+#### `bin/tpc_search_combined.py` — paginated search past the 200-result API cap
+
+`search_documents` returns at most 200 results per call, but accepts a
+`since_num` offset. Added transparent pagination in `search()`:
+
+- If `count <= 200`, the existing single-call path is unchanged.
+- Otherwise: fire the first page and the total count (`get_documents_count`)
+  concurrently with two workers, then fetch all remaining pages in parallel
+  (up to `SEARCH_PAGE_WORKERS = 8`). Each page re-runs the Lucene search
+  server-side (~6 s); concurrent pages overlap. De-duplication by `identifier`
+  guards against the live server occasionally returning the same paper on two
+  adjacent pages.
+- Extracted `_search_page()` (single call) and `documents_count()` (new
+  `get_documents_count` wrapper) as helpers.
+- `--count` help text updated to document the paging behaviour.
+- `_load_annotations()` signature extended with `hygiene` / `hygiene_report`
+  keyword arguments so callers can override the per-call hygiene setting and
+  receive the drop summary without re-running the annotation.
+
+#### `textpresso_gui/backend/main.py` — hygiene rollout + large-search support
+
+- **Hygiene on by default.** `SearchRequest.hygiene` defaults to `True`; each
+  `/annotate` call forwards it and returns the drop summary in the response's
+  `hygiene` field (`kept`, `dropped`, `dropped_by_reason`, `summary` string).
+  The frontend's "Show unfiltered" toggle sends `hygiene=false`.
+- **Corpus remap.** The live API still returns identifiers under the old corpus
+  names (`MaizeOA`, `MaizeTest`, `MaizeTest100`). Added `_CORPUS_REMAP` so the
+  local CAS2 path finds files under `MaizeOpenAccess` without touching the
+  identifiers returned to the caller.
+- **`_load_annotations_with_retry()`** wraps the import and retries up to 4
+  times on transient connection errors, so a single dropped TCP connection
+  doesn't fail a multi-paper annotation batch.
+- **`MAX_RESULTS = 1000` / `MAX_CANDIDATES`** cap. `search()` pagination means
+  the GUI can now return more than 200 results. `MAX_RESULTS` is the hard cap
+  per search; `MAX_CANDIDATES` (default 2000, env-configurable) is how far into
+  the ranking the backend looks when it has to verify papers one-by-one (gene
+  category filter, section-scoped queries).
+- **`_take_verified()`** runs the per-paper check (e.g. `filter_gene_category_results`)
+  in parallel batches, stopping once `count` papers pass. This replaces the
+  previous "fetch all, then filter" approach that could block indefinitely on a
+  large corpus.
+- **`_gene_filter()`** calls `_take_verified` with the gene verification
+  function; `_search_with_categories()` calls it instead of calling
+  `filter_gene_category_results` directly.
+
+#### GUI frontend (`app.js`, `index.html`, `style.css`) — hygiene UI
+
+- Added per-annotation-panel hygiene report display: shows "N shown, M filtered:
+  K references/acknowledgments, …" below each annotation panel.
+- "Show unfiltered" toggle re-runs the annotation with `hygiene=false` and
+  replaces the panel's content.
+- Minor layout and style fixes for the filter report row.
+
+#### `CLAUDE.md` — brought up to date
+
+Updated the MaizeGDB Textpresso section with:
+- Correct JATS coverage numbers (1,560; previous 1,627 was before the
+  wrong-paper fix).
+- Full accounting of the italics gap and the PDF fallback path.
+- `fold_text()` documentation and the "change all three together" rule.
+- Hygiene rollout status (on by default since 2026-10; rollout note about
+  treating future default changes as breaking).
+- Pagination note for `search_documents`.
+
+#### Docs (`docs/ITALICS_RULE.md`, `docs/ONTOLOGY_BUILD.md`, `docs/TPC_API_GUIDE.md`, `docs/TPC_SEARCH_GUIDE.md`)
+
+- `ITALICS_RULE.md`: added the two `jats_italics.py` guards, the
+  `MIN_ITALIC_CHARS` threshold, the `MAX_CANDIDATES` DOI-verification step,
+  and the `fold_text()` requirement. Updated coverage figures.
+- `ONTOLOGY_BUILD.md`: minor reference fix.
+- `TPC_API_GUIDE.md` / `TPC_SEARCH_GUIDE.md`: pagination note; `--count` cap
+  lifted from 200 to `MAX_RESULTS`.
+
+#### Tests
+
+- `tests/test_annotation_hygiene.py`: extended with hygiene-report field checks
+  (verifies `kept`, `dropped`, `dropped_by_reason` keys in the returned dict).
+- `tests/test_tpc_search_combined.py`: new tests for `documents_count()`,
+  `_search_page()`, and the paginated `search()` path.
+- `tests/test_jats_italics.py` (untracked, staged): unit tests for
+  `fold_text()`, `article_doi()`, `doi_to_pmcids()`, and the
+  `MIN_ITALIC_CHARS` guard.
+- `tests/test_pdf_italics.py` (untracked, staged): unit tests for the PDF
+  italic builder, opaque-font calibration, and JATS-wins-over-PDF merge logic.
+
+### Remaining / not done
+
+- [ ] Re-annotate the corpus with the reverted OBO (`zmays_genes_20260708`) so
+  the restored 214 synonyms (`aba`, `co`, `no`, etc.) appear in live
+  annotations. The existing CAS2 files were annotated against 20260813.
+- [ ] Rebuild the JATS italic index with the two new guards (`--cache-dir` makes
+  this fast after the first run); rebuild the PDF index on top.
+- [ ] Rebuild the OBO class map (`build_class_map.py`) after OBO/index rebuild.
+- [ ] Redeploy the `agr_textpresso` sidecar with the new modules in the
+  Dockerfile `cp` list; set `TEXTPRESSO_ITALICS_INDEX` / `TEXTPRESSO_OBO_CLASS_MAP`.
+- [ ] Wire `tiers=` into `cas_annotate_server.py`.
+- [ ] `annotation_italics.coverage()` undercounts (≥3 threshold vs ≥1 in the
+  rule); fix the reporting if the discrepancy matters for decisions.

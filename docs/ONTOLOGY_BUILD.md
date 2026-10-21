@@ -201,7 +201,8 @@ kept, dropped = clean_annotations(
 ```
 
 `tiers=None` (the default) leaves behaviour exactly as it is today, so this
-ships dark and is enabled per request like `hygiene`. Memory cost of the index
+ships dark and is enabled per request, as `hygiene` was before it became
+the default. Memory cost of the index
 is the CSV itself — 23 MB on disk, ~180k distinct forms.
 
 ## Verify

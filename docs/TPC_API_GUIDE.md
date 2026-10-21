@@ -102,7 +102,14 @@ get wrong by guessing:
 - Every field in `query` is optional except `type` and `corpora` — omit keys
   you don't need rather than sending empty/null values.
 - `count` is the top-level max-results field (default used by the CLI
-  wrapper: 50; hard API max: 200).
+  wrapper: 50). One call returns at most 200; values of 200 or more, or 0,
+  all mean 200.
+- `since_num` (top level, default 0) is the offset into the ranked hits, so
+  results past the first 200 are fetched a page at a time (`since_num`
+  200, 400, ...). Every call re-runs the whole search (~6s on MaizeOA, no
+  cheaper for a small `count`), but concurrent calls run in parallel.
+  `get_documents_count` (same `query`, no `count`) gives the total.
+  `tpc_search_combined.search()` does this paging for any `count` above 200.
 - `accession` (DOI) values must have `/` replaced with `_`, e.g. search for
   `10.1007_s00425-012-1754-3` to retrieve DOI `10.1007/s00425-012-1754-3`.
 - `--category` in the CLI maps to `categories` (a list) here; each value must
