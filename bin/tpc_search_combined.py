@@ -146,6 +146,12 @@ def _load_module(name, rel_path):
 # Load only the CAS2 parsing library -- everything else this script needs is
 # defined below, so this file has no dependency on tpc_search.py.
 _ca = _load_module("casannot", "textpresso_classifiers/casannot.py")
+_hy = _load_module("annotation_hygiene", "textpresso_classifiers/annotation_hygiene.py")
+_it = _load_module("annotation_italics", "textpresso_classifiers/annotation_italics.py")
+# Loaded once. The italics index is ~1 MB for the 3,299-paper MaizeOpenAccess corpus
+# when built with --obo; the class map is ~98 KB.
+_ITALICS = _it.load_index(os.environ.get("TEXTPRESSO_ITALICS_INDEX", ""))
+_OBO_CLASS = _it.load_class_map(os.environ.get("TEXTPRESSO_OBO_CLASS_MAP", ""))
 
 
 # ---------------------------------------------------------------------------
@@ -559,12 +565,27 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False):
         elif not include_related:
             annotations = [a for a in annotations
                            if not a["ontology"].endswith("_RELATED")]
+        if getattr(args, "hygiene", False):
+            annotations, _dropped = _hy.clean_annotations(
+                annotations, sections,
+                ontology_view=getattr(args, "ontology_view", None),
+                section_types_at=_ca.section_types_at,
+                italics=(_it.for_paper(_ITALICS, identifier)
+                         if getattr(args, "italics", True) else None),
+                italic_rule=_it.never_italicised,
+                obo_class_of=_OBO_CLASS)
         return sentences, annotations, sections, False
 
     params = [("identifier", identifier)]
     params += [("ontology", o) for o in (ontology_filter or ())]
     if include_related:
         params.append(("related_synonyms", "1"))
+    # Over HTTP the sidecar owns hygiene; ask it rather than re-filtering here,
+    # so the CLI and the API can never disagree about what was dropped.
+    if getattr(args, "hygiene", False):
+        params.append(("hygiene", "1"))
+    if not getattr(args, "italics", True):
+        params.append(("italics", "0"))
     url = f"{_annotate_endpoint_url(args.url)}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url)
     if getattr(args, "api_key", None):
@@ -898,6 +919,15 @@ def main():
                      help="Output full sentence-level annotation as JSON")
     ann.add_argument("--full-text", action="store_true",
                      help="With --annotate-sentences: include unannotated sentences too")
+    ann.add_argument("--hygiene", action="store_true",
+                     help="apply the shared annotation hygiene layer: drop "
+                          "references/acknowledgments, per-span ancestors, "
+                          "case-mismatched abbreviation synonyms, and short "
+                          "never-italicised alias forms "
+                          "(see textpresso_classifiers/annotation_hygiene.py)")
+    ann.add_argument("--no-italics", dest="italics", action="store_false",
+                     help="skip the typography test inside --hygiene")
+    ann.set_defaults(italics=True)
     ann.add_argument("--related-synonyms", action="store_true",
                      help="Include annotations matched via RELATED synonyms "
                           "(requires Textpresso rebuilt with RELATED synonym indexing; "
