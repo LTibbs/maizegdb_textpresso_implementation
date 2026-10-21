@@ -180,3 +180,221 @@ See `sorghumbase_textpresso_implementation/docs/TEXTPRESSO_SORGHUM_RUNBOOK.md` f
 ### Legacy materials
 
 `wormbase_tools/` contains the original shell scripts from the WormBase C. elegans project that this codebase grew out of. They are not used for Sorghum work.
+
+## MaizeGDB Textpresso: annotation quality (hygiene, italics, tiers)
+
+Context for the MaizeGDB Textpresso work across this repo and `agr_textpresso`.
+Everything below was measured, not assumed; where a number appears, it came
+from running something against the live corpus.
+
+### Repos and where code lives
+
+| repo | holds |
+|---|---|
+| `LTibbs/maizegdb_textpresso_implementation` | `bin/` CLI tools, `textpresso_classifiers/casannot.py`, `textpresso_gui/` (FastAPI backend + JS frontend), `docs/` |
+| `LTibbs/agr_textpresso`, branch `maizegdb/maize-textpresso-fixes` | the Textpresso fork: `textpressoapi/` (C++ search API + Python sidecars), `libtpc/` (C++ Lucene/CAS), `.data/obofiles4production/` (the OBO files) |
+
+Branch name contains a slash; raw fetches need `maizegdb%2Fmaize-textpresso-fixes`.
+
+### The one architectural fact that matters
+
+**All three consumers funnel annotation parsing through `casannot.py`:**
+
+- `textpressoapi/cas_annotate_server.py` -> `/v1/textpresso/annotate` (public API)
+- `bin/tpc_search_combined.py` -> `_load_annotations()` (CLI), module alias `_ca`
+- `textpresso_gui/backend/main.py` -> imports the CLI module as `tpc` via
+  importlib, calls `tpc._load_annotations()` and `tpc._ca.*`
+
+So annotation-quality work goes in **one** place next to `casannot.py` and is
+called from the two load paths. The GUI needs only a default and a toggle —
+never its own filtering logic. Do not implement the same rule twice.
+
+What this does **not** reach: `search_documents` results. Those come from the
+Lucene index, which already contains the matches. Changing which documents a
+`--category` query returns needs either per-hit verification (one `/annotate`
+round-trip per hit, the trick `filter_gene_category_results()` already uses) or
+a lexicon change plus re-index.
+
+### Live service
+
+- `https://textpresso.maizegdb.org/v1/textpresso/` — `api/`, `annotate/`, `category_search/`
+- Corpus: **`MaizeOpenAccess`** (3,299 papers), which replaces and supersedes
+  `MaizeOA`, `MaizeTest` and `MaizeTest100` — it contains every paper ingested
+  in those three, and more. Use it for everything new. As of 2026-10-21 the
+  live server still lists only the three old corpora; `MaizeOpenAccess` takes
+  over there once it is indexed and the old three are removed.
+- Accessions are DOIs with `/` replaced by `_` (`10.1093_jxb_erad297`)
+- Gene annotations: `ontology=MAIZE_GENES` is **EXACT only**;
+  `MAIZE_GENES_RELATED` is a separate channel. Requesting only the first
+  silently measures half the system.
+- `search_documents` caps at 200 results, no offset/cursor, no date filter
+- `/annotate` returns the **full** sentence list, so concatenating
+  `sentences[].text` reconstructs the ingested body text
+
+### Hard-won rules — do not relearn these
+
+1. **Gate, do not delete.** Over 90,447 mentions: retaining the low-prior class
+   and gating at confidence >= 0.4 keeps 92.4% of volume at 49.2%
+   curator-confirmation and retains **99.6%** of curator-confirmed mentions;
+   deleting the class keeps 88.7% / 49.7% / **96.6%**. Deletion is irreversible
+   at the index level — you cannot score a mention that was never matched.
+
+2. **Provenance sets the prior, never the verdict.** `locus_synonym` is a mixed
+   field: it carries OBO-generation fragments (`promoter` on `ubi1`) *and*
+   genuine curator-recorded literature aliases (`ZmVPP1` for `vpp5`, `ZmAUX1`
+   for `aic1`). Every entry was curated from literature. Arguments of the form
+   "it came from `locus_synonym`, so it is safe to remove" are invalid and have
+   been rejected. Settle recall questions with **textual evidence**: the
+   sole-evidence test (form occurs in text + gene is relevant + no retained
+   surface form of that gene appears anywhere), run both against
+   curator-recorded genes and against papers where the gene is *not* curated.
+
+3. **Authors use non-unique identifiers and we cannot refuse them.** `CO` is a
+   curated abbreviation for both `col11` (`ncsu6(CO)`, `CONSTANS-LIKE`,
+   `ZmCCT9`) and `cct1` (`CO CO-LIKE TIMING OF CAB1 protein domain1`). `PER`
+   spans 18 genes, `HCT` 12. Ambiguity gets ranked, not excluded.
+
+4. **Check the current OBO before calling anything a mis-attribution.** A
+   previous session claimed `BAM`/`amyb2`, `CO`/`col11` and `PR`/`prp16` were
+   OBO errors. All three were wrong: `prp16` genuinely carries
+   `"pathogenesis-related protein PR-1"`, `"ZmPR1"`, `"ZmPR-1-8"` — it *is*
+   pathogenesis-related protein 16, not the PRP16 splicing factor — and the
+   standalone forms are among the 214 generic synonyms `zmays_genes_20260813.obo`
+   removed.
+
+   **Production gene OBO (2026-10-20): `zmays_genes_20260708.obo`**, with the
+   2026-08-07 EXACT→RELATED case-collision fix applied (byte-identical to
+   commit `a131028`). The 20260813 file is kept at
+   `.data/backups/obo-20261020/` in `agr_textpresso`. This deliberately restores
+   the 214 removed synonyms (`aba`, `co`, `no`, `as`, `bam`, `sam`, ...) so
+   they are gated by the hygiene layer instead of deleted (rule 1). The
+   italics index and class map must be built against the same OBO, or those
+   restored forms are not in the index and the rule abstains on them.
+
+5. **Curator-confirmation is not precision.** Curators record genes of
+   curatorial interest, not every gene validly mentioned. Between-group
+   differences are trustworthy; absolute levels are not. A feature that detects
+   gene-hood rather than curatorial relevance must be validated against a
+   different label — local lexical cues show nothing against curator
+   confirmation (69.5% vs 68.6%) but a lot against italicisation (78.7% vs 38.4%).
+
+6. **Italics is a negative test, gene ontologies only, and abstains.** GO/PO/TO
+   concept names are not italicised. A high italic rate proves nothing (`et`,
+   `al` and statistical `p`/`n`/`r` are italicised). The adopted filter is the
+   strict-zero rule with both exemptions — see `docs/ITALICS_RULE.md`. It abstains
+   when the form does not occur in the body at all, and abstention must never be
+   read as zero. Confidence scoring was evaluated and **not** adopted: it landed
+   within 1.3 points of the rule's precision at the same retention, for much
+   more machinery. The fitted model lives in `maize_gene_context.py`, which is
+   not in either repo (it was not part of the 2026-10-20 handoff).
+
+   The two exemptions compose and both are needed: the EXACT channel (which *is*
+   the OBO synonym scope, 99.5% agreement) carries 66.2% curator confirmation
+   against RELATED's 24.9%; the `registered`/`identifier` class exemption then
+   catches the residue where a registered name arrives via the RELATED channel
+   (the `pop1` case).
+
+   **Reference and acknowledgment sections must be excluded when counting
+   italics.** Counting cited-paper titles adds non-italic occurrences to forms
+   that are italicised wherever they are genuinely used, which makes the rule
+   fire on real gene mentions. `jats_italics.py` does this; an earlier build did
+   not.
+
+7. **Short registered symbols cannot be deleted** — they are real genes.
+   Curator-confirmation varies by symbol, not by length: `p2` 34.0%, `c1` 54.9%,
+   `vp5` 54.7% against `mn7` 100%, `pr1` 97.4%, `gt1` 96.0%. Under current
+   nomenclature a registered symbol almost always contains a digit, which is a
+   usable first-pass morphology filter. Match short all-caps forms
+   **case-sensitively** in their original OBO capitalisation.
+
+8. **PDF-only ingest is the upstream cause of several problems.** `pdf2tpcas`
+   destroys italics, p-value exponent signs (474 affected matches in 102
+   papers), `q <= 0.05` (becomes `q # 0.05`), hyphenation across line breaks
+   (470 occurrences) and table structure. Every MaizeOpenAccess paper is open
+   access, but PMC efetch returns a JATS `<body>` for only **1,627 of 3,299**:
+   some have no PMC record, and publishers such as Genetics, PNAS and
+   Bioinformatics block full-text XML download. A JATS ingest path would fix
+   all of it at once for the covered papers; the italics sidecar is a bridge,
+   not the destination.
+
+### Shared modules (drop-in, no framework)
+
+Place beside `casannot.py` in **both** `textpresso_classifiers/` (CLI) and
+`textpressoapi/` (server):
+
+- `annotation_hygiene.py` — `clean_annotations()` returns `(kept, dropped)` with
+  a reason code per drop. Kept import-free: callers pass `section_types_at` and
+  `italic_rule` in. The abbreviation case check reads original-case spellings
+  from `category_index.build_index()["surface_forms"]` (records drop the case),
+  fires only when every stored spelling is itself abbreviation-cased (`Ltd` vs
+  `LTD` drops; `Root` vs `root` is sentence case and stays), and never applies
+  to `MAIZE_GENES*` — the gene OBO stores registered symbols in lowercase, so
+  `HAK5`/`TIR1` would otherwise be dropped. Gene mentions are the italics
+  rule's job.
+- `annotation_italics.py` — per-paper italic lookup plus `never_italicised()`,
+  the adopted rule, and `load_class_map()`.
+- `annotation_tiers.py` — `TierIndex.from_csv()` over `match_dictionary.csv`
+  plus `tier_rule()`, the injectable gate for the four-tier match-string policy
+  (T1 must match the stored case, T2 needs sentence context, T3 never entered
+  the dictionary). Tiers are frozen at build time, so this module has no
+  third-party imports. See `docs/ONTOLOGY_BUILD.md`.
+- `bin/build_match_dictionary.py` — builds `match_dictionary.csv` and the eleven
+  `*_annot.obo` files from the ontology collection. Build-time only; needs
+  `wordfreq`. Re-run it after any collection refresh, and remember ChEBI comes
+  from the **full** `chebi.obo` — the lite file in the collection has zero
+  synonyms, so a build against it silently loses every chemical name.
+- `bin/jats_italics.py` — builds the italic index from PubMed Central JATS,
+  excluding references/acknowledgments.
+- `bin/build_class_map.py` — builds the ~98 KB surface-form provenance map, so
+  the server need not parse a 10.5 MB OBO at startup. **Rebuild it with the
+  italic index whenever the OBO changes**: unlisted forms resolve to `unknown`,
+  which is not exempt, so a stale map makes the rule more aggressive.
+
+NCBI allows 3 requests/second without an API key and each paper costs two
+(esearch + efetch). The limiter in `jats_italics.py` exists because exceeding it
+returns HTTP 429, which an earlier version swallowed in a bare `except`,
+producing a silent 96% miss rate that looked exactly like "no PMC record".
+
+Rebuild the index after a corpus refresh (`bin/` is this repo, `.data/` is
+`agr_textpresso`; run from the latter with `$IMPL` pointing here):
+
+```bash
+python3 $IMPL/bin/jats_italics.py --accession-file maizeopenaccess_accessions.txt \
+    --obo .data/obofiles4production/zmays_genes_20260708.obo \
+    --out .data/italics/MaizeOpenAccess.json  # ~1 MB, ~65 min for 3,299 papers
+python3 $IMPL/bin/build_class_map.py \
+    --obo .data/obofiles4production/zmays_genes_20260708.obo \
+    --out .data/italics/obo_short_form_classes.json   # ~98 KB
+```
+
+`--obo` pruning is what keeps the italic index at 1 MB instead of 37 MB.
+
+Server deployment: the `agr_textpresso` Dockerfile copies an **explicit list**
+of `textpressoapi/*.py` files into `/usr/local/textpresso/cas_annotate/`. Any
+new module `cas_annotate_server.py` imports must be added to that `cp` line, or
+the sidecar dies on import. The server reads `TEXTPRESSO_ITALICS_INDEX` /
+`TEXTPRESSO_OBO_CLASS_MAP` (default `/data/textpresso/italics/...`, i.e.
+`.data/italics/` on the host). The eleven-channel build outputs
+(`*_annot.obo`, `match_dictionary.csv.gz`) live in `.data/annotation_build/`,
+deliberately **not** in `obofiles4production/`: `tpso` globs every `.obo`
+there, so moving them in is the re-index step, not a file copy.
+
+### Rollout convention
+
+Default the hygiene layer **off** (`TEXTPRESSO_HYGIENE_DEFAULT=0`) for one
+release, announce, then flip — turning it on changes what existing published API
+scripts receive. Always surface the drop counts to curators ("96 shown, 66
+filtered — 42 references, 23 broader terms, 1 case mismatch") rather than
+silently returning fewer rows, and keep the opt-out so borderline mentions stay
+inspectable. For a curation database the borderline mentions are the ones a
+curator needs to see.
+
+### Testing against the live API
+
+```bash
+python3 bin/tpc_search_combined.py --list-corpora
+python3 bin/tpc_search_combined.py -c MaizeOpenAccess --type document "anthocyanin" --count 3 --format json
+curl -s -G "https://textpresso.maizegdb.org/v1/textpresso/annotate" \
+  --data-urlencode "identifier=MaizeOpenAccess/10.1093_jxb_erad297/10.1093_jxb_erad297.tpcas" \
+  --data-urlencode "ontology=MAIZE_GENES" --data-urlencode "hygiene=1" | jq '.hygiene'
+```
