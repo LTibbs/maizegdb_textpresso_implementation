@@ -471,8 +471,15 @@ def get_annotate(
     ontology: Optional[List[str]] = Query(default=None),
     related_synonyms: bool = False,
     exclude_sections: Optional[List[str]] = Query(default=None),
+    # Off until the frontend has its "show unfiltered annotations" toggle and
+    # filter report, so curators are never shown fewer rows with no way back.
+    hygiene: bool = False,
+    italics: bool = True,
 ):
-    args = argparse.Namespace(cas_root=CAS_ROOT, url=tpc.DEFAULT_URL)
+    # hygiene/italics are applied inside tpc._load_annotations (local CAS2) or by
+    # the sidecar (HTTP); the GUI carries no filtering logic of its own.
+    args = argparse.Namespace(cas_root=CAS_ROOT, url=tpc.DEFAULT_URL,
+                              hygiene=hygiene, italics=italics)
     ontology_filter = set(ontology) if ontology else None
     sentences, annotations, sections, _ = tpc._load_annotations(
         {"identifier": identifier}, args, ontology_filter=ontology_filter,
@@ -484,6 +491,12 @@ def get_annotate(
     return {
         "identifier": identifier,
         "ontology_summary": tpc._ca.summarize_by_ontology(annotations),
+        "hygiene": {
+            "kept": len(annotations),
+            "enabled": hygiene,
+            "italics": italics,
+            "excluded_sections": sorted(exclude_sections or ()),
+        },
     }
 
 
@@ -495,8 +508,10 @@ def get_annotate(
 # shown is exactly what was ingested. TEXTPRESSO_METADATA_DIR overrides the
 # directory. Keyed by DOI in Textpresso's accession form ("/" -> "_",
 # lowercased) plus PMID; every CSV is merged into one lookup, since the same
-# paper can appear in several corpora (MaizeTest is a superset of
-# MaizeTest100) and only some of those rows carry an abstract. Loaded once on
+# paper can appear in several corpora and only some of those rows carry an
+# abstract. MaizeOpenAccess_papers.csv covers every paper of the superseded
+# MaizeOA/MaizeTest/MaizeTest100 corpora, so their identifiers still resolve
+# while the live server serves them. Loaded once on
 # first use; a paper with no matching row just gets no abstract.
 METADATA_DIR = Path(os.environ.get(
     "TEXTPRESSO_METADATA_DIR",
@@ -1133,7 +1148,7 @@ def _has_local_cas(identifier: str) -> bool:
     """Whether /api/document can serve this paper (its CAS2 file is under CAS_ROOT).
 
     Not every searchable corpus is in every local CAS2 tree (on the dev box
-    only MaizeOA is), so the search page only offers the viewer where it
+    only MaizeOpenAccess is), so the search page only offers the viewer where it
     will actually open.
     """
     if not CAS_ROOT:
