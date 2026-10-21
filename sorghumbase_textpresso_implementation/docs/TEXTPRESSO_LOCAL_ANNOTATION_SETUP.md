@@ -76,7 +76,7 @@ Consequences:
    `/data/textpresso/obofiles4production/`. As of 2026-09 that is:
 
    ```
-   go.obo   po.obo   to.obo   zmays_genes_20260813.obo      (~48 MB total)
+   go.obo   po.obo   to.obo   zmays_genes_20260708.obo      (~48 MB total)
    ```
 
    Ask them to also send the exact `ontologymembers` list so you can pass it
@@ -86,7 +86,7 @@ Consequences:
    # server operator runs, against the running container:
    docker exec <server-container> psql -At -d www-data \
      -c "select string_agg(list, ',' order by list) from ontologymembers;"
-   # e.g. -> go,po,to,zmays_genes_20260813
+   # e.g. -> go,po,to,zmays_genes_20260708
    ```
 
 2. **(Optional) a PostgreSQL dump** — makes first startup fast and removes any
@@ -247,7 +247,7 @@ From `~/maizegdb_textpresso_implementation`:
 scripts/process_batch.sh \
   -c SorghumBase \
   -s ~/incoming/sorghum_pdfs_2026_09 \
-  -O go,po,to,zmays_genes_20260813 \
+  -O go,po,to,zmays_genes_20260708 \
   -P 1
 ```
 

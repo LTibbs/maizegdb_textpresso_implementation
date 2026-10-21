@@ -31,7 +31,7 @@
 #   -t MODE           Tokenizer mode: 4 (default, enables section-scoped
 #                     search) or 1 (simpler, no section detection).
 #   -O LIST           Expected `ontologymembers` list, comma-separated and
-#                     sorted (e.g. go,po,to,zmays_genes_20260813). If given,
+#                     sorted (e.g. go,po,to,zmays_genes_20260708). If given,
 #                     the run aborts unless the local DB matches exactly.
 #                     This is the ontology-parity guard — get the value from
 #                     the server operator.

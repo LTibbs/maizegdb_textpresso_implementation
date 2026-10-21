@@ -5727,3 +5727,144 @@ accession across corpora.
 
 **Not done:** not indexed locally or on the server. The GUI still defaults
 to `MaizeOA`, and its local CAS-2 lookups point at `tpcas-2/MaizeOA`.
+
+---
+
+## Update log — 2026-10-20: annotation hygiene layer, italics rule, tiered ontology build; gene OBO reverted to `zmays_genes_20260708.obo`
+
+Implemented the two handoff bundles (`textpresso_handoff.tar.gz`,
+`annotation_build_outputs.tar.gz`) across both repos, and reverted the
+production gene OBO. Everything is **uncommitted** in both working trees,
+pending review. Background and rules: `CLAUDE.md` (new "annotation quality"
+section), `docs/ITALICS_RULE.md`, `docs/ONTOLOGY_BUILD.md`.
+
+### What landed where
+
+| | this repo | `agr_textpresso` (`maizegdb/maize-textpresso-fixes`) |
+|---|---|---|
+| shared modules | `textpresso_classifiers/annotation_{hygiene,italics,tiers}.py` | byte-identical copies in `textpressoapi/` |
+| call sites | `bin/tpc_search_combined.py` (`--hygiene`, `--no-italics`); GUI `/api/annotate` (`hygiene`, `italics`) | `cas_annotate_server.py` (`hygiene`, `italics`, `exclude_sections`; default from `TEXTPRESSO_HYGIENE_DEFAULT=0`) |
+| builders | `bin/jats_italics.py`, `bin/build_class_map.py`, `bin/build_match_dictionary.py` | — |
+| data | — | `.data/italics/{MaizeOA.json,obo_short_form_classes.json}`, `.data/annotation_build/` (11 `*_annot.obo`, `match_dictionary.csv.gz`, `build_report.json`) |
+| tests | `tests/test_annotation_hygiene.py` (13) | `test_category_index.py` +1 (31 total) |
+
+Hygiene is **off by default everywhere** (API, CLI, GUI), per the rollout
+convention. Tier gating ships dark (`tiers=None`) and is not wired into the
+server yet.
+
+### Deviations from the handoff, and why
+
+1. **Dockerfile.** The image copies an explicit list of `textpressoapi/*.py`
+   into `/usr/local/textpresso/cas_annotate/`. The handoff did not add the new
+   modules, so the patched `cas_annotate_server.py` would have died on
+   `import annotation_hygiene`. Added all three to the `cp` line.
+2. **Abbreviation case check never fired on synonyms.**
+   `OntologyView.from_category_index` read `record["synonyms"]`, but
+   `category_index` records are `{id, name, category, ontology}` only. So
+   `known_forms("kit")` was empty, and fix 2 (`Kit`/`Ltd`) did nothing on the
+   server. `build_index()` now also returns `surface_forms` (lowercase →
+   original-case names and synonyms; records unchanged), and the view reads it.
+3. **The case check dropped real genes.** Even with only names available, it
+   dropped `HAK5`, `TIR1`, `CBL10`, `EMP32`, `ARF2`/`ARF3` (several EXACT)
+   because the gene OBO stores registered symbols lowercase. Now:
+   - skips `MAIZE_GENES*` (`CASE_CHECK_EXEMPT_ONTOLOGIES`); genes are the
+     italics rule's job, and the check was only ever measured on GO/PO/TO;
+   - fires only when every stored spelling is abbreviation-cased. Without
+     this, sentence-case `Root` (stored `root`) was dropped 8× in one paper.
+
+   Over a 12-paper sample the check now drops only `Ltd`→`LTD` (35–55 per
+   paper), `Hao`→`HAO`, `Ser`→`SER` (GO smooth ER, not serine) and `Ca`→`CA`.
+4. **GUI defaults.** The patch defaulted GUI `hygiene=True` and forced
+   `exclude_sections` to references/acknowledgments when none were sent. That
+   overrides a user who deliberately clears the exclusions, and there is no
+   frontend toggle yet to get filtered rows back. Kept `hygiene=False` and
+   `exclude_sections=None` until the frontend change (handoff step 5) lands.
+5. **Handoff `CLAUDE.md`** was appended as a section of the existing root
+   `CLAUDE.md`, not swapped in. Rule 4 was rewritten for the OBO revert.
+   `ITALICS_RULE.md` and `ONTOLOGY_BUILD.md` went to `docs/`.
+
+### Gene OBO revert
+
+- `Zmays_genes_20260708.obo` as supplied is the **original** file from
+  `8b318b4` (identical except for CRLF line endings). It does not have the
+  2026-08-07 EXACT→RELATED case-collision fix. Decision: ship 20260708 **with**
+  the fix. Re-ran `scripts/fix_obo_synonym_exactness.py` on the supplied file:
+  1,665 + 1 (`bzip`) lines demoted, output byte-identical to `a131028`'s file
+  (sha1 `ed06621d…`).
+- Installed as `.data/obofiles4production/zmays_genes_20260708.obo`.
+  `ontology.conf` now points at it.
+- `zmays_genes_20260813.obo` kept as backup at
+  `.data/backups/obo-20261020/`, outside `obofiles4production/` because `tpso`
+  globs every `.obo` there (2026-08-13 entry).
+- Why revert: rule 1, gate rather than delete. The 214 synonyms 20260813
+  removed come back, and the hygiene layer decides per mention instead.
+
+### Italics data rebuilt against the 20260708 OBO
+
+The shipped `obo_short_form_classes.json` and `italics_index_body.json` were
+pruned to 20260813 forms. Against 20260708 the class map gains **39 short
+alias forms** (`aba`, `co`, `no`, `as`, `bam`, `sam`, `late`, `red`, `mrna`,
+...), and **none** of them were in the shipped index. The rule would have
+abstained (kept) on exactly the forms the revert brings back.
+
+- Class map: 5,419 forms (3,675 registered, 1,744 alias); was 5,380.
+- Italics index: `jats_italics.py` over all 3,299 accessions in
+  `tpcas-2/MaizeOA` of the 2026-10-15 snapshot. Took ~65 min at 2.9 req/s,
+  946 KB. Covers **1,627 papers** (was 334). On the 334 shared papers it
+  agrees with the shipped index on all 9,117 shared forms.
+- The 1,672 misses are real, not rate-limiting. In a 25-paper sample, 8 have
+  no PMC record. The rest are in PMC, but efetch returns "The publisher of
+  this article does not allow downloading of the full text in XML form"
+  (checked: Genetics, PNAS, Bioinformatics). So "JATS exists for every
+  MaizeOA paper" (CLAUDE.md rule 8) is not true via efetch. A different route
+  (PMC OA service / BioC) would be needed for those.
+- The restored forms are never italic in almost every paper that has them,
+  e.g. `aba` 312/318 papers, `no` 1,429/1,434, `as` 1,606/1,615,
+  `co` 472/487, `red` 911/948. So the rule will gate them once they are
+  matched.
+
+### Verification
+
+- Handoff checks reproduce. `10.1007_s00425-023-04260-7`: `MYB` dropped
+  `not_italicised:0/5`, `bHLH` 0/2, `wd40`/`pop1` exempt. `10.1002_tpg2.70101`:
+  no italics drops. Server off/on 667 → 471 annotations. The redacted
+  (restricted-paper) payload keeps the `hygiene` field.
+- `annotation_tiers.py` demo on the shipped dictionary: 190,208 strings,
+  `{'T0': 186242, 'T1': 3640, 'T2': 326}`, and the expected `ABA`/`aba`/`water`/
+  `root`/`rice` verdicts. All 11 `*_annot.obo` parse with `pronto`.
+- 102-paper sample, gene annotations only, with the new data: 16,770
+  annotations; 7,932 dropped as references/acknowledgments and 422 as
+  never-italicised (top: `myb` 75, `bhlh` 51, `fad` 33, `bzip` 29, `gst` 27).
+
+### Not done / next
+
+- [ ] **The OBO revert has no effect until re-annotation.** The existing CAS2
+  (and the 2026-10-15 `MaizeOpenAccess` run) were annotated with 20260813,
+  so `aba`/`co`/`no` appear in **zero** sample annotations today. Needs the
+  usual `tpso` swap (drop the `*_20260813_0` tables; 2026-08-13 procedure) plus
+  re-annotate and re-index.
+- [ ] Rebuild the image (Dockerfile change) and redeploy the sidecar. Set
+  `TEXTPRESSO_ITALICS_INDEX` / `TEXTPRESSO_OBO_CLASS_MAP` if `.data` is not
+  mounted at `/data/textpresso`.
+- [ ] Frontend "show unfiltered annotations" toggle and filter report
+  (handoff step 5), then flip the GUI default. The GUI's local-CAS2 path still
+  discards the drop list; only a `kept` count is returned.
+- [ ] Wire `tiers=` into `cas_annotate_server.py`, which needs a
+  `sentence_at`. Note `casannot.sentence_text_at`, referenced in
+  `ONTOLOGY_BUILD.md`, does not exist in either `casannot.py`.
+- [ ] `refresh_annotation_build.patch` targets
+  `maize-ontology-collection/scripts/refresh_ontologies.py`, which is not in
+  either repo. Not applied.
+- [ ] `maize_gene_context.py` (the rejected confidence model) is referenced in
+  the docstrings but was not in the bundle.
+- [ ] `annotation_italics.coverage()` counts a form as "with italic data" only
+  at ≥3 occurrences, while `never_italicised()` judges from ≥1. The reported
+  coverage understates what the rule acts on.
+- [ ] Review digit-bearing alias forms the rule drops (`pif4`, `myc2`, `gh3`,
+  `c4h`, `tch4`). Probably heterologous (Arabidopsis) mentions, but worth a
+  look before the default flips.
+- [ ] The ITALICS_RULE/CLAUDE measurements were taken against 20260813;
+  re-measure on 20260708 after re-annotation.
+- [ ] The `textpressoapi/casannot.py` mirror still lacks the 2026-10-14
+  section repair (`repair_sections`), so server-side section drops differ from
+  the CLI's. This was already the case; not changed here.

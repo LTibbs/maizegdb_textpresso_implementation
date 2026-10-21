@@ -164,10 +164,11 @@
     }
   }
 
-  // Default to the corpora that have been processed locally (only MaizeOA so
-  // far -- the others still need Textpresso run on them). Falls back to all
-  // corpora if none of the defaults exist on this server.
-  const DEFAULT_CORPORA = ["MaizeOA"];
+  // Default to MaizeOpenAccess, which supersedes MaizeOA, MaizeTest and
+  // MaizeTest100 (it holds every paper from those three, and more). Falls back
+  // to all corpora if none of the defaults exist on this server -- e.g. a
+  // server that has not indexed MaizeOpenAccess yet.
+  const DEFAULT_CORPORA = ["MaizeOpenAccess"];
 
   function applyCorpusDefaults() {
     const allBox = $("corpusAll");

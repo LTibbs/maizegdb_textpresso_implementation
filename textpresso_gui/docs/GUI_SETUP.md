@@ -129,11 +129,11 @@ The viewer reads only the local CAS2 file (`CAS_ROOT`), parsed by
 So without a local CAS2 tree there is no viewer: `/api/document` returns
 503, and the search page hides the link. The link is also hidden for papers
 whose corpus isn't in the local tree (on the dev box that means everything
-except MaizeOA).
+except MaizeOpenAccess).
 
 `casdoc.py` handles both CAS layouts:
 
-- **`tai`** (MaizeOA): structure is stored in separate page, dblbrk and
+- **`tai`** (MaizeOpenAccess): structure is stored in separate page, dblbrk and
   image elements.
 - **`pdf`** (older corpora): structure is stored as inline `<_pdf …/>` tags,
   which are stripped and all offsets remapped. This is covered by
