@@ -26,7 +26,7 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse, json, re, sys, threading, time, urllib.error, urllib.parse, urllib.request
+import argparse, collections, json, os, re, sys, threading, time, unicodedata, urllib.error, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 
 EUTILS = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
@@ -48,6 +48,37 @@ SKIP_SEC = re.compile(
 #: digits, or any token containing a digit. Deliberately permissive -- the
 #: consumer decides which of these are in the OBO.
 TOKEN_RE = re.compile(r"(?<![A-Za-z0-9])([A-Za-z][A-Za-z0-9\-/]{0,24})(?![A-Za-z0-9])")
+
+#: The ingest's character fold, applied before tokenising so index keys are
+#: spelled the way the CAS text (and so the annotation) spells them. Mirrors
+#: jats_text._map_char and PdfTextNormalizer.h in the jats-ingest work: without
+#: it, `PYR1‐LIKE` splits into `pyr1` + `like` here while the CAS says
+#: `pyr1-like`, the lookup misses, and the rule abstains on a form it could judge.
+#: Both paths: U+2010/U+2011 hyphens -> "-", soft hyphen dropped, characters
+#: outside the BMP NFKC-folded (mathematical italic letters -> plain).
+_FOLD = {0x2010: "-", 0x2011: "-", 0x00AD: None}
+#: PDF path only: zero-width characters, BOM and replacement characters dropped;
+#: ligatures (U+FB00-FB06) NFKC-folded with the non-BMP characters below.
+_FOLD_PDF = {**_FOLD, **{c: None for c in (
+    0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0x2060, 0x2061, 0x2062, 0x2063,
+    0x2064, 0xFEFF, 0xFFFD, 0xFFFE, 0xFFFF)}}
+_NFKC_RE = re.compile("[\U00010000-\U0010FFFF]")
+_NFKC_PDF_RE = re.compile("[ﬀ-ﬆ\U00010000-\U0010FFFF]")
+_PRIVATE_USE_RE = re.compile("[-\U000F0000-\U0010FFFF]")
+
+
+def _nfkc_bmp(m):
+    folded = unicodedata.normalize("NFKC", m.group(0))
+    return "".join(c if ord(c) <= 0xFFFF else "�" for c in folded)
+
+
+def fold_text(text: str, pdf: bool = False) -> str:
+    """Apply the ingest's character fold (see _FOLD). pdf=True adds the
+    PDF-only rules: ligatures, zero-width characters and private-use glyphs."""
+    if pdf:
+        text = _PRIVATE_USE_RE.sub("", text).translate(_FOLD_PDF)
+        return _NFKC_PDF_RE.sub(_nfkc_bmp, text)
+    return _NFKC_RE.sub(_nfkc_bmp, text.translate(_FOLD))
 
 
 def accession_to_doi(acc: str) -> str:
@@ -103,12 +134,33 @@ def _get(url: str, timeout: int = 90, attempts: int = 4) -> bytes:
     raise RuntimeError("giving up after %d attempts: %r" % (attempts, last))
 
 
-def doi_to_pmcid(doi: str, email: str | None = None) -> str | None:
-    params = {"db": "pmc", "term": f'"{doi}"[DOI]', "retmode": "xml"}
+#: A JATS body with less italic text than this is treated as carrying no
+#: italic markup at all (some publishers deposit none -- 15-73 KB bodies with
+#: zero <italic> tags, while the PDF italicises every gene name) and abstains,
+#: so pdf_italics.py fills it. Same threshold as pdf_italics.MIN_ITALIC_CHARS.
+MIN_ITALIC_CHARS = 20
+
+#: PMC candidates tried per DOI. esearch's [DOI] field also returns papers that
+#: merely cite the DOI, newest first: 77 of 1,625 accessions in the 2026-10-21
+#: build had been indexed from someone else's paper. Each candidate is checked
+#: against the DOI in its own <article-meta>.
+MAX_CANDIDATES = 5
+
+
+def doi_to_pmcids(doi: str, email: str | None = None) -> list[str]:
+    """-> PMC ids esearch associates with doi. Not all of them ARE that paper;
+    see MAX_CANDIDATES and article_doi()."""
+    params = {"db": "pmc", "term": f'"{doi}"[DOI]', "retmode": "xml",
+              "retmax": str(MAX_CANDIDATES)}
     if email:
         params["email"] = email
     raw = _get(EUTILS + "esearch.fcgi?" + urllib.parse.urlencode(params)).decode()
-    ids = re.findall(r"<Id>(\d+)</Id>", raw)
+    return re.findall(r"<Id>(\d+)</Id>", raw)
+
+
+def doi_to_pmcid(doi: str, email: str | None = None) -> str | None:
+    """First esearch hit, unverified. Prefer build(), which checks the DOI."""
+    ids = doi_to_pmcids(doi, email)
     return ids[0] if ids else None
 
 
@@ -117,6 +169,58 @@ def fetch_jats(pmcid: str, email: str | None = None) -> bytes | None:
     if email:
         params["email"] = email
     return _get(EUTILS + "efetch.fcgi?" + urllib.parse.urlencode(params))
+
+
+def article_doi(xml_bytes: bytes) -> str | None:
+    """The DOI the article declares for itself (front/article-meta), lowercased."""
+    root = ET.fromstring(xml_bytes)
+    for article in root.iter("article"):
+        meta = article.find("front/article-meta")
+        if meta is None:
+            continue
+        for aid in meta.findall("article-id"):
+            if (aid.get("pub-id-type") or "").lower() == "doi" and aid.text:
+                return aid.text.strip().lower()
+    return None
+
+
+class _Cache:
+    """Optional on-disk cache of esearch results and efetch XML, so a rebuild
+    after a tokeniser or OBO change needs no NCBI round-trips. Only successful
+    responses are stored; a cache dir from an older run is safe to reuse."""
+
+    def __init__(self, root):
+        self.root = root
+        if root:
+            os.makedirs(os.path.join(root, "esearch"), exist_ok=True)
+            os.makedirs(os.path.join(root, "xml"), exist_ok=True)
+
+    def _path(self, kind, key, ext):
+        return os.path.join(self.root, kind, re.sub(r"[^\w.\-]", "_", key) + ext)
+
+    def pmcids(self, acc, fetch):
+        if not self.root:
+            return fetch()
+        p = self._path("esearch", acc, ".json")
+        if os.path.exists(p):
+            with open(p) as fh:
+                return json.load(fh)
+        ids = fetch()
+        with open(p, "w") as fh:
+            json.dump(ids, fh)
+        return ids
+
+    def xml(self, pmcid, fetch):
+        if not self.root:
+            return fetch()
+        p = self._path("xml", "PMC" + pmcid, ".xml")
+        if os.path.exists(p):
+            with open(p, "rb") as fh:
+                return fh.read()
+        data = fetch()
+        with open(p, "wb") as fh:
+            fh.write(data)
+        return data
 
 
 def _tag(elem):
@@ -155,15 +259,19 @@ def _runs(elem, inherited=False):
             yield child.tail, inherited
 
 
-def italic_stats(xml_bytes: bytes) -> dict[str, dict]:
+def italic_stats(xml_bytes: bytes, info: dict | None = None) -> dict[str, dict]:
     """-> {surface_form_lower: {'italic': n, 'total': n}} over the article body,
     with references, acknowledgments and back matter excluded (see SKIP_TAGS).
 
     The exclusion is load-bearing for the strict-zero rule: counting reference
     titles would add non-italic occurrences to forms that are italicised
     everywhere they are actually used, and would make `never_italicised()` fire
-    on genuine gene mentions."""
+    on genuine gene mentions.
+
+    If `info` is given, info["italic_chars"] receives the amount of italic text
+    in the body (whitespace excluded), for the MIN_ITALIC_CHARS check."""
     stats: dict[str, dict] = {}
+    italic_chars = 0
     root = ET.fromstring(xml_bytes)
     for article in root.iter("article"):
         body = article.find(".//body")
@@ -172,12 +280,16 @@ def italic_stats(xml_bytes: bytes) -> dict[str, dict]:
         for text, is_italic in _runs(body):
             if not text:
                 continue
-            for m in TOKEN_RE.finditer(text):
+            if is_italic:
+                italic_chars += len("".join(text.split()))
+            for m in TOKEN_RE.finditer(fold_text(text)):
                 key = m.group(1).lower()
                 e = stats.setdefault(key, {"italic": 0, "total": 0})
                 e["total"] += 1
                 if is_italic:
                     e["italic"] += 1
+    if info is not None:
+        info["italic_chars"] = italic_chars
     return stats
 
 
@@ -201,18 +313,42 @@ def obo_surface_forms(obo_path):
     return forms
 
 
-def build(accessions, email=None, sleep=0.4, verbose=True, keep_forms=None):
+def _accession_key(s):
+    """Compare DOIs in accession space. Accessions replace '/' (and ':', as in
+    `10.1042/0264-6021:3540037`) with '_', so accession_to_doi() cannot invert
+    them: `10.1093_aob_mcac132` becomes `10.1093/aob_mcac132`. esearch finds the
+    paper anyway, but an exact DOI comparison would reject it."""
+    return re.sub(r"[^a-z0-9.\-]", "_", (s or "").lower())
+
+
+def _verified_jats(acc, email, cache):
+    """-> (pmcid, xml) for the PMC record whose own DOI is acc's, or (None, why)."""
+    doi = accession_to_doi(acc).lower()
+    ids = cache.pmcids(acc, lambda: doi_to_pmcids(doi, email))
+    if not ids:
+        return None, "no PMC record"
+    for pmcid in ids[:MAX_CANDIDATES]:
+        xml = cache.xml(pmcid, lambda: fetch_jats(pmcid, email))
+        if _accession_key(article_doi(xml)) == _accession_key(acc):
+            return pmcid, xml
+    return None, "no PMC record with this DOI (esearch hits are citing papers)"
+
+
+def build(accessions, email=None, sleep=0.4, verbose=True, keep_forms=None,
+          cache_dir=None):
     out, misses = {}, []
+    cache = _Cache(cache_dir)
     for acc in accessions:
-        doi = accession_to_doi(acc)
         try:
-            pmcid = doi_to_pmcid(doi, email)
-            if not pmcid:
-                misses.append((acc, "no PMC record")); continue
-            xml = fetch_jats(pmcid, email)
-            st = italic_stats(xml)
+            pmcid, xml = _verified_jats(acc, email, cache)
+            if pmcid is None:
+                misses.append((acc, xml)); continue
+            info = {}
+            st = italic_stats(xml, info)
             if not st:
                 misses.append((acc, "no <body> in JATS")); continue
+            if info["italic_chars"] < MIN_ITALIC_CHARS:
+                misses.append((acc, "no italic markup in JATS body")); continue
             terms = {k: [v["italic"], v["total"]] for k, v in st.items()
                      if v["total"] >= 1 and (keep_forms is None or k in keep_forms)}
             if not terms:
@@ -250,6 +386,9 @@ def main():
                          "(repeatable; strongly recommended -- 37 MB -> ~1 MB)")
     ap.add_argument("--rate", type=float, default=2.9,
                     help="requests/second (NCBI allows 3 without an API key, 10 with)")
+    ap.add_argument("--cache-dir",
+                    help="keep esearch results and JATS XML here; a rebuild with "
+                         "the same cache needs no NCBI requests")
     a = ap.parse_args()
 
     accs = [a.accession] if a.accession else [
@@ -261,11 +400,16 @@ def main():
         for p in a.obo:
             keep |= obo_surface_forms(p)
         print("[info] pruning to %d OBO surface forms" % len(keep), file=sys.stderr)
-    out, misses = build(accs, a.email, sleep=0.0, keep_forms=keep)
+    out, misses = build(accs, a.email, sleep=0.0, keep_forms=keep,
+                        cache_dir=a.cache_dir)
     json.dump(out, open(a.out, "w"))
     print(f"[done] {len(out)}/{len(accs)} papers -> {a.out}", file=sys.stderr)
-    for acc, why in misses[:10]:
-        print(f"  [miss] {acc}: {why}", file=sys.stderr)
+    for why, n in collections.Counter(w.split(":")[0] for _, w in misses).most_common():
+        print(f"  [miss] {why}: {n}", file=sys.stderr)
+    for acc, why in misses:
+        if why.startswith(("RuntimeError", "HTTPError", "URLError")):
+            print(f"  [error] {acc}: {why}  (transient? re-run with --accession)",
+                  file=sys.stderr)
 
 
 if __name__ == "__main__":

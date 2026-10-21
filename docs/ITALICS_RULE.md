@@ -12,9 +12,12 @@ Drop a gene annotation when **all five** hold:
    `MAIZE_GENES_RELATED`. GO/PO/TO concept names are not italicised by
    convention, so they are never tested.
 2. The matched surface form is **4 characters or fewer**.
-3. The form occurs **at least once** in the paper's JATS `<body>`, with
-   references, acknowledgments and back matter excluded. If it never occurs
-   there, the test **abstains and keeps** — no data is not evidence of absence.
+3. The form occurs **at least once** in the paper's body, with references,
+   acknowledgments and back matter excluded. The body is the JATS `<body>`
+   where PMC provides one, and the source PDF's text otherwise (see
+   [PDF fallback](#pdf-fallback)). If the form never occurs there, or the
+   paper has no italic data, the test **abstains and keeps**. No data is not
+   evidence of absence.
 4. **Zero** of those occurrences are italicised.
 5. The form's OBO provenance class is **not** `registered` and not
    `identifier`, **and** the annotation is not from the EXACT channel
@@ -98,12 +101,60 @@ EXACT→RELATED fix), which restores 39 short alias forms the rule can now judge
 (`aba`, `co`, `no`, `as`, `bam`, `sam`, ...). Re-measure before quoting these
 numbers for the 20260708 OBO.
 
+## PDF fallback
+
+PMC efetch returns a JATS `<body>` for only 1,627 of the 3,299 MaizeOpenAccess
+papers. The rest are PMC "free to read" without a reuse licence, or have no PMC
+record, and no NCBI or Europe PMC bulk route serves them. `bin/pdf_italics.py`
+reads italics from the fonts of the PDFs already staged for ingest instead, and
+writes the same index shape. JATS wins wherever both exist.
+
+A span counts as italic if the font flag, the font name (`-Italic`, `-It`,
+`.I`, `-O`) or the font descriptor's `/ItalicAngle` says so. Typesetters such
+as Advent 3B2 emit opaque subset fonts (`AdvP4041BD`) that report
+`ItalicAngle 0` even for the italic face. Such a font is treated as italic, per
+paper, when it is not the main body font and carries conventionally italic
+words (`Zea mays`, `in vivo`, `E. coli`). Mistakes here err towards "italic",
+which can only make the rule keep more. Everything from the first
+References/Literature Cited/Acknowledgments heading onwards is excluded.
+
+A paper with fewer than 20 italic characters in its body is **left out of the
+index**, so the rule abstains for it rather than reading zero.
+
+Measured against JATS on the 1,500 papers both sources cover (2026-10-21), for
+forms the rule can act on (<= 4 characters, not `registered`/`identifier`):
+
+| | forms | share |
+|---|---|---|
+| agree on zero vs non-zero italic | 15,254 | 98.0% |
+| PDF zero, JATS italic (would wrongly drop) | 36 | 0.23% |
+| PDF italic, JATS zero (would keep) | 270 | 1.7% |
+
+The 36 wrong drops fall in 23 papers. Some are JATS noise rather than PDF
+error, e.g. `as` italicised once in 34 occurrences.
+
+Coverage for the corpus is 2,888 of 3,299 papers (1,560 JATS + 1,328 PDF), up
+from 1,627 JATS entries, 77 of which had been built from the wrong paper (see
+`jats_italics.py`). Of the 411 left out, most are 1980s-90s PNAS, NAR and EMBO J
+backfiles: page images with an invisible Courier OCR layer, so there is no
+typography to recover. `--provenance-out` records which source each
+accession came from.
+
 ## Operating it
 
 ```bash
-# 1. italic counts per paper (~1 MB, ~65 min for 3,299 papers at 3 req/s; 1,627 have JATS)
+# 1a. italic counts per paper from JATS (~65 min at 3 req/s on a cold cache)
 python3 bin/jats_italics.py --accession-file maizeopenaccess_accessions.txt \
     --obo .data/obofiles4production/zmays_genes_20260708.obo \
+    --cache-dir .data/italics/jats_cache \
+    --out .data/italics/MaizeOpenAccess.jats.json
+
+# 1b. fill the gaps from the source PDFs (needs `pip install pymupdf`; ~2 min, 8 workers)
+python3 bin/pdf_italics.py --accession-file maizeopenaccess_accessions.txt \
+    --pdf-root /data/textpresso/raw_files/pdf/MaizeOpenAccess \
+    --obo .data/obofiles4production/zmays_genes_20260708.obo \
+    --jats-index .data/italics/MaizeOpenAccess.jats.json \
+    --provenance-out .data/italics/MaizeOpenAccess.provenance.json \
     --out .data/italics/MaizeOpenAccess.json
 
 # 2. provenance class map (~98 KB; avoids a 10.5 MB OBO parse at startup)
