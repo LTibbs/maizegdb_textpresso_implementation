@@ -1196,15 +1196,24 @@
 
   els.exportJson.addEventListener("click", () => {
     if (!lastResults.length) return;
-    download("textpresso_results.json", JSON.stringify(sortedResults(lastResults), null, 2), "application/json");
+    const omit = new Set(["identifier", "accession", "license", "access", "oa_status", "viewer_allowed"]);
+    const out = sortedResults(lastResults).map((d) => {
+      const o = { doi: doiOf(d) || null };
+      for (const [k, v] of Object.entries(d)) {
+        if (omit.has(k)) continue;
+        o[k === "matched_sentences" ? "top_matched_sentences" : k] = v;
+      }
+      return o;
+    });
+    download("textpresso_results.json", JSON.stringify(out, null, 2), "application/json");
   });
 
   els.exportCsv.addEventListener("click", () => {
     if (!lastResults.length) return;
-    const cols = ["title", "author", "year", "journal", "score", "access", "oa_status", "license", "accession", "identifier"];
+    const cols = ["title", "author", "year", "journal", "doi", "score"];
     const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const rows = [cols.join(",")].concat(
-      sortedResults(lastResults).map((d) => cols.map((c) => esc(c === "access" ? accessLevel(d) : d[c])).join(","))
+      sortedResults(lastResults).map((d) => cols.map((c) => esc(c === "doi" ? doiOf(d) : d[c])).join(","))
     );
     download("textpresso_results.csv", rows.join("\n"), "text/csv");
   });

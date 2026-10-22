@@ -13,15 +13,69 @@
   <div class="pagehead">
     <div class="breadcrumb">Data Hubs / Reference Data Hub / Textpresso</div>
     <h1>MaizeGDB Textpresso</h1>
-    <div class="subtitle">Maize literature search built on Textpresso. Search by keyword and annotations including maize genes, GO, PO, and TO.</div>
+    <div class="subtitle">Maize literature search engine built on Textpresso. Search by free-text keywords and/or by annotated categories including ontologies (GO, TO, etc.) and maize genes.</div>
   </div>
 
   <div class="tabs">
-    <div class="tab active">Search</div>
-    <div class="tab">About</div>
-    <div class="tab">References</div>
-    <div class="tab">Related resources</div>
+    <div class="tab active" data-tab="search" role="button" tabindex="0">Search</div>
+    <div class="tab" data-tab="about" role="button" tabindex="0">About</div>
   </div>
+
+  <div id="aboutPanel" class="about-panel" hidden>
+    <h2>About MaizeGDB Textpresso</h2>
+    <p>MaizeGDB Textpresso is a literature search engine for maize research, built on the
+      Textpresso text-mining platform. It lets you search the full text of maize
+      papers by free-text keywords, and by categories including maize genes and terms from ontologies including Gene
+      Ontology (GO), Plant Ontology (PO), Trait Ontology (TO) and related ontologies. Category
+      searches find papers where a gene or term has been annotated in the text, even when the
+      exact words you typed do not appear.</p>
+
+    <h3>Related gene matches</h3>
+    <p>Not all gene synonyms in the literature are exact, one-to-one synonyms. For example, ZmCCT10 has been used as a synonym for both cct1 and cct10. If "Include related gene synonyms" is chosen, results for cct1 will also include results for ZmCCT10; if it is not chosen, those results will be excluded. Therefore, RELATED gene synonyms can return more papers, but also potentially more noise.</p>
+
+    <h3>Annotated full text viewer</h3>
+    <p>For open-access papers, click a result's title or its "Annotated full text" button to read
+      the whole paper text in a new tab, with figures shown in place
+      (click a figure to enlarge it). The viewer carries over your search, so keyword and category matches are
+      already highlighted. Controls are in the left-hand panel:</p>
+    <ul>
+      <li><strong>Keyword matches</strong> are highlighted in yellow. Step through them with the
+        &lsaquo; &rsaquo; buttons or the <kbd>[</kbd> and <kbd>]</kbd> keys, or type a new term to
+        find within the paper.</li>
+      <li><strong>Category matches</strong> (genes and ontology terms) are highlighted in teal.
+        Step with the buttons or <kbd>{</kbd> and <kbd>}</kbd>, add other categories annotated in
+        the paper, and optionally include broader or narrower ontology terms and related gene
+        synonyms.</li>
+      <li><strong>Annotations</strong> lets you turn highlighting on or off for each ontology or
+        individual term, and jump between occurrences of a chosen term. Click any annotated word
+        in the text to see its categories.</li>
+      <li><strong>Contents</strong> jumps to a section or figure.</li>
+      <li><strong>Previous paper / Next paper</strong> moves through your search results without
+        returning to the search page.</li>
+    </ul>
+
+    <h3>Acknowledgments</h3>
+    <p>This implementation was developed in collaboration with the
+      <a href="https://www.agbiodata.org/nlp4biocuration" target="_blank" rel="noopener">AgBioData
+      NLP (Natural Language Processing for Biocuration) working group</a>.</p>
+
+    <h3 id="references">References</h3>
+    <ol class="references">
+      <li>Müller HM, Van Auken KM, Li Y, et al. Textpresso Central: a customizable platform for
+        searching, text mining, viewing, and curating biomedical literature.
+        <em>BMC Bioinformatics</em> 19, 94 (2018).
+        <a href="https://doi.org/10.1186/s12859-018-2103-8" target="_blank" rel="noopener">https://doi.org/10.1186/s12859-018-2103-8</a></li>
+      <li>Müller HM, Kenny EE, Sternberg PW. Textpresso: An Ontology-Based Information Retrieval
+        and Extraction System for Biological Literature. <em>PLoS Biol</em> 2(11): e309 (2004).
+        <a href="https://doi.org/10.1371/journal.pbio.0020309" target="_blank" rel="noopener">https://doi.org/10.1371/journal.pbio.0020309</a></li>
+      <li>MaizeGDB Textpresso implementation (GUI, command-line tools and classifiers), GitHub:
+        <a href="https://github.com/LTibbs/maizegdb_textpresso_implementation" target="_blank" rel="noopener">https://github.com/LTibbs/maizegdb_textpresso_implementation</a></li>
+      <li>MaizeGDB fork of the Textpresso platform (<code>agr_textpresso</code>), GitHub:
+        <a href="https://github.com/LTibbs/agr_textpresso" target="_blank" rel="noopener">https://github.com/LTibbs/agr_textpresso</a></li>
+    </ol>
+  </div>
+
+  <div id="searchPanel">
 
   <div id="statusBanner" class="status-banner" hidden></div>
 
@@ -179,8 +233,26 @@
     <button type="button" id="loadMoreBtn" class="btn btn-outline">Load more results</button>
   </div>
 
+  </div><!-- /searchPanel -->
+
 </div>
 
 <script src="app.js"></script>
+<script>
+(function () {
+  var tabs = document.querySelectorAll('.tab[data-tab]');
+  function show(name) {
+    document.getElementById('searchPanel').hidden = name !== 'search';
+    document.getElementById('aboutPanel').hidden = name !== 'about';
+    tabs.forEach(function (t) { t.classList.toggle('active', t.dataset.tab === name); });
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { show(t.dataset.tab); });
+    t.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); show(t.dataset.tab); }
+    });
+  });
+})();
+</script>
 </body>
 </html>

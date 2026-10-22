@@ -53,6 +53,8 @@ import os
 import re
 import sys
 import threading
+import hashlib
+from array import array
 from collections import OrderedDict, deque
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -62,7 +64,7 @@ import urllib.request
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
@@ -222,11 +224,44 @@ def _load_annotations_with_retry(doc, args, ontology_filter=None, include_relate
     return None, None, None, False
 
 
+# Category lookups (~0.6s each over HTTP) are repeated constantly: every
+# search re-validates its categories one by one and re-expands them, and the
+# autocomplete re-asks for prefixes already typed. The OBO files change at
+# most monthly, so answers are kept for a day. Bounded by estimated memory
+# (TEXTPRESSO_GUI_CATEGORY_CACHE_MB, default 50), least recently used dropped
+# first; an entry is counted as 4x its JSON size, the ratio measured for a
+# 100-term expansion (~25 KB JSON, ~100 KB in memory). Failed lookups (None)
+# are never kept, so an outage isn't remembered.
+_CATEGORY_CACHE = OrderedDict()  # call arguments -> (time, estimated bytes, matches)
+_CATEGORY_CACHE_TTL_SECONDS = 86400
+_CATEGORY_CACHE_MAX_BYTES = int(float(os.environ.get("TEXTPRESSO_GUI_CATEGORY_CACHE_MB", "50")) * 1e6)
+_CATEGORY_CACHE_MEMORY_PER_JSON_BYTE = 4
+_CATEGORY_CACHE_STATE = {"bytes": 0}
+_CATEGORY_CACHE_LOCK = threading.Lock()
+
+
 def _category_search_with_breaker(*args, **kwargs):
+    key = json.dumps([args, kwargs], sort_keys=True, default=list)
+    with _CATEGORY_CACHE_LOCK:
+        hit = _CATEGORY_CACHE.get(key)
+        if hit and time.time() - hit[0] <= _CATEGORY_CACHE_TTL_SECONDS:
+            _CATEGORY_CACHE.move_to_end(key)
+            return [dict(m) for m in hit[2]]
     if _sidecar_is_down():
         return None
     result = _orig_category_search(*args, **kwargs)
     _sidecar_note(result is not None)
+    if result is not None:
+        size = _CATEGORY_CACHE_MEMORY_PER_JSON_BYTE * (len(key) + len(json.dumps(result)))
+        with _CATEGORY_CACHE_LOCK:
+            old = _CATEGORY_CACHE.pop(key, None)
+            if old:
+                _CATEGORY_CACHE_STATE["bytes"] -= old[1]
+            if size <= _CATEGORY_CACHE_MAX_BYTES:
+                _CATEGORY_CACHE[key] = (time.time(), size, [dict(m) for m in result])
+                _CATEGORY_CACHE_STATE["bytes"] += size
+            while _CATEGORY_CACHE_STATE["bytes"] > _CATEGORY_CACHE_MAX_BYTES:
+                _CATEGORY_CACHE_STATE["bytes"] -= _CATEGORY_CACHE.popitem(last=False)[1][1]
     return result
 
 
@@ -237,6 +272,80 @@ def _category_search_with_breaker(*args, **kwargs):
 # category_search.
 tpc._load_annotations = _load_annotations_with_retry
 tpc.category_search = _category_search_with_breaker
+
+# --- Parsed-paper cache -------------------------------------------------------
+# One search reads the same paper's CAS2 several times (gene check, section
+# filter, snippets), and "Load more", annotation panels and "Show unfiltered"
+# read it again. parse_cas_file() is ~0.5s on a large paper; as dicts its
+# result is 10-14 MB (20,000 annotations), too much to keep many of. Kept
+# packed instead -- annotation fields in arrays, strings stored once per paper
+# -- it is ~1 MB and unpacks in ~10 ms to exactly the parsed value (measured
+# 2026-10-22 on agr_textpresso's sample CAS files). Fresh dicts on every read,
+# so callers can't change the cached copy. Keyed by path and checked against
+# the file's mtime and size, so a re-tokenized paper is never served stale.
+# Hygiene/italics/tier filtering runs after this, per call, so its settings
+# and data files are never cached here. TEXTPRESSO_GUI_PAPER_CACHE sets how
+# many papers are kept (default 300, i.e. roughly 300 MB at most).
+_PAPER_CACHE = OrderedDict()  # path -> ((mtime_ns, size), packed parse)
+_PAPER_CACHE_SIZE = int(os.environ.get("TEXTPRESSO_GUI_PAPER_CACHE", "300"))
+_PAPER_CACHE_LOCK = threading.Lock()
+_ANN_STRING_FIELDS = ("term", "category", "ontology", "onto_id")
+_orig_parse_cas_file = tpc._ca.parse_cas_file
+
+
+def _pack_parse(parsed):
+    sentences, annotations, sections = parsed
+    strings, index = [], {}
+
+    def ref(s):
+        i = index.get(s)
+        if i is None:
+            i = index[s] = len(strings)
+            strings.append(s)
+        return i
+
+    columns = {"begin": array("q", (a["begin"] for a in annotations)),
+               "end": array("q", (a["end"] for a in annotations))}
+    for field in _ANN_STRING_FIELDS:
+        columns[field] = array("I", (ref(a[field]) for a in annotations))
+    return (tuple((s["begin"], s["end"], s["text"]) for s in sentences),
+            columns, tuple(strings), tuple(sections))
+
+
+def _unpack_parse(packed):
+    sentences, columns, strings, sections = packed
+    return (
+        [{"begin": b, "end": e, "text": t} for b, e, t in sentences],
+        [{"begin": b, "end": e, "term": strings[t], "category": strings[c],
+          "ontology": strings[o], "onto_id": strings[i]}
+         for b, e, t, c, o, i in zip(columns["begin"], columns["end"],
+                                     *(columns[f] for f in _ANN_STRING_FIELDS))],
+        [dict(s) for s in sections],
+    )
+
+
+def _cached_parse_cas_file(cas_path):
+    key = str(cas_path)
+    st = os.stat(cas_path)
+    stamp = (st.st_mtime_ns, st.st_size)
+    with _PAPER_CACHE_LOCK:
+        hit = _PAPER_CACHE.get(key)
+        if hit and hit[0] == stamp:
+            _PAPER_CACHE.move_to_end(key)
+            return _unpack_parse(hit[1])
+    parsed = _orig_parse_cas_file(cas_path)
+    with _PAPER_CACHE_LOCK:
+        _PAPER_CACHE[key] = (stamp, _pack_parse(parsed))
+        _PAPER_CACHE.move_to_end(key)
+        while len(_PAPER_CACHE) > _PAPER_CACHE_SIZE:
+            _PAPER_CACHE.popitem(last=False)
+    return parsed
+
+
+# tpc._load_annotations() calls _ca.parse_cas_file() through its module, so
+# this covers every local-CAS2 read in this process. The CLI is unaffected.
+if _PAPER_CACHE_SIZE > 0:
+    tpc._ca.parse_cas_file = _cached_parse_cas_file
 
 app = FastAPI(title="Textpresso Maize GUI backend")
 
@@ -504,10 +613,18 @@ def get_annotate(
     # shown fewer rows with no way back.
     hygiene: bool = True,
     italics: bool = True,
+    *,
+    request: Request,
+    response: Response,
 ):
+    etag = _local_etag(identifier)
+    if _not_modified(request, etag):
+        return Response(status_code=304, headers={"ETag": etag, **_BROWSER_CACHE_HEADERS})
+    if etag:
+        response.headers.update({"ETag": etag, **_BROWSER_CACHE_HEADERS})
     # hygiene/italics are applied inside tpc._load_annotations (local CAS2) or by
     # the sidecar (HTTP); the GUI carries no filtering logic of its own.
-    args = argparse.Namespace(cas_root=CAS_ROOT, url=tpc.DEFAULT_URL,
+    args =argparse.Namespace(cas_root=CAS_ROOT, url=tpc.DEFAULT_URL,
                               hygiene=hygiene, italics=italics)
     ontology_filter = set(ontology) if ontology else None
     report = {}
@@ -691,11 +808,73 @@ def _top_sentences(sentences: List[str], cap: int, terms: List[re.Pattern],
     return [s for _, s in sorted(chosen)]
 
 
+# --- Search-result cache ------------------------------------------------------
+# "Load more" re-sends the same search with count + 25, and the live API
+# re-runs the whole Lucene search for it (~6s). The API's cost is the search,
+# not the result count (measured 2026-10-22, "drought", all corpora):
+#   document-level: 50 results 5.8s / 0.02 MB, 200 results 5.8s / 0.09 MB
+#   sentence-level: 50 results 6.9s / 1.3 MB,  200 results 8.4s / 2.3 MB
+# So document-level searches always fetch whole 200-result pages, and "Load
+# more" within the page is served from here. A sentence-level search fetches
+# only what was asked for: prefetching the rest would cost the live server a
+# second Lucene search for every full-text search, so its first "Load more"
+# pays for one search. Entries are futures, so a request arriving while the
+# same fetch is in flight waits on it instead of starting another. The index
+# only changes on a re-index, so a 10-minute TTL is safe. A 200-result
+# sentence-level entry is ~2 MB as JSON, so the default bounds the cache at a
+# few hundred MB in the worst case; TEXTPRESSO_GUI_SEARCH_CACHE sets the size.
+_SEARCH_CACHE = OrderedDict()  # payload without count -> (time, count fetched, future)
+_SEARCH_CACHE_SIZE = int(os.environ.get("TEXTPRESSO_GUI_SEARCH_CACHE", "32"))
+_SEARCH_CACHE_TTL_SECONDS = 600
+_SEARCH_CACHE_LOCK = threading.Lock()
+_SEARCH_POOL = ThreadPoolExecutor(max_workers=8)
+
+
+def _search_entry_covers(entry, want: int) -> bool:
+    at, fetched, future = entry
+    if time.time() - at > _SEARCH_CACHE_TTL_SECONDS:
+        return False
+    if future.done() and future.exception() is not None:
+        return False
+    if fetched >= want:
+        return True
+    # Fewer results than were asked for means that was all of them.
+    return future.done() and len(future.result()) < fetched
+
+
+def _cached_search(payload: dict) -> list:
+    want = payload.get("count") or tpc.API_PAGE_SIZE
+    full_pages = -(-want // tpc.API_PAGE_SIZE) * tpc.API_PAGE_SIZE  # want, rounded up
+    sentence_level = bool(payload.get("include_match_sentences"))
+    key = json.dumps({k: v for k, v in payload.items() if k != "count"}, sort_keys=True)
+
+    def fetch(n):
+        # Under _SEARCH_CACHE_LOCK: submit() only queues, it never blocks.
+        future = _SEARCH_POOL.submit(
+            lambda: tpc.search({**payload, "count": n}, url=tpc.DEFAULT_URL) or [])
+        _SEARCH_CACHE[key] = (time.time(), n, future)
+        _SEARCH_CACHE.move_to_end(key)
+        while len(_SEARCH_CACHE) > _SEARCH_CACHE_SIZE:
+            _SEARCH_CACHE.popitem(last=False)
+        return future
+
+    with _SEARCH_CACHE_LOCK:
+        entry = _SEARCH_CACHE.get(key)
+        if entry and _search_entry_covers(entry, want):
+            _SEARCH_CACHE.move_to_end(key)
+            future = entry[2]
+        else:
+            future = fetch(want if sentence_level else full_pages)
+    results = future.result()  # a failed fetch raises here and is never served again
+    # Copies: callers set per-request fields (matched_sentences, access, ...).
+    return [dict(d) for d in results[:want]]
+
+
 def _run_search(args: argparse.Namespace, corpora: List[str]) -> list:
     # (Double-encoded author/title/journal metadata is already repaired inside
     # tpc.search() -- see fix_mojibake() in tpc_search_combined.py.)
     try:
-        return tpc.search(tpc.build_query(args, corpora), url=tpc.DEFAULT_URL) or []
+        return _cached_search(tpc.build_query(args, corpora))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Search failed: {e}")
 
@@ -1058,7 +1237,9 @@ def _section_snippets(doc, args, section: str, terms: List[re.Pattern]) -> List[
 
     if section == "abstract":
         return [s for s in _SENTENCE_SPLIT_RE.split(_abstract_for(doc) or "") if has_term(s)]
-    sentences, _, sections, _ = tpc._load_annotations(doc, args)
+    # Annotations unused, so skip hygiene: it filters only annotations, never
+    # sentences or sections, and the ontology-annotation panel loads its own.
+    sentences, _, sections, _ = tpc._load_annotations(doc, args, hygiene=False)
     if sentences is None:
         return []
     return [s["text"] for s in sentences
@@ -1112,7 +1293,8 @@ def post_search(req: SearchRequest):
         # annotation lookup fails (including the known /annotate outage, see
         # GUI_SETUP.md) is left unfiltered, same fail-open behavior as before.
         def _filter_one(doc):
-            sentences, _, sections, _ = tpc._load_annotations(doc, args)
+            # hygiene=False: annotations unused here (see _section_snippets).
+            sentences, _, sections, _ = tpc._load_annotations(doc, args, hygiene=False)
             if sentences is not None:
                 doc["matched_sentences"] = tpc._filter_matched_sentences(
                     doc.get("matched_sentences", []), sentences, sections, exclude_types)
@@ -1318,18 +1500,57 @@ def _has_local_cas(identifier: str) -> bool:
         return False
 
 
+# --- Browser caching for /api/annotate and /api/document ----------------------
+# Both answers depend only on the paper's local files and on what this process
+# loaded at start-up (code, italics index, class map, match dictionary). So
+# their ETag is the file's mtime and size plus a token that changes on every
+# restart, and "private, no-cache" lets the browser keep the response but ask
+# each time; an unchanged paper gets an empty 304 before anything is parsed.
+# Papers served over HTTP (no local CAS2) get no ETag and are not cached.
+_PROCESS_TOKEN = f"{os.getpid()}-{time.time_ns()}"
+_BROWSER_CACHE_HEADERS = {"Cache-Control": "private, no-cache"}
+
+
+def _local_etag(identifier: str, with_bib: bool = False) -> Optional[str]:
+    if not CAS_ROOT:
+        return None
+    try:
+        corpus, acc = _split_identifier(identifier)
+        base = Path(CAS_ROOT) / _CORPUS_REMAP.get(corpus, corpus) / acc
+        stamps = [os.stat(base / f"{acc}.tpcas.gz")]
+        if with_bib:
+            try:
+                stamps.append(os.stat(base / f"{acc}.bib"))
+            except OSError:
+                pass
+    except (HTTPException, OSError):
+        return None
+    raw = "|".join([_PROCESS_TOKEN] + [f"{s.st_mtime_ns}:{s.st_size}" for s in stamps])
+    return '"' + hashlib.sha1(raw.encode()).hexdigest() + '"'
+
+
+def _not_modified(request: Request, etag: Optional[str]) -> bool:
+    match = request.headers.get("if-none-match")
+    return bool(etag and match and etag in (t.strip() for t in match.split(",")))
+
+
 def _require_viewer_access(identifier: str):
     if not _can_view_full_text(identifier):
         raise HTTPException(status_code=403, detail="Full text is only available for open-access papers.")
 
 
 @app.get("/api/document")
-def get_document(identifier: str):
+def get_document(identifier: str, request: Request, response: Response):
     corpus, acc = _split_identifier(identifier)
     _require_viewer_access(identifier)
     if not CAS_ROOT:
         raise HTTPException(status_code=503, detail="Full text is unavailable: no local CAS2 tree "
                             "(set TEXTPRESSO_CAS_ROOT, see GUI_SETUP.md).")
+    etag = _local_etag(identifier, with_bib=True)
+    if _not_modified(request, etag):
+        return Response(status_code=304, headers={"ETag": etag, **_BROWSER_CACHE_HEADERS})
+    if etag:
+        response.headers.update({"ETag": etag, **_BROWSER_CACHE_HEADERS})
 
     local_corpus = _CORPUS_REMAP.get(corpus, corpus)
     key = f"{local_corpus}/{acc}"

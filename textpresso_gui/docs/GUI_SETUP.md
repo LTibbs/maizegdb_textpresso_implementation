@@ -283,6 +283,43 @@ steady-state searches down to ~6s, matching the raw API almost exactly:
    isolation, was itself as slow as a full search (~5-6s). Now cached for
    10 minutes (`_cached_list_corpora()`).
 
+3. **"Load more" re-ran the whole search** (count + 25, another ~6s Lucene
+   call). Search results are now cached for 10 minutes (`_cached_search()`).
+   Document-level searches always fetch whole 200-result pages, which cost
+   the same as 50 (measured 5.8s either way), so "Load more" within 200
+   makes no API call. A full-text search fetches only what was asked for
+   (200 sentence-level results take 8.4s against 6.9s, and prefetching the
+   rest would double the live server's load), so its first "Load more"
+   still runs one search. At most 32 searches are kept
+   (`TEXTPRESSO_GUI_SEARCH_CACHE`), a few hundred MB in the worst case.
+4. **Each paper's CAS2 was parsed again for every use** (gene check,
+   section filter, snippets, "Load more", annotation panels). Parses are
+   now cached in memory in packed form: ~1 MB per paper instead of the
+   10-14 MB the parsed dicts take, unpacked in ~10 ms, checked against the
+   file's mtime. At most 300 papers (`TEXTPRESSO_GUI_PAPER_CACHE`, 0 turns
+   it off). Hygiene/italics/tier filtering still runs on every call.
+5. **Browser caching.** `/api/annotate` and `/api/document` send an ETag
+   (the CAS2 file's mtime and size, plus a token that changes on every
+   backend restart) with `Cache-Control: private, no-cache`. The browser
+   keeps the response and revalidates; an unchanged paper gets an empty 304
+   before anything is parsed. Papers served over HTTP get no ETag.
+6. **`casannot.parse_cas_file()` checked every annotation against every
+   sentence** to find uncovered ones (7.4M comparisons, 70% of parse time on
+   a 20,800-annotation paper). Now a binary search; output identical on all
+   17 sample CAS files, about 2.3x faster. Same fix in `agr_textpresso`'s
+   copy, so the public `/annotate` speeds up too.
+
+7. **Hygiene ran where its output was discarded.** Section snippets and the
+   matched-sentence references/acknowledgments filter use only a paper's
+   sentences and sections, which hygiene never changes, so they now load
+   with `hygiene=False`. Every place whose annotations reach the user or
+   decide which papers are kept (`/api/annotate`, the keyword+category and
+   category-in-section checks) still runs it.
+8. **Category lookups are cached for a day** (validation, expansion and the
+   autocomplete all go through `tpc.category_search`, ~0.5s each over HTTP).
+   Capped at ~50 MB of memory (`TEXTPRESSO_GUI_CATEGORY_CACHE_MB`); failed
+   lookups are not cached.
+
 The remaining ~6s per search is the live API's own response time for a
 ~450KB-before-truncation payload (`matched_sentences` now capped at 8 per
 document server-side to cut transfer size) — not fixable from this side
