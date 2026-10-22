@@ -6031,3 +6031,130 @@ Updated the MaizeGDB Textpresso section with:
 - [ ] Wire `tiers=` into `cas_annotate_server.py`.
 - [ ] `annotation_italics.coverage()` undercounts (≥3 threshold vs ≥1 in the
   rule); fix the reporting if the discrepancy matters for decisions.
+
+---
+
+## Update log — 2026-10-21/22: JATS ingest, non-ASCII text, Greek-letter search, supplements, ontology build v2 (from several parallel sessions)
+
+Summary of work committed in `e0b6ff0` / merge `0312a1a` (this repo) and
+`53ea5c3` (`agr_textpresso`, `maizegdb/maize-textpresso-fixes`) that had no log
+entry. Detail lives in the code comments (dated 2026-10-21/22) and in
+`docs/ONTOLOGY_BUILD.md`.
+
+**JATS ingest path (`jats` CAS layout).**
+- `textpresso_classifiers/jats_text.py` turns PMC JATS into plain text plus
+  standoff blocks, sections (from the document structure), formats (italics)
+  and figures. `bin/fetch_jats.py` fetches by PMCID/DOI and stages
+  `raw_files/xml/<corpus>/<acc>/<acc>.jats.json` (+ `.nxml.gz`, and
+  `.suppl.txt` from the merged PDF with `--pdf-dir`). Every attempt gets a
+  status row; HTTP errors are never recorded as "no body".
+- C++: new `TjTokenizer` reads the staged JSON (same token rules as the PDF
+  layout; sentences never cross a block). `articles2cas -t 5`;
+  `tpctools/03jats2cas.sh` (symlinked as `jats2cas`). `tokenize` skips papers
+  with staged JATS, so the PDF never overwrites them. `incremental_build.sh`
+  and `process_batch.sh -j` run JATS first. The PDF is still needed (`.bib`
+  generation; supplements).
+- `casannot.py`: JATS-layout CAS2s skip the PDF heading repairs; new section
+  type `supplementary material`.
+
+**Non-ASCII text, end to end.** PDF text used to be squeezed to ASCII.
+- `PdfTextNormalizer.h` replaces `utf8Printable()` in `TdTokenizer`: keeps
+  Greek, accents, primes, ≤; maps minus/dashes/µ; page offsets are now UTF-16,
+  so pages no longer drift in papers with non-ASCII text.
+- `PgCopyLine.h`: libpqxx 4's `tablewriter` stored every non-ASCII byte as
+  escape text, so no non-ASCII lexicon term (alpha-zein, 5'-AMP, accented
+  names) could ever match. tpso and `generatelexicalvariations` now write raw
+  UTF-8.
+- UTF-8 encode/decode fixes in `Search.cpp`, `IndexManager.cpp` and
+  `Tpcas2SingleIndex.cpp` (queries and indexed titles/authors were garbled).
+- Lexicon annotator also adds each term in its normalised and other-Greek
+  spellings. New token delimiters: em/en dash, minus, curly quotes, bullet,
+  punctuation before a line break (1.2% of pdftotext words could not match).
+
+**Greek-letter search.** `GreekSynonymFilter` in both analyzers indexes and
+queries `β-carotene` and `beta-carotene` as each other; µ is folded to μ
+(`CaseInsensitiveAnalyzer.h`, `GreekLetters.h`, gtest in `libtpc/tests`).
+
+**Merged supplements.** The literature pipeline's banner page has no heading
+after the bibliography, so appended supplements were labelled `references`:
+1,052 MaizeOpenAccess papers, 224k annotations, dropped by the default
+references exclusion. `TdTokenizer` now writes one `supplementary` section
+from the banner on, and ignores headings inside it. The heading-validation
+window was changed to match `casannot.following_text()`.
+`casannot.split_supplementary()` does the same at read time for older CAS2s.
+`textpressoapi` accepts `supplementary` as a section-scoped search type.
+
+**Ontology build v2 / tpso** (`docs/ONTOLOGY_BUILD.md` has the numbers):
+- tpso depth 50, no slims: every annotation's category is the matched term
+  (was: `chromosome` filed under `intracellular membraneless organelle`,
+  31,669 mentions). OBO escapes resolved, `stub_label` names pruned parents,
+  subset roll-up fixed, `ontology.conf` whitespace bug fixed.
+- Builder: scope suffixes in synonym text (`"ear (related)"`) stripped,
+  non-English synonyms and trait codes dropped, `--derive-trait-stems`, source
+  subsets and stub labels carried into `*_annot.obo`, OBO escaping.
+- Tier gate: sentence-case and plural handling (182k plural rows were bypassing
+  it); `leaf`/`root`/`seed`/... are T0 in PO only.
+
+---
+
+## Update log — 2026-10-22: annotation decisions implemented, branches merged, ontology build installed, handoff package
+
+**Decisions** (from a review of the September ontology notes):
+1. **GO do-not-annotate terms are matched.** Excluding them removed 95,277
+   mentions, among them `cell wall` (5,050 in 708 papers), `cell death`,
+   `embryogenesis`, `cell cycle` and the meiotic stages. At depth 50, plus
+   ancestor collapse, they are a category only when they are the matched term.
+   Cost: ~30k correct but uninformative T0 mentions (`synthesis`,
+   `metabolism`, `transport`).
+2. **New tier TD** for 8 curated abbreviations: GA, JA, SA, BR, CK, ET
+   (ChEBI hormones), ER (GO:0005783) and E3 (GO:0061630). Each is kept only if
+   its long form occurs in the paper body (references/acknowledgments
+   excluded, `casannot.body_text()`). Share of body mentions kept: JA 95%,
+   BR 89%, SA 83%, GA 81%, ER 78%, E3 71%, ET 45%, CK 37%. CK is "control
+   check" in 35 papers vs cytokinin in 27.
+3. **18 stop-forms** (`annotation_hygiene.DEFAULT_STOP_FORMS`):
+   case-sensitive, plurals included, scoped to the ontologies where the sense
+   is wrong. These are what remained of the September 62-form list after the
+   ≤2-character block, the case test, T2 and depth 50. `SOD`/`CDK`/`PFK` were
+   removed from it (they are the enzymes); `TEM` stays in ECO and `tRNA`/`FPC`
+   in SO. `flag_forms` / `collapse_forms` from the same list are superseded.
+
+**Code.**
+- Tier gate on by default (server and CLI; `TEXTPRESSO_MATCH_DICTIONARY=0`
+  turns it off).
+- `casannot._ontology_of()` now labels CHEBI/PATO/PECO/PSO/SO/ECO/CO_322/
+  NCBITaxon. Before, these were `OTHER`, which the tier gate and stop-forms
+  never judge. ID regexes accept `CO_322:`. GUI and CLI `--ontology` choices
+  updated.
+- `category_index.py` names stubs from `stub_label`, and full terms win over
+  stubs: 108 IDs appear in more than one `*_annot.obo`. Unmatchable-label
+  terms also get a `stub_label`.
+- `update_ontology.sh` (monthly AGR cron) exits when `*_annot.obo` are in
+  production; otherwise it would move AGR go/po/to back in and re-annotate.
+
+**Build and install.**
+- Built from `maize-ontology-collection-2026-10-20.tar.gz` (MANIFEST verified;
+  every channel's version equals the 2026-10-20 build's) + ChEBI 256, with
+  `--derive-trait-stems`: 188,114 strings (184,086 T0, 3,673 T1, 347 T2, 8 TD).
+  The previous build is in `.data/backups/annotation_build-20261020/`.
+- `obofiles4production/`: `go.obo`/`po.obo`/`to.obo` moved to
+  `.data/backups/obo-raw-20261022/`, the eleven `*_annot.obo` copied in, and
+  `ontology.conf` lists only the files present. tpso reads every `.obo` file
+  in that directory. No Postgres tables were dropped here (no local container).
+  `dump.sh` never dumps lexicon tables (`-T tpontology* -T pcrelation*`), so a
+  recreated container starts clean.
+
+**Branches.** The `agr_textpresso-jats` worktree's uncommitted work was merged
+into `maize-textpresso-fixes`. The three files changed on both sides
+(`TdTokenizer.cpp`, `IndexManager.cpp`, `Search.cpp`) merged without
+conflicts. `jats-ingest` was merged into master (`0312a1a`, master's side kept).
+The `-jats` worktrees are now redundant.
+
+**Verified.** 159 + 34 Python tests. Smoke run of the full hygiene stack over
+300 local papers. The category index builds from the new files (86,624
+categories; `chromosome`, `gibberellin` as themselves). **Not verified:** the
+C++ build (Docker only), and the re-index itself.
+
+**Handoff.** `docs/HANDOFF_REINDEX_20261022.md` covers the rebuild and re-index
+on a machine running the old image. JATS for MaizeOpenAccess was fetched here
+and is shipped in the bundle, so the target needs no NCBI access.

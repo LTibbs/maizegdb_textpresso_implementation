@@ -582,7 +582,11 @@ def write_outputs(args, rows, annot_terms, report, sources=None):
                 if label:
                     fh.write("name: %s\n" % obo_unquoted(label))
                 elif term["name"]:
+                    # the label is not a match string, but tpso and
+                    # category_index still need a category name: stub_label
                     fh.write('property_value: unmatchable_label "%s" xsd:string\n'
+                             % obo_quoted(term["name"]))
+                    fh.write('property_value: stub_label "%s" xsd:string\n'
                              % obo_quoted(term["name"]))
                 for text, kind, _tier in kept:
                     if kind != "label":

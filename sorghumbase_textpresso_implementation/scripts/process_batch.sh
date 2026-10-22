@@ -53,6 +53,8 @@
 #                     <data>/handoff/ which is bind-mounted to your laptop.
 #   -k                Keep the per-corpus scoped staging tree under tmp/ for
 #                     debugging instead of removing it.
+#   -x                Skip step 6 (packaging): for a run on the server
+#                     itself, where the outputs are already in place.
 #   -n                Dry run: print what would happen, do nothing.
 #   -h                This help.
 #
@@ -72,11 +74,12 @@ TOK_MODE=4
 EXPECT_ONTO=""
 OUTDIR="handoff"
 KEEP_TMP=0
+NO_PACKAGE=0
 DRY_RUN=0
 
 usage() { sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; s/^#$//' | head -n -1; exit "${1:-0}"; }
 
-while getopts ":c:s:j:C:P:t:O:o:knh" opt; do
+while getopts ":c:s:j:C:P:t:O:o:kxnh" opt; do
   case "$opt" in
     c) CORPUS="$OPTARG" ;;
     s) SRC_PDF_DIR="$OPTARG" ;;
@@ -87,6 +90,7 @@ while getopts ":c:s:j:C:P:t:O:o:knh" opt; do
     O) EXPECT_ONTO="$OPTARG" ;;
     o) OUTDIR="$OPTARG" ;;
     k) KEEP_TMP=1 ;;
+    x) NO_PACKAGE=1 ;;
     n) DRY_RUN=1 ;;
     h) usage 0 ;;
     \?) echo "Unknown option: -$OPTARG" >&2; usage 1 ;;
@@ -148,7 +152,10 @@ echo "  corpus:    $CORPUS"
 echo "  tokenizer: -t $TOK_MODE   workers: -P $NPROC"
 
 # No competing pipeline / stale locks
-BUSY="$(dexec "ps -eo args | grep -E 'run_tpc_pipeline|articles2cas|runAECpp|create_single_index|indexmerger' | grep -v grep || true")"
+# tpso/generatelexicalvariations: the lexica a container builds at start-up
+# (initialize.sh -l, in the background); annotating before they finish uses a
+# partial lexicon
+BUSY="$(dexec "ps -eo args | grep -E 'run_tpc_pipeline|articles2cas|runAECpp|create_single_index|indexmerger|tpso|generatelexicalvariations' | grep -v grep || true")"
 [[ -z "$BUSY" ]] || die "another pipeline process is running in the container:\n$BUSY"
 LOCKS="$(dexec "find ${BASE}/tmp -maxdepth 1 -iname '*.lock' 2>/dev/null || true")"
 if [[ -n "$LOCKS" ]]; then
@@ -415,6 +422,10 @@ dexec "
 # ----------------------------------------------------------------------------
 # 6. Package for the server operator
 # ----------------------------------------------------------------------------
+if [[ "$NO_PACKAGE" == "1" ]]; then
+  log "Done (-x: not packaged). Next: index, then restart textpressoapi."
+  exit 0
+fi
 log "Package handoff bundle"
 PKG="${OUTDIR}/${CORPUS_TAG}-${RUN_ID}.tgz"
 MANIFEST="${OUTDIR}/${CORPUS_TAG}-${RUN_ID}.manifest.txt"
