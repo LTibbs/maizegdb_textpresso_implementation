@@ -6,8 +6,13 @@
 #
 # This is the front half of the ingest pipeline only:
 #
-#     stage PDFs -> tokenize (CAS-1) -> annotate (CAS-2) -> .bib sidecars
+#     stage PDFs (+ JATS) -> tokenize (CAS-1) -> annotate (CAS-2) -> .bib sidecars
 #                -> validate -> package .tgz
+#
+# Papers with staged JATS (raw_files/xml/<CORPUS>/<acc>/<acc>.jats.json, from
+# bin/fetch_jats.py) get their CAS-1 from JATS (articles2cas -t 5); the rest go
+# through the PDF tokenizer. Every paper still needs its PDF: .bib generation
+# reads it, and the PDF keeps the merged supplements.
 #
 # It deliberately does NOT build the Lucene index. The server operator merges
 # the packaged trees into the mounted /data/textpresso and runs `index` there.
@@ -24,6 +29,14 @@
 #   -s SRC_PDF_DIR    Directory of flat <accession>.pdf files to stage into the
 #                     required layout first. Omit if you have already staged
 #                     PDFs at raw_files/pdf/<CORPUS>/<accession>/<accession>.pdf
+#   -j JATS_DIR       Host directory written by bin/fetch_jats.py --out-dir
+#                     (<accession>/<accession>.jats.json ...) to stage into
+#                     raw_files/xml/<CORPUS> first. JATS already staged there
+#                     is used with or without -j. For merged supplements to
+#                     reach the JATS text, run fetch_jats.py with --pdf-dir on
+#                     the PDFs' page texts (<accession>.NNNNN.txt, written by
+#                     pdf2txtimg), then re-run it after a first pass if needed:
+#                     a re-run re-converts without fetching.
 #   -C CONTAINER      Container name (default: auto-detected, else
 #                     agr-textpresso-textpresso-1).
 #   -P N              Parallel workers for tokenize/annotate (default: 1).
@@ -52,6 +65,7 @@ set -euo pipefail
 # ----------------------------------------------------------------------------
 CORPUS=""
 SRC_PDF_DIR=""
+JATS_SRC_DIR=""
 CONTAINER=""
 NPROC=1
 TOK_MODE=4
@@ -62,10 +76,11 @@ DRY_RUN=0
 
 usage() { sed -n '2,/^set -euo/p' "$0" | sed 's/^# \{0,1\}//; s/^#$//' | head -n -1; exit "${1:-0}"; }
 
-while getopts ":c:s:C:P:t:O:o:knh" opt; do
+while getopts ":c:s:j:C:P:t:O:o:knh" opt; do
   case "$opt" in
     c) CORPUS="$OPTARG" ;;
     s) SRC_PDF_DIR="$OPTARG" ;;
+    j) JATS_SRC_DIR="$OPTARG" ;;
     C) CONTAINER="$OPTARG" ;;
     P) NPROC="$OPTARG" ;;
     t) TOK_MODE="$OPTARG" ;;
@@ -88,10 +103,13 @@ RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 
 BASE=/data/textpresso
 RAW_PDF="${BASE}/raw_files/pdf/${CORPUS}"
+RAW_XML="${BASE}/raw_files/xml/${CORPUS}"
 CAS1="${BASE}/tpcas-1/${CORPUS}"
 CAS2="${BASE}/tpcas-2/${CORPUS}"
 STAGE_ROOT="${BASE}/tmp/${CORPUS_TAG}-annotate-${RUN_ID}"
 ACC_LIST="/tmp/${CORPUS_TAG}_accessions.txt"
+JATS_LIST="/tmp/${CORPUS_TAG}_jats_accessions.txt"   # CAS-1 from JATS
+PDF_LIST="/tmp/${CORPUS_TAG}_pdf_accessions.txt"     # CAS-1 from the PDF
 LOG_DIR="${BASE}/logs"
 
 # ----------------------------------------------------------------------------
@@ -155,13 +173,25 @@ else
   warn "no -O given: not verifying ontology parity against the server. Annotations may not match the server's category tree."
 fi
 
-TPONT_ROWS="$(dexec "psql -At -d www-data -c 'select count(*) from tpontology;'" | tr -d '[:space:]')"
+# Count the per-ontology tpontology_* tables tpso writes: annotate builds the
+# combined tpontology table from them and drops it when it finishes, so it is
+# absent after any earlier annotate run.
+TPONT_ROWS="$(dexec "
+  n=0
+  for t in \$(psql -At -d www-data -c \"select tablename from pg_tables where tablename like 'tpontology\\_%'\"); do
+    n=\$((n + \$(psql -At -d www-data -c \"select count(*) from \${t}\")))
+  done
+  echo \$n
+" | tr -d '[:space:]')"
 echo "  tpontology rows: ${TPONT_ROWS:-0}"
 [[ "${TPONT_ROWS:-0}" -gt 0 ]] || die "tpontology is empty — lexica not built. See setup doc, step 5."
 
 # PDFs present?
 if [[ -n "$SRC_PDF_DIR" ]]; then
   [[ -d "$SRC_PDF_DIR" ]] || die "SRC_PDF_DIR does not exist: $SRC_PDF_DIR"
+fi
+if [[ -n "$JATS_SRC_DIR" ]]; then
+  [[ -d "$JATS_SRC_DIR" ]] || die "JATS_DIR does not exist: $JATS_SRC_DIR"
 fi
 
 # ----------------------------------------------------------------------------
@@ -192,6 +222,44 @@ STAGED_COUNT="$(dexec "find '${RAW_PDF}' -mindepth 2 -maxdepth 2 -iname '*.pdf' 
 [[ "${STAGED_COUNT:-0}" -gt 0 ]] || die "no staged PDFs found under ${RAW_PDF}"
 echo "  staged accessions: $STAGED_COUNT"
 dexec "ls '${RAW_PDF}' > '${ACC_LIST}'; wc -l < '${ACC_LIST}'" >/dev/null || true
+
+# ----------------------------------------------------------------------------
+# 1b. Stage JATS  raw_files/xml/<CORPUS>/<accession>/<accession>.jats.json
+#     (only for accessions whose PDF is staged: the PDF is still needed)
+# ----------------------------------------------------------------------------
+if [[ -n "$JATS_SRC_DIR" ]]; then
+  log "Stage JATS from $JATS_SRC_DIR"
+  staged=0; skipped=0
+  for d in "$JATS_SRC_DIR"/*/; do
+    acc="$(basename "$d")"
+    [[ -f "${d}${acc}.jats.json" ]] || continue
+    if ! dexec "test -d '${RAW_PDF}/${acc}'" 2>/dev/null; then
+      skipped=$((skipped+1)); continue
+    fi
+    if [[ "$DRY_RUN" == "1" ]]; then
+      echo "  (dry-run) stage JATS $acc"; continue
+    fi
+    docker exec "$CONTAINER" mkdir -p "${RAW_XML}/${acc}"
+    for f in "${d}${acc}".*; do docker cp "$f" "${CONTAINER}:${RAW_XML}/${acc}/"; done
+    staged=$((staged+1))
+  done
+  echo "  ${staged} paper(s) staged"
+  [[ "$skipped" == 0 ]] || warn "${skipped} JATS paper(s) skipped: no staged PDF for them in ${RAW_PDF}"
+fi
+
+# Split the batch: staged JATS -> TjTokenizer, everything else -> PDF tokenizer.
+# (03pdf2cas4tai.sh applies the same rule in the server pipeline.)
+dexec "
+  : > '${JATS_LIST}'; : > '${PDF_LIST}'
+  for acc in \$(cat '${ACC_LIST}'); do
+    if [[ -f '${RAW_XML}/'\"\${acc}\"'/'\"\${acc}\"'.jats.json' ]]; then
+      echo \"\${acc}\" >> '${JATS_LIST}'
+    else
+      echo \"\${acc}\" >> '${PDF_LIST}'
+    fi
+  done
+  echo \"  CAS-1 source: \$(wc -l < '${JATS_LIST}') JATS, \$(wc -l < '${PDF_LIST}') PDF\"
+"
 
 # Warn about metadata coverage
 CSV_COUNT="$(dexec "ls ${BASE}/imports/metadata/*.csv 2>/dev/null | wc -l" | tr -d '[:space:]')"
@@ -228,7 +296,13 @@ TOK_LOG="${LOG_DIR}/${CORPUS_TAG}-tokenize-${RUN_ID}.log"
 dexec "
   set -euo pipefail
   cd '${BASE}/tpcas-1'
-  articles2cas -i '${RAW_PDF}' -l '${ACC_LIST}' -t ${TOK_MODE} -o '${CORPUS}' -p 2>&1 | tee '${TOK_LOG}'
+  # an empty -l list means 'every directory' to articles2cas, so guard both
+  if [[ -s '${PDF_LIST}' ]]; then
+    articles2cas -i '${RAW_PDF}' -l '${PDF_LIST}' -t ${TOK_MODE} -o '${CORPUS}' -p 2>&1 | tee '${TOK_LOG}'
+  fi
+  if [[ -s '${JATS_LIST}' ]]; then
+    articles2cas -i '${RAW_XML}' -l '${JATS_LIST}' -t 5 -o '${CORPUS}' -p 2>&1 | tee -a '${TOK_LOG}'
+  fi
   find '${CORPUS}' -name '*.tpcas' -print0 | xargs -0 -r gzip -f
 "
 
@@ -328,7 +402,8 @@ fi
 log "Batch summary"
 dexec "
   echo '  raw PDFs : '\$(find '${RAW_PDF}' -mindepth 2 -maxdepth 2 -iname '*.pdf' | wc -l)
-  echo '  CAS-1    : '\$(find '${CAS1}' -mindepth 2 -maxdepth 2 -name '*.tpcas.gz' | wc -l)
+  echo '  CAS-1    : '\$(find '${CAS1}' -mindepth 2 -maxdepth 2 -name '*.tpcas.gz' | wc -l)\
+       \"  (\$(wc -l < '${JATS_LIST}') from JATS)\"
   echo '  CAS-2    : '\$(find '${CAS2}' -mindepth 2 -maxdepth 2 -name '*.tpcas.gz' | wc -l)
   echo '  .bib     : '\$(find '${CAS2}' -mindepth 2 -maxdepth 2 -name '*.bib' | wc -l)
   if [[ '${TOK_MODE}' == '4' ]]; then
@@ -354,12 +429,13 @@ dexec "
     raw_files/pdf/${CORPUS} \
     tpcas-1/${CORPUS} \
     tpcas-2/${CORPUS} \
+    \$(cd '${BASE}' && ls -d raw_files/xml/${CORPUS} 2>/dev/null || true) \
     \$(cd '${BASE}' && ls imports/metadata/*.csv 2>/dev/null || true)
   {
     echo 'Textpresso annotation batch — handoff manifest'
     echo \"corpus        : ${CORPUS}\"
     echo \"generated     : ${RUN_ID} (UTC)\"
-    echo \"tokenizer     : articles2cas -t ${TOK_MODE}\"
+    echo \"tokenizer     : articles2cas -t ${TOK_MODE}; -t 5 (JATS) for \$(wc -l < '${JATS_LIST}') paper(s)\"
     echo \"ontologies    : ${ONTO_NOW}\"
     echo \"tpontology    : ${TPONT_ROWS} rows\"
     echo \"accessions    : \"\$(cat '${ACC_LIST}' | wc -l)

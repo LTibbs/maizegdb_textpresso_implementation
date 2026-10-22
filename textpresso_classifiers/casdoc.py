@@ -186,7 +186,7 @@ def parse_cas_document(cas_path):
         if "PTCAT" in el:
             continue
         category = _attr(el, "category") or ""
-        id_m = re.search(r"\(([A-Za-z]+:\d+)\)", category)
+        id_m = re.search(r"\(([A-Za-z][A-Za-z0-9_]*:\d+)\)", category)
         annotations.append({
             "begin": remap(int(_attr(el, "begin"))),
             "end": remap(int(_attr(el, "end"))),

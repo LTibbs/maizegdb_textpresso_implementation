@@ -120,6 +120,9 @@ SEARCH_TYPES = [
     "design",
     "acknowledgments",
     "references",
+    # needs the 2026-10-22 TdTokenizer and a re-index; an older server
+    # silently searches the whole document for a type it doesn't know
+    "supplementary",
 ]
 
 # Valid --exclude-type values: SEARCH_TYPES minus the ones that are query
@@ -153,6 +156,22 @@ _it = _load_module("annotation_italics", "textpresso_classifiers/annotation_ital
 # when built with --obo; the class map is ~98 KB.
 _ITALICS = _it.load_index(os.environ.get("TEXTPRESSO_ITALICS_INDEX", ""))
 _OBO_CLASS = _it.load_class_map(os.environ.get("TEXTPRESSO_OBO_CLASS_MAP", ""))
+_ti = _load_module("annotation_tiers", "textpresso_classifiers/annotation_tiers.py")
+# Opt-in, as on the server: the tier gate runs only when this names a
+# match_dictionary.csv(.gz). Loaded lazily -- it is ~180k rows, and only the
+# --cas-root path uses it (over HTTP the sidecar owns hygiene).
+_TIERS = None
+_VIEW_WARNED = False
+
+
+def _local_tiers():
+    global _TIERS
+    # on by default, as in cas_annotate_server.py; "0" turns it off
+    path = os.environ.get("TEXTPRESSO_MATCH_DICTIONARY",
+                          "/data/textpresso/annotation_build/match_dictionary.csv.gz")
+    if _TIERS is None and path not in ("", "0") and os.path.exists(path):
+        _TIERS = _ti.TierIndex.from_csv(path)
+    return _TIERS
 
 
 # ---------------------------------------------------------------------------
@@ -642,14 +661,28 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False,
             annotations = [a for a in annotations
                            if not a["ontology"].endswith("_RELATED")]
         if clean:
+            view = getattr(args, "ontology_view", None)
+            global _VIEW_WARNED
+            if view is None and not _VIEW_WARNED:
+                # The view needs category_index.py, which lives beside the
+                # sidecar in agr_textpresso; without it this path cannot run
+                # the ancestor collapse or the abbreviation case check, so it
+                # is NOT the same filter the API applies. Say so once.
+                print("  [--cas-root: no ontology view, so broader-term collapse and "
+                      "the abbreviation case check are skipped]", file=sys.stderr)
+                _VIEW_WARNED = True
             annotations, dropped = _hy.clean_annotations(
                 annotations, sections,
-                ontology_view=getattr(args, "ontology_view", None),
+                ontology_view=view,
                 section_types_at=_ca.section_types_at,
                 italics=(_it.for_paper(_ITALICS, identifier)
                          if getattr(args, "italics", True) else None),
                 italic_rule=_it.never_italicised,
-                obo_class_of=_OBO_CLASS)
+                obo_class_of=_OBO_CLASS,
+                tiers=_local_tiers(),
+                tier_rule=_ti.tier_rule,
+                sentence_at=_ca.sentence_lookup(sentences),
+                body_text=_ca.body_text(sentences, sections, _hy.DEFAULT_DROP_SECTIONS))
             if hygiene_report is not None:
                 hygiene_report.update(_hy.hygiene_report(annotations, dropped))
         return sentences, annotations, sections, False
@@ -690,7 +723,7 @@ def _normalize_text(s):
     return " ".join(s.split())
 
 
-_CATEGORY_ID_RE = re.compile(r"\(([A-Za-z]+:\d+)\)")
+_CATEGORY_ID_RE = re.compile(r"\(([A-Za-z][A-Za-z0-9_]*:\d+)\)")
 
 
 def _gene_category_onto_ids(categories):
@@ -855,6 +888,9 @@ HYGIENE_REASON_LABELS = {
     "abbrev_case_mismatch": "case mismatch",
     "not_italicised": "never italicised",
     "excluded_form": "excluded forms",
+    "tier_T1_case_mismatch": "case mismatch",
+    "tier_T2_no_context": "common words without context",
+    "tier_T3_blocked": "blocked short forms",
 }
 
 
@@ -1045,7 +1081,7 @@ def main():
                           "(requires Textpresso rebuilt with RELATED synonym indexing; "
                           "ignored when --ontology is specified)")
     ann.add_argument("--ontology", action="append", metavar="NAME",
-                     choices=["GO", "PO", "TO", "MAIZE_GENES", "MAIZE_GENES_RELATED", "OTHER"],
+                     choices=["GO", "PO", "TO", "CHEBI", "PATO", "PECO", "PSO", "SO", "ECO", "CO_322", "NCBITaxon", "MAIZE_GENES", "MAIZE_GENES_RELATED", "OTHER"],
                      help="Restrict annotations to specific ontologies (repeatable); "
                           "use MAIZE_GENES for EXACT-synonym matches only, "
                           "MAIZE_GENES_RELATED for RELATED-synonym matches only, "

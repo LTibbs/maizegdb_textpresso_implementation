@@ -78,7 +78,7 @@ def main():
     )
     parser.add_argument("query", help='Term to search for, e.g. "seed" or "adh1"')
     parser.add_argument("--ontology", action="append", metavar="NAME",
-                        choices=["GO", "PO", "TO", "MAIZE_GENES", "MAIZE_GENES_RELATED", "OTHER"],
+                        choices=["GO", "PO", "TO", "CHEBI", "PATO", "PECO", "PSO", "SO", "ECO", "CO_322", "NCBITaxon", "MAIZE_GENES", "MAIZE_GENES_RELATED", "OTHER"],
                         help="Restrict to specific ontologies (repeatable); "
                              "default: search all")
     parser.add_argument("--limit", type=int, default=20,

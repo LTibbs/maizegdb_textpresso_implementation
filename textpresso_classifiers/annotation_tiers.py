@@ -10,13 +10,16 @@ touches an OBO file.
 
     kept, dropped = clean_annotations(annotations, sections,
                                       tiers=tiers, tier_rule=tier_rule,
-                                      sentence_at=casannot.sentence_at, ...)
+                                      sentence_at=casannot.sentence_lookup(sentences),
+                                      ...)
 
 The four tiers, as built:
 
     T0  match freely, case-insensitive                      186,242 strings
     T1  match only when the case matches a stored form        3,640
     T2  match only with supporting context in the sentence      326
+    TD  curated abbreviation; kept only when the paper body
+        spells out the term (GA, JA, SA, BR, CK, ET, ER, E3)      8
     T3  never string-matched; not present in the dictionary      (284 blocked)
 
 A T2 string is not dropped blindly: `verdict()` looks for three kinds of
@@ -24,17 +27,31 @@ support in the surrounding sentence, in this order, and records which one
 fired. That makes the gate auditable -- a curator sees `tier_T2_context:
 longer_form` rather than a silent disappearance.
 
-WHAT THIS DOES NOT FIX: 'Kit' and 'Ltd' are GO RELATED synonyms stored in
-exactly the case papers use them in ("Radioiodination Kit", "Elsevier Science
-Ltd"), so they are T1 and they pass the case test. They are stop-forms, handled
-by the `exclusions=` list in annotation_hygiene.clean_annotations. Tiering and
-stop-forms are complementary; neither subsumes the other.
+Case: a lowercase stored form also accepts its sentence-case spelling
+('Chromosome', 'Pollen'); a stored form that starts uppercase ('KIT', 'LTD',
+'ABA') needs its exact case, which is what drops 'Kit' ("Radioiodination
+Kit") and 'Ltd' ("Elsevier Science Ltd"). Inflection: a plural the matcher
+produced ('roots') is judged as its dictionary singular ('root').
+
+TD is a paper-level test, not a sentence-level one: an abbreviation is defined
+once and used bare for pages, so the sentence rarely holds the long form. The
+long-form patterns come from the dictionary's `long_forms` column; the body is
+the paper's sentences outside references and acknowledgments
+(casannot.body_text), so author initials in a cited title do not count. A TD
+form also needs its stored case, like T1.
+
+WHAT THIS DOES NOT FIX: a homonym stored in exactly the case papers use for
+the other sense. Those are stop-forms, handled by the `exclusions=` list in
+annotation_hygiene.clean_annotations. Tiering and stop-forms are
+complementary; neither subsumes the other.
 """
 
 import csv
+import gzip
+import json
 import re
 
-TIER_ORDER = {"T0": 0, "T1": 1, "T2": 2, "T3": 3}
+TIER_ORDER = {"T0": 0, "T1": 1, "T2": 2, "TD": 3, "T3": 4}
 
 # Qualifiers that make a common word a term mention: "water deficit",
 # "nitrogen stress", "ear length", "kernel number". Deliberately short -- a
@@ -77,6 +94,13 @@ ONTOLOGY_TO_CHANNEL = {
 }
 
 
+# Plural endings tried, in order, when a surface form is not in the
+# dictionary: (suffix, replacement). Plain 's' before 'es', so 'pores' finds
+# 'pore' rather than the unrelated 'POR'; 'gases' still reaches 'gas' because
+# 'gase' is not a form.
+INFLECTIONS = (("ies", "y"), ("ves", "f"), ("ves", "fe"), ("s", ""), ("es", ""))
+
+
 def channel_for(ontology):
     """Map a Textpresso ontology label to a dictionary channel, or None."""
     if not ontology:
@@ -88,9 +112,12 @@ def channel_for(ontology):
 class TierIndex:
     """Frozen tier lookup over match_dictionary.csv."""
 
-    def __init__(self, records, qualifiers=DEFAULT_QUALIFIERS):
+    def __init__(self, records, qualifiers=DEFAULT_QUALIFIERS, long_form_patterns=None):
         # lowercase string -> list of (stored_string, tier, channel, term_id)
         self._by_form = records
+        # (stored_string, channel, term_id) -> compiled long-form patterns (TD)
+        self._defined = {k: [re.compile(p, re.I) for p in v]
+                         for k, v in (long_form_patterns or {}).items()}
         self._qualifiers = tuple(qualifiers)
         self._by_term = {}
         for recs in records.values():
@@ -104,12 +131,17 @@ class TierIndex:
 
     @classmethod
     def from_csv(cls, path, qualifiers=DEFAULT_QUALIFIERS):
-        records = {}
-        with open(path, encoding="utf-8", newline="") as fh:
+        """Read match_dictionary.csv, or the .csv.gz the build ships."""
+        records, long_forms = {}, {}
+        opener = gzip.open if path.endswith(".gz") else open
+        with opener(path, "rt", encoding="utf-8", newline="") as fh:
             for row in csv.DictReader(fh):
                 records.setdefault(row["match_string"].lower(), []).append(
                     (row["match_string"], row["tier"], row["channel"], row["term_id"]))
-        return cls(records, qualifiers)
+                if row.get("long_forms"):
+                    long_forms[(row["match_string"], row["channel"], row["term_id"])] = \
+                        json.loads(row["long_forms"])
+        return cls(records, qualifiers, long_forms)
 
     def __len__(self):
         return sum(len(v) for v in self._by_form.values())
@@ -127,25 +159,62 @@ class TierIndex:
             recs = [r for r in recs if r[2] == channel]
         return list(recs)
 
-    def verdict(self, text, channel=None, context="", term_id=None):
-        """Return (drop, reason). `context` is the sentence the mention sits in.
+    def _resolve(self, text, channel):
+        """-> (form, records). Textpresso's matcher inflects ('roots' matches
+        'root'), the dictionary does not, so a plural that is not itself a
+        dictionary form is looked up by its singular. Without this every
+        plural bypassed the gate as an unknown form -- 182k of 349k
+        unknown-form rows over MaizeOpenAccess (2026-10-21)."""
+        recs = self._records(text, channel)
+        if recs or not text:
+            return text, recs
+        for suffix, repl in INFLECTIONS:
+            if text.lower().endswith(suffix) and len(text) > len(suffix) + 2:
+                base = text[:-len(suffix)] + repl
+                recs = self._records(base, channel)
+                if recs:
+                    return base, recs
+        return text, []
+
+    def verdict(self, text, channel=None, context="", term_id=None, body=None):
+        """Return (drop, reason). `context` is the sentence the mention sits in;
+        `body` the paper text outside references and acknowledgments, for TD.
 
         An unknown form is never dropped -- the dictionary governs what it
         contains, not what it omits.
         """
-        recs = self._records(text, channel)
+        form, recs = self._resolve(text, channel)
         if not recs:
             return False, "tier_unknown_form"
         if term_id:
             narrowed = [r for r in recs if r[3] == term_id]
             recs = narrowed or recs
 
-        case_exact = [r for r in recs if r[0] == text]
+        # A lowercase stored form also matches its sentence-case spelling
+        # ('Chromosome' at the start of a sentence, 'Pollen' in a heading), as
+        # annotation_hygiene's abbreviation check already allows; without it
+        # T1 dropped sentence-initial ordinary words. Stored forms that start
+        # uppercase (ABA, IAA) still need their exact case.
+        case_exact = [r for r in recs
+                      if r[0] == form or (r[0][:1].islower()
+                                          and r[0][:1].upper() + r[0][1:] == form)]
         pool = case_exact or recs
         tier = min((r[1] for r in pool), key=lambda t: TIER_ORDER.get(t, 0))
 
         if tier == "T3":
             return True, "tier_T3_blocked"
+        if tier == "TD":
+            if not case_exact:
+                stored = sorted({r[0] for r in recs})[:3]
+                return True, "tier_TD_case_mismatch:" + "/".join(stored)
+            if body is None:
+                # as for T2: the test could not run, so keep and say so
+                return False, "tier_TD_body_unavailable"
+            for stored, _tier, ch, tid in pool:
+                for pat in self._defined.get((stored, ch, tid), ()):
+                    if pat.search(body):
+                        return False, "tier_TD_defined:" + pat.pattern
+            return True, "tier_TD_undefined"
         if tier == "T1" and not case_exact:
             stored = sorted({r[0] for r in recs})[:3]
             return True, "tier_T1_case_mismatch:" + "/".join(stored)
@@ -199,7 +268,7 @@ class TierIndex:
         return None
 
 
-def tier_rule(tiers, term, ontology, context="", term_id=None):
+def tier_rule(tiers, term, ontology, context="", term_id=None, body=None):
     """Injection point for annotation_hygiene.clean_annotations.
 
     Mirrors annotation_italics.never_italicised: returns (drop, reason) and
@@ -207,7 +276,13 @@ def tier_rule(tiers, term, ontology, context="", term_id=None):
     """
     if tiers is None:
         return False, ""
-    return tiers.verdict(term, channel_for(ontology), context or "", term_id)
+    channel = channel_for(ontology)
+    if channel is None:
+        # Not a dictionary channel (MAIZE_GENES*: gated by the italics rule).
+        # verdict(channel=None) would search every channel, so a gene symbol
+        # could be judged -- and dropped -- against a GO or ChEBI string.
+        return False, ""
+    return tiers.verdict(term, channel, context or "", term_id, body)
 
 
 if __name__ == "__main__":

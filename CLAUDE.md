@@ -343,19 +343,36 @@ Place beside `casannot.py` in **both** `textpresso_classifiers/` (CLI) and
   `LTD` drops; `Root` vs `root` is sentence case and stays), and never applies
   to `MAIZE_GENES*` — the gene OBO stores registered symbols in lowercase, so
   `HAK5`/`TIR1` would otherwise be dropped. Gene mentions are the italics
-  rule's job.
+  rule's job. `DEFAULT_STOP_FORMS` (18 homonym abbreviations such as `SSR`,
+  `NLB`, `NAC`, `PCC`) is applied by default, case-sensitively and only in the
+  ontologies where the sense is wrong (`TEM` stays in ECO, `tRNA` in SO); see
+  `docs/ONTOLOGY_BUILD.md` for why `SOD`/`CDK`/`PFK` are not on it.
 - `annotation_italics.py` — per-paper italic lookup plus `never_italicised()`,
   the adopted rule, and `load_class_map()`.
 - `annotation_tiers.py` — `TierIndex.from_csv()` over `match_dictionary.csv`
   plus `tier_rule()`, the injectable gate for the four-tier match-string policy
-  (T1 must match the stored case, T2 needs sentence context, T3 never entered
-  the dictionary). Tiers are frozen at build time, so this module has no
-  third-party imports. See `docs/ONTOLOGY_BUILD.md`.
+  (T1 must match the stored case, T2 needs sentence context, TD -- the curated
+  abbreviations GA/JA/SA/BR/CK/ET/ER/E3 -- needs its long form somewhere in the
+  paper body, T3 never entered the dictionary). Tiers are frozen at build time, so this module has no
+  third-party imports. See `docs/ONTOLOGY_BUILD.md`. A lowercase stored form
+  accepts its sentence-case spelling, and a plural the matcher produced is
+  judged as its singular. It never judges `MAIZE_GENES*`. **On by default**
+  (2026-10-22): server and CLI load
+  `/data/textpresso/annotation_build/match_dictionary.csv.gz` when it exists;
+  `TEXTPRESSO_MATCH_DICTIONARY` names another file, `0` turns it off, and
+  `tiers=0` skips it per request. Pass `casannot.sentence_lookup(sentences)` as
+  `sentence_at`, and `casannot.body_text(sentences, sections,
+  DEFAULT_DROP_SECTIONS)` as `body_text` (without it TD forms are kept and
+  flagged).
 - `bin/build_match_dictionary.py` — builds `match_dictionary.csv` and the eleven
   `*_annot.obo` files from the ontology collection. Build-time only; needs
   `wordfreq`. Re-run it after any collection refresh, and remember ChEBI comes
   from the **full** `chebi.obo` — the lite file in the collection has zero
-  synonyms, so a build against it silently loses every chemical name.
+  synonyms, so a build against it silently loses every chemical name. The
+  shipped build uses `--derive-trait-stems`. GO's `gocheck_do_not_annotate`
+  terms are matched (2026-10-22); moving the `*_annot.obo` files into
+  `obofiles4production/` also means moving the raw `go.obo`/`po.obo`/`to.obo`
+  out — see "Re-indexing with the annotation build" in `docs/ONTOLOGY_BUILD.md`.
 - `bin/jats_italics.py` — builds the italic index from PubMed Central JATS,
   excluding references/acknowledgments. Two guards, both added 2026-10-21
   after they were found in the live index. First, esearch's `[DOI]` field also
@@ -420,6 +437,37 @@ the sidecar dies on import. The server reads `TEXTPRESSO_ITALICS_INDEX` /
 (`*_annot.obo`, `match_dictionary.csv.gz`) live in `.data/annotation_build/`,
 deliberately **not** in `obofiles4production/`: `tpso` globs every `.obo`
 there, so moving them in is the re-index step, not a file copy.
+
+**Restart vs re-index.** Anything read at response time (`casannot.py`
+section handling, the hygiene/italics/tier modules, the italic index, the
+class map, *tiers* in `match_dictionary.csv`) takes effect on a sidecar
+restart. Anything that changes *which strings are matched* (the `*_annot.obo`
+files, any OBO edit) reaches search and the CAS2 annotations only after the tpso
+lexicon is rebuilt and the corpus re-tokenized, re-annotated and re-indexed.
+
+**Merged supplements.** The literature pipeline appends supplementary files
+behind a `SUPPLEMENTARY MATERIAL ... inserted by the MaizeGDB literature
+pipeline` banner. With no heading after the bibliography, TdTokenizer labelled
+them `references`, so the default references drop removed them: 1,378 of the
+1,670 curator-recorded paper-gene pairs hygiene removed outright (2026-10-21).
+`casannot.split_supplementary()` relabels everything from the banner onward
+`supplementary`, which is **not** in the default drop set; over HTTP this needs
+the server's `casannot.py` copy in sync. TdTokenizer writes the same
+`supplementary` section from 2026-10-22 (`FindSupplementBanner`, same pattern
+as `_SUPPLEMENT_BANNER_RE`; keep them in step), ignores headings inside the
+supplement, and gives every section its full span as `content` (the string
+`Tpcas2SingleIndex` indexes). `QueryType::supplementary` makes it searchable via
+the API's and TPC's `type`. Until the corpus is re-tokenized and re-indexed, the
+CAS2 and Lucene still say `references` for that span, and an older API build
+treats an unknown `type` as `document`, so it **silently searches full text**.
+`casannot.fix_sections()` judges headings on the article text only, so
+CAS2s from before and after the change come out the same at read time.
+Both sides judge a heading on the same evidence, the text after its line up
+to 3000 chars or the next references-heading line (`following_text()` /
+`FollowingText`), never on `content` or the raw segment, so they agree by
+construction. Change the two together. Whole-corpus emulation of the switch
+(2026-10-22): 3 of 3,299 papers change, all by keeping a real References
+heading, 12-205 chars relabelled.
 
 ### Rollout convention
 

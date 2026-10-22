@@ -8,8 +8,8 @@ parsing through casannot, so one call here reaches all of them:
     textpresso_gui/backend   -> imports the CLI module as `tpc`,
                                 calls tpc._load_annotations() and tpc._ca.*   (GUI)
 
-Implements three of the four audited fixes plus the italics rule, all as drops
-with a reason code. Every drop is reversible per request: `hygiene=0` returns
+Implements three of the four audited fixes, the italics rule and the tier
+gate, all as drops with a reason code. Every drop is reversible per request: `hygiene=0` returns
 the unfiltered set, and the report names what was removed and why, so borderline
 mentions stay reachable for a curator.
 
@@ -19,8 +19,8 @@ evaluated and not adopted -- it sits within 1.3 points of this rule's precision
 at the same retention, for considerably more machinery. The fitted model remains
 in maize_gene_context.py if it is ever wanted.
 
-Implements three of the four audited fixes. Measured over 659,163 GO/PO/TO
-annotations in MaizeOA (1,423 papers; 300 mentions judged in 5 strata):
+The three audited fixes, measured over 659,163 GO/PO/TO annotations in MaizeOA
+(1,423 papers; 300 mentions judged in 5 strata):
 
   fix 4  drop references/acknowledgments      -149,161 (22.6%); only 32% of
                                                those were judged correct, 33%
@@ -39,8 +39,8 @@ annotations in MaizeOA (1,423 papers; 300 mentions judged in 5 strata):
                                                (SOD, MAPK, RT)
 
 Fix 1 (excluding the 667 abbreviation-shaped GO RELATED synonyms from the
-matching lexicon) is a build-time change; pass a reviewed list as
-`exclusions=` to apply it at response time in the meantime.
+matching lexicon) became the tier policy (annotation_tiers) plus
+DEFAULT_STOP_FORMS below: the 18 forms no tier test can separate.
 
 WHAT THIS CANNOT DO: search results. `search_documents` is served from the
 Lucene index, which already contains the rolled-up matches, so hygiene applied
@@ -55,7 +55,59 @@ answer.
 import re
 
 DEFAULT_DROP_SECTIONS = frozenset({"references", "acknowledgments"})
-_ID_IN_CATEGORY = re.compile(r"\(([A-Za-z]+:\d+)\)\s*$")
+
+#: Reviewed stop-forms (2026-10-22): abbreviations stored in exactly the case
+#: papers use for another sense, so neither the T1 case test nor any context
+#: test can tell them apart. What is left of a 62-form list reviewed in
+#: September once the <= 2-character block, the case test, T2 context and
+#: depth-50 categories took the rest. Matched case-sensitively; a plural the
+#: matcher produced ('SSRs') and, for a lowercase form, the sentence-case
+#: spelling count too. form -> the ontologies it is stopped in (None: every
+#: non-gene ontology), so a form with a correct sense elsewhere keeps it.
+#: The maize sense, from MaizeOpenAccess contexts, is noted against each.
+#: SOD, CDK and PFK were on the September list and are deliberately NOT here:
+#: in this corpus they are superoxide dismutase, cyclin-dependent kinase and
+#: phosphofructokinase, which is what GO matches.
+DEFAULT_STOP_FORMS = {
+    "ACS": ("GO", "SO"),     # ACC synthase, ACS journals; not acetyl-CoA synthetase / ARS consensus
+    "CAR": None,             # Caryophyllales, chromophore attachment region; not contractile ring
+    "DMP": None,             # domain membrane protein (haploid induction); not defecation rhythm
+    "FPC": ("GO",),          # fingerprinted contigs: the SO fingerprint_map sense is right
+    "GCA": None,             # general combining ability, codons in sequences
+    "ISR": None,             # induced systemic resistance, inducer seed rate
+    "LTP": None,             # lipid transfer protein; not long-term synaptic potentiation
+    "MCS": None,             # multiple cloning site, multi-control sterility
+    "NAC": None,             # NAC transcription factor family; not the nascent-polypeptide complex
+    "NLB": None,             # northern leaf blight; not nucleolus-like body
+    "PCC": None,             # Pearson correlation coefficient
+    "PHT": None,             # plant height, phosphate transporter
+    "PPI": None,             # protein-protein interaction; not prepulse inhibition
+    "SSR": None,             # simple sequence repeat; not subsynaptic reticulum
+    "TEM": ("GO", "CHEBI"),  # transmission electron microscopy: the ECO sense is right
+    "VIGS": None,            # virus-induced gene silencing, a method; not antiviral immunity
+    "pathogenesis": None,    # spread over five GO symbiont processes; 'pathogenesis related'
+    "tRNA": ("GO",),         # the SO tRNA sense is right; not GO adaptor activity
+}
+
+GENE_ONTOLOGIES = frozenset({"MAIZE_GENES", "MAIZE_GENES_RELATED"})
+
+
+def stop_form_of(term, ontology, stop_forms):
+    """-> the stop-form `term` realises in `ontology`, or None."""
+    if not stop_forms or not term or ontology in GENE_ONTOLOGIES:
+        return None
+    candidates = [term]
+    for suffix in ("s", "es"):
+        if term.endswith(suffix) and len(term) > len(suffix) + 2:
+            candidates.append(term[:-len(suffix)])
+    for c in candidates:
+        for form in (c, c[:1].lower() + c[1:]):
+            if form in stop_forms and (form == c or form[:1].islower()):
+                scope = stop_forms[form]
+                if scope is None or ontology in scope:
+                    return form
+    return None
+_ID_IN_CATEGORY = re.compile(r"\(([A-Za-z][A-Za-z0-9_]*:\d+)\)\s*$")
 
 
 def _concept_id(category):
@@ -131,14 +183,15 @@ class OntologyView:
 #: write the protein in uppercase, so the check would drop real -- often EXACT --
 #: gene mentions. Gene annotations are gated by the italics rule instead; the
 #: case check was measured on GO/PO/TO only.
-CASE_CHECK_EXEMPT_ONTOLOGIES = frozenset({"MAIZE_GENES", "MAIZE_GENES_RELATED"})
+CASE_CHECK_EXEMPT_ONTOLOGIES = GENE_ONTOLOGIES
 
 
 def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTIONS,
                       collapse=True, case_sensitive_abbrev=True, exclusions=(),
+                      stop_forms=DEFAULT_STOP_FORMS,
                       ontology_view=None, section_types_at=None,
                       italics=None, italic_rule=None, obo_class_of=None,
-                      tiers=None, tier_rule=None, sentence_at=None):
+                      tiers=None, tier_rule=None, sentence_at=None, body_text=None):
     """Return (kept, dropped). Every dropped item carries a 'reason'.
 
     annotations/sections  -- as returned by casannot.parse_cas_file()
@@ -146,21 +199,22 @@ def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTI
                              import-free); when omitted, sections are ignored
     ontology_view         -- an OntologyView; required for `collapse` and for
                              the case check to know the stored spelling
-    exclusions            -- reviewed stop-forms (fix 1), matched case-insensitively
+    exclusions            -- extra forms to drop, matched case-insensitively in
+                             every ontology (kept for callers that pass one)
+    stop_forms            -- {form: ontologies or None}, matched case-sensitively;
+                             DEFAULT_STOP_FORMS unless overridden ({} disables)
     italics               -- per-paper italic sub-index from
                              annotation_italics.for_paper(index, identifier);
                              omit to skip the typography test entirely
     italic_rule           -- pass annotation_italics.never_italicised (keeps
-                             this module import-free, like section_types_at)
+                             this module import-free, like section_types_at).
+                             Applies to gene ontologies only and is a NEGATIVE
+                             test: never italicised means "probably not a
+                             gene"; italicised proves nothing ('et', 'al' and
+                             statistical 'p'/'n'/'r' are italicised too)
     obo_class_of          -- callable(term) -> 'identifier'|'registered'|
                              'alias'|'fragment'|'unknown'; required by the
                              italics rule for its class exemption
-    italic_rule           -- pass annotation_italics.non_italicised (keeps this
-                             module import-free, like section_types_at). Applies
-                             to gene ontologies only and is a NEGATIVE test:
-                             low italic rate means "probably not a gene", a high
-                             rate proves nothing ('et', 'al' and statistical
-                             'p'/'n'/'r' are italicised by convention)
 
     tiers                 -- an annotation_tiers.TierIndex over
                              match_dictionary.csv; omit to skip tier gating
@@ -172,8 +226,15 @@ def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTI
                              'tier_T2_context:qualifier:deficit' is visible to a
                              curator rather than implicit
     sentence_at           -- callable(begin, end) -> sentence text, for the T2
-                             context test; without it T2 forms are kept and
+                             context test (casannot.sentence_lookup(sentences)
+                             builds one); without it T2 forms are kept and
                              flagged tier_T2_context_unavailable, never dropped
+    body_text             -- the paper's text outside references and
+                             acknowledgments (casannot.body_text builds it), for
+                             the TD test: a curated abbreviation (GA, JA, ER, ...)
+                             is kept only when its long form occurs there.
+                             Without it TD forms are kept and flagged
+                             tier_TD_body_unavailable
 
     Order matters: section and form-level drops run first, so the collapse sees
     only surviving concepts and never promotes a boilerplate match.
@@ -193,6 +254,10 @@ def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTI
         if term.lower() in excl:
             dropped.append(dict(a, reason="excluded_form"))
             continue
+        stopped = stop_form_of(term, a.get("ontology"), stop_forms)
+        if stopped:
+            dropped.append(dict(a, reason="stop_form:" + stopped))
+            continue
         if italics and italic_rule is not None:
             cls = obo_class_of(term) if obo_class_of is not None else "unknown"
             drop_it, n_italic, n_total = italic_rule(
@@ -204,8 +269,9 @@ def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTI
             context = ""
             if sentence_at is not None:
                 context = sentence_at(a.get("begin"), a.get("end")) or ""
+            extra = {} if body_text is None else {"body": body_text}
             drop_it, reason = tier_rule(tiers, term, a.get("ontology"), context,
-                                        _concept_id(a.get("category")))
+                                        _concept_id(a.get("category")), **extra)
             if drop_it:
                 dropped.append(dict(a, reason=reason))
                 continue

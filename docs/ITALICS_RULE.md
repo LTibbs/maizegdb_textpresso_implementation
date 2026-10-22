@@ -171,5 +171,6 @@ the class map resolve to `unknown`, which is not exempt — a stale map makes th
 rule more aggressive, not less.
 
 Nothing is permanently removed: every drop carries a reason
-(`not_italicised:0/5`), `hygiene=0` returns the unfiltered set, and
-`italics=0` disables only the typography test.
+(`not_italicised:0/5`), `hygiene=0` returns the unfiltered set,
+`italics=0` disables only the typography test, and `tiers=0` disables only the
+tier gate (which runs only when the server has `TEXTPRESSO_MATCH_DICTIONARY`).

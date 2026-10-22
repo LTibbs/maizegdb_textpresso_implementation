@@ -193,5 +193,44 @@ class TestCliForwardsHygiene(unittest.TestCase):
                          self.tpc.format_hygiene_report(report))
 
 
+
+class TestStopForms(unittest.TestCase):
+
+    def ann(self, term, ontology="GO", cid="GO:0000001"):
+        return {"begin": 0, "end": len(term), "term": term, "ontology": ontology,
+                "category": "x (%s)" % cid}
+
+    def run_clean(self, *anns, **kw):
+        return hy.clean_annotations(list(anns), [], collapse=False, **kw)
+
+    def test_default_list_drops_with_reason(self):
+        kept, dropped = self.run_clean(self.ann("SSR"), self.ann("SSRs"))
+        self.assertEqual(kept, [])
+        self.assertEqual({d["reason"] for d in dropped}, {"stop_form:SSR"})
+
+    def test_case_sensitive(self):
+        kept, _ = self.run_clean(self.ann("ssr"), self.ann("Nac"))
+        self.assertEqual(len(kept), 2)
+
+    def test_scoped_to_wrong_sense_ontologies(self):
+        kept, dropped = self.run_clean(self.ann("TEM", "ECO", "ECO:0000001"),
+                                       self.ann("TEM", "GO"), self.ann("tRNA", "SO", "SO:0000253"))
+        self.assertEqual([k["ontology"] for k in kept], ["ECO", "SO"])
+        self.assertEqual([d["reason"] for d in dropped], ["stop_form:TEM"])
+
+    def test_sentence_case_of_lowercase_form(self):
+        _, dropped = self.run_clean(self.ann("Pathogenesis"))
+        self.assertEqual(dropped[0]["reason"], "stop_form:pathogenesis")
+
+    def test_genes_and_correct_senses_untouched(self):
+        kept, _ = self.run_clean(self.ann("NAC", "MAIZE_GENES", "tpzm:0001"),
+                                 self.ann("SOD"), self.ann("CDK"))
+        self.assertEqual(len(kept), 3)
+
+    def test_can_be_disabled(self):
+        kept, _ = self.run_clean(self.ann("SSR"), stop_forms={})
+        self.assertEqual(len(kept), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -154,6 +154,62 @@ class TestRepairSections(unittest.TestCase):
         ])
         self.assertEqual(sorted(types(out)), [("discussion", 100, 900), ("result", 100, 900)])
 
+    def test_reference_list_cut_short_by_a_false_heading_is_kept(self):
+        # A wrapped journal name ("Methods\nEcol Evol ...") two entries into
+        # the list ends the raw segment after the References heading, so its
+        # content holds too few entries; a real Methods section after the
+        # references then made it look like a table header before body text.
+        # Judged on the text after the heading (following_text), it's a list.
+        refs = ("Ahrens T, Smith J (2019) Maize roots. Plant J 1:2.\n"
+                "Brown AB, Green C (2018) Leaf traits in\n")
+        d = (Doc().add("Results\n", "res").add("Yield rose.\n\n").add("References\n", "refs").add(refs)
+             .add("Methods\n", "fake").add("Ecol Evol 12(11):2084-2090.\n" + REFS + "\n\n")
+             .add("Methods\n", "mm").add("Plants were grown.\n"))
+        a, n = d.at, len(d.text)
+        raw = [sec(a["res"], a["refs"], "result", "Yield rose.\n\n"),
+               sec(a["refs"], a["fake"], "references", refs),
+               sec(a["fake"], a["mm"], "materials and methods", "Ecol Evol 12(11):2084-2090.\n"),
+               sec(a["mm"], n, "materials and methods", "Plants were grown.\n")]
+        self.assertFalse(casannot.looks_like_reference_list(refs))
+        self.assertEqual(types(casannot.repair_sections(raw, d.text)), [
+            ("result", a["res"], a["refs"]),
+            ("references", a["refs"], a["mm"]),
+            ("materials and methods", a["mm"], n),
+        ])
+
+    def test_table_header_before_the_real_references_heading_is_dropped(self):
+        # 10.1534_g3.112.005207: a "Reference" column header ends Table 5
+        # just before "LITERATURE CITED"; the list after that is the later
+        # heading's, so the table caption stays out of the references.
+        d = (Doc().add("Results\n", "res").add("QTL were found.\n(Wu et al. 2008)\n\n")
+             .add("Reference\n", "hdr").add("\nTable 5 QTL number and candidate genes\n\n")
+             .add("LITERATURE CITED\n", "refs").add(REFS + "\n"))
+        a, n = d.at, len(d.text)
+        raw = [sec(a["res"], a["hdr"], "result", "QTL were found."),
+               sec(a["hdr"], a["refs"], "references", "\nTable 5 QTL number and candidate genes\n\n"),
+               sec(a["refs"], n, "references", REFS)]
+        self.assertEqual(casannot.following_text(d.text, raw[1]),
+                         "\nTable 5 QTL number and candidate genes\n\n")
+        self.assertEqual(types(casannot.repair_sections(raw, d.text)), [
+            ("result", a["res"], a["refs"]),
+            ("references", a["refs"], n),
+        ])
+
+    def test_references_heading_line_needs_the_whole_line(self):
+        for line in ("References", "  LITERATURE CITED ", "R e f e r e n c e s",
+                     "<_pdf _fsc=+10/>REFERENCES<_pdf _cr/>"):
+            self.assertTrue(casannot._is_references_heading_line(line), line)
+        for line in ("", "References 1-20", "See References", "Reference list:"):
+            self.assertFalse(casannot._is_references_heading_line(line), line)
+
+    def test_following_text_is_the_window_after_the_heading_line(self):
+        text = "Intro.\nReferences\n" + "x" * 5000
+        s = sec(7, len(text), "references", "stale content")
+        self.assertEqual(casannot.following_text(text, s), "x" * 3000)
+        self.assertEqual(casannot.following_text(None, s), "stale content")
+        implicit = sec(7, len(text), "references", "(implicit: numbered-list reference block)")
+        self.assertEqual(casannot.following_text(text, implicit), implicit["content"])
+
     def test_without_text_or_content_nothing_is_judged(self):
         out = casannot.repair_sections([
             {"begin": 100, "end": 500, "type": "introduction"},
@@ -206,6 +262,105 @@ class TestLetterSpacedHeadings(unittest.TestCase):
         d = Doc().add("Results\n", "res").add("C O N FL I C T O F I N T E R E S T\nNone.\n")
         raw = [sec(0, len(d.text), "result", "C O N FL I C T ...")]
         self.assertEqual(types(casannot.add_letter_spaced_headings(raw, d.text)), types(raw))
+
+
+class TestSplitSupplementary(unittest.TestCase):
+    """10.1186_s12864-025-11761-0: a supplement appended after the references."""
+
+    BANNER = ("SUPPLEMENTARY MATERIAL\n12864_2025_11761_MOESM1_ESM.docx\n"
+              "supplementary document, converted to PDF\n\n"
+              "inserted by the MaizeGDB literature pipeline\n\n")
+
+    def test_supplement_after_references_is_relabelled(self):
+        body = "Results\nZmCHS1 was knocked out.\n"
+        refs = "References\n" + REFS + "\n\n"
+        supp = "Supplementary Figure 1 Mutation types of CHS gene knockout\n"
+        text = body + refs + self.BANNER + supp
+        cut = len(body) + len(refs)
+        sections = [
+            {"begin": 0, "end": len(text), "type": "beginning of article"},
+            {"begin": 0, "end": len(body), "type": "result"},
+            {"begin": len(body), "end": len(text), "type": "references"},
+        ]
+        out = casannot.split_supplementary(sections, text)
+        self.assertEqual(types(out), [("result", 0, len(body)),
+                                      ("beginning of article", 0, len(text)),
+                                      ("references", len(body), cut),
+                                      ("supplementary", cut, len(text))])
+        self.assertEqual(casannot.section_types_at(len(text) - 5, len(text) - 1, out),
+                         {"beginning of article", "supplementary"})
+
+    def test_supplement_headings_are_folded_in(self):
+        text = "References\n" + REFS + "\n" + self.BANNER + "Methods\nmore\nReferences\nX\n"
+        cut = text.index("SUPPLEMENTARY")
+        sections = [{"begin": 0, "end": text.index("Methods"), "type": "references"},
+                    {"begin": text.index("Methods"), "end": len(text), "type": "materials and methods"}]
+        out = casannot.split_supplementary(sections, text)
+        self.assertEqual(types(out), [("references", 0, cut), ("supplementary", cut, len(text))])
+
+    def test_no_banner_is_unchanged(self):
+        sections = [{"begin": 0, "end": 10, "type": "references"}]
+        self.assertIs(casannot.split_supplementary(sections, "Supplementary Table S1 ..."), sections)
+
+
+class TestFixSections(unittest.TestCase):
+    """fix_sections() judges the article's headings without the supplement's,
+    as TdTokenizer does from 2026-10-22."""
+
+    BANNER = TestSplitSupplementary.BANNER
+
+    def paper(self):
+        # The article's "References" isn't followed by a recognisable list
+        # (here, a "see ..." line); a "Methods" heading in the appended
+        # supplement comes after it.
+        d = (Doc().add("Introduction\n", "intro").add("Maize is a crop.\n\n")
+             .add("References\n", "refs").add("See the online version for the list.\n\n")
+             .add(self.BANNER, "cut").add("Methods\n", "smm").add("Plants were grown.\n"))
+        return d, d.at, len(d.text)
+
+    def test_supplement_body_heading_does_not_drop_article_references(self):
+        d, a, n = self.paper()
+        old_cas2 = [  # tokenized before 2026-10-22: supplement headings are sections
+            sec(a["intro"], a["refs"], "introduction", "Maize is a crop.\n\n"),
+            sec(a["refs"], a["smm"], "references", "See the online version for the list.\n\n"),
+            sec(a["smm"], n, "materials and methods", "Plants were grown.\n"),
+        ]
+        # Judged on the whole text, the supplement's Methods counts as body
+        # text after the references, so they'd fold into the introduction.
+        whole = casannot.split_supplementary(casannot.repair_sections(old_cas2, d.text), d.text)
+        self.assertEqual([t for t, _, _ in types(whole)], ["introduction", "supplementary"])
+        self.assertEqual(types(casannot.fix_sections(old_cas2, d.text)), [
+            ("introduction", a["intro"], a["refs"]),
+            ("references", a["refs"], a["cut"]),
+            ("supplementary", a["cut"], n),
+        ])
+
+    def test_old_and_new_cas2_give_the_same_sections(self):
+        d, a, n = self.paper()
+        old_cas2 = [
+            sec(a["intro"], a["refs"], "introduction", "Maize is a crop.\n\n"),
+            sec(a["refs"], a["smm"], "references", "See the online version for the list.\n\n"),
+            sec(a["smm"], n, "materials and methods", "Plants were grown.\n"),
+        ]
+        new_cas2 = [  # what the 2026-10-22 TdTokenizer writes
+            sec(a["intro"], a["refs"], "introduction", "Maize is a crop.\n\n"),
+            sec(a["refs"], a["cut"], "references", "See the online version for the list.\n\n"),
+            sec(a["cut"], n, "supplementary", d.text[a["cut"]:]),
+        ]
+        self.assertEqual(types(casannot.fix_sections(new_cas2, d.text)),
+                         types(casannot.fix_sections(old_cas2, d.text)))
+
+    def test_letter_spaced_supplement_heading_is_ignored(self):
+        d = (Doc().add("Results\n", "res").add("Yield rose.\n\n").add("References\n", "refs")
+             .add(REFS + "\n\n").add(self.BANNER, "cut").add("A C K N O W L E D G M E N T S\nThanks.\n"))
+        n = len(d.text)
+        raw = [sec(d.at["res"], d.at["refs"], "result", "Yield rose.\n\n"),
+               sec(d.at["refs"], n, "references", REFS)]
+        self.assertEqual(types(casannot.fix_sections(raw, d.text)), [
+            ("result", d.at["res"], d.at["refs"]),
+            ("references", d.at["refs"], d.at["cut"]),
+            ("supplementary", d.at["cut"], n),
+        ])
 
 
 if __name__ == "__main__":

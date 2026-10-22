@@ -5,12 +5,17 @@ Drop this next to casannot.py, alongside annotation_hygiene.py.
 Textpresso ingests PDFs through pdf2tpcas, which discards italicisation. Maize
 nomenclature italicises gene symbols, so that lost typography is the single most
 discriminating gene-vs-look-alike signal available. This module reads a
-precomputed index (built by jats_italics.py from PubMed Central JATS XML) and
-exposes the per-paper, per-surface-form italic rate that
-annotation_hygiene.clean_annotations(italics=...) consumes.
+precomputed index (built by jats_italics.py from PubMed Central JATS XML, then
+filled from the source PDFs' fonts by pdf_italics.py) and exposes the per-paper,
+per-surface-form italic counts that annotation_hygiene.clean_annotations(
+italics=...) consumes.
 
-Measured on 337 curated MaizeOA papers / 46,566 gene annotations, curator
-confirmation against MaizeGDB's curated gene lists by italic rate:
+THE ADOPTED RULE is never_italicised() below (strict zero, with the EXACT
+channel and registered/identifier forms exempt). The rate-based
+non_italicised() and the table that follows are the earlier exploration it
+replaced, kept for reference. Measured on 337 curated MaizeOA papers / 46,566
+gene annotations, curator confirmation against MaizeGDB's curated gene lists
+by italic rate:
 
     italic rate   all forms     forms <= 4 chars
     0.00 - 0.05      23.6%          4.2%     <- the rule fires here
@@ -19,8 +24,8 @@ confirmation against MaizeGDB's curated gene lists by italic rate:
     0.60 - 0.95      71.0%         55.7%
     0.95 - 1.00      65.5%         69.5%
 
-Dropping gene annotations whose surface form is <= 4 characters and italicised
-in <= 5% of its occurrences removes 7.6% of gene mention volume while retaining
+(Superseded.) Dropping gene annotations whose surface form is <= 4 characters
+and italicised in <= 5% of its occurrences removes 7.6% of gene mention volume while retaining
 99.3% of curator-confirmed mentions. The terms it removes are family and domain
 names that are 0% curator-confirmed: MYB (516 mentions), bHLH (423), PER (324),
 WD40 (260), FER (152), CCT, GST, PAL, C2H2, HCT.
@@ -212,14 +217,17 @@ def never_italicised(paper_index, term, ontology, obo_class, *,
     return (n_italic == 0), n_italic, n_total
 
 
-def coverage(index, annotations, identifier, **kw):
+def coverage(index, annotations, identifier, min_occurrences=1):
     """Share of a paper's gene annotations the index can speak to -- for the
-    hygiene report, so a curator can see when the test simply had no data."""
+    hygiene report, so a curator can see when the test simply had no data.
+
+    min_occurrences defaults to 1 because never_italicised() judges a form on
+    a single body occurrence; the earlier default of 3 (from the rate rule)
+    hid 25.8% of the rule's drops from this count (2026-10-21)."""
     paper = for_paper(index, identifier)
     gene = [a for a in annotations if a.get("ontology") in GENE_ONTOLOGIES]
     if not gene:
         return {"gene_annotations": 0, "with_italic_data": 0}
     n = sum(1 for a in gene
-            if italic_rate(paper, a.get("term"),
-                           kw.get("min_occurrences", DEFAULT_MIN_OCCURRENCES)) is not None)
+            if italic_rate(paper, a.get("term"), min_occurrences) is not None)
     return {"gene_annotations": len(gene), "with_italic_data": n}

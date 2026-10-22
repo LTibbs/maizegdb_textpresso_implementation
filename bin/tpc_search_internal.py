@@ -393,7 +393,7 @@ def main():
                           "(requires Textpresso rebuilt with RELATED synonym indexing; "
                           "ignored when --ontology is specified)")
     ann.add_argument("--ontology", action="append", metavar="NAME",
-                     choices=["GO", "PO", "TO", "MAIZE_GENES", "MAIZE_GENES_RELATED", "OTHER"],
+                     choices=["GO", "PO", "TO", "CHEBI", "PATO", "PECO", "PSO", "SO", "ECO", "CO_322", "NCBITaxon", "MAIZE_GENES", "MAIZE_GENES_RELATED", "OTHER"],
                      help="Restrict annotations to specific ontologies (repeatable); "
                           "use MAIZE_GENES for EXACT-synonym matches only, "
                           "MAIZE_GENES_RELATED for RELATED-synonym matches only, "

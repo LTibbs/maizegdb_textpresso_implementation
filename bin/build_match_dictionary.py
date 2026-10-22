@@ -64,9 +64,14 @@ CHEBI_FAMILY_SEEDS = {
 }
 HAS_ROLE = "RO:0000087"          # ChEBI writes has_role as a bare RO id
 
-# Decision 2 -- GO keeps everything live except the classes GO itself forbids
-# annotating to. Precision is handled downstream by annotation_hygiene.py.
-GO_EXCLUDED_SUBSETS = frozenset({"gocheck_do_not_annotate"})
+# Decision 2 -- GO keeps every live term, gocheck_do_not_annotate included
+# (2026-10-22). Excluding that subset removed 1,314 strings no other term
+# carries -- 95,277 MaizeOpenAccess mentions, among them 'cell wall' (5,050),
+# 'cell death', 'embryogenesis', 'cell cycle' and the meiotic stages. With
+# tpso at depth 50 a do-not-annotate class is a category only when it is the
+# matched term, and hygiene's ancestor collapse drops it whenever a more
+# specific term covers the same span. The subset line is still carried onto
+# the stanza, so anything that wants to treat these terms differently can.
 
 # Decision 3 -- match dictionaries are built from native stanzas only; an
 # imported stanza resolves against the ontology that owns it.
@@ -97,6 +102,72 @@ TIER_BLOCK = "T3"
 TIER_CONTEXT = "T2"
 TIER_CASE = "T1"
 TIER_SAFE = "T0"
+TIER_DEFINED = "TD"
+
+# Decision 4a -- abbreviations accepted only where the paper spells them out
+# (2026-10-22). Each is <= 2 characters, so the tier rule would block it, and
+# each has a dominant sense in maize papers the source ontologies do not give
+# it: no ontology carries GA/JA/SA/BR/CK/ET as the hormone, and in GO 'GA' is
+# an acylase and 'CK' a kinase. A TD string matches in its stored case and is
+# kept only when one of its long-form patterns occurs in the paper body
+# (references and acknowledgments excluded) -- see annotation_tiers. That is
+# what separates them from their other senses in MaizeOpenAccess: CK is
+# defined as the control check in 35 papers and as cytokinin in 27; JA, SA
+# and GA are often author initials; BR is brace root in 7 papers.
+#
+# (channel, term id) -> {abbreviation: long-form regexes}. A pair the source
+# ontology lacks is added as a RELATED synonym; one it already has (ER) is
+# only re-tiered. Long forms are searched case-insensitively.
+DEFINED_ABBREVIATIONS = {
+    ("ChEBI", "CHEBI:24250"): {"GA": (r"\bgibberell",)},      # gibberellin
+    ("ChEBI", "CHEBI:18292"): {"JA": (r"\bjasmon",)},         # jasmonic acid
+    ("ChEBI", "CHEBI:16914"): {"SA": (r"\bsalicyl",)},        # salicylic acid
+    ("ChEBI", "CHEBI:22921"): {"BR": (r"\bbrassino",)},       # brassinosteroid
+    ("ChEBI", "CHEBI:23530"): {"CK": (r"\bcytokinin",)},      # cytokinin
+    # word-bounded: 'polyethylene glycol' and 'ethylenediamine...' are common
+    ("ChEBI", "CHEBI:18153"): {"ET": (r"\bethylene\b", r"\bethene\b")},  # ethene
+    ("GO", "GO:0005783"): {"ER": (r"\bendoplasmic reticul",)},
+    # E3 is BROAD on GO:0061630 upstream and RELATED only on broader terms
+    ("GO", "GO:0061630"): {"E3": (r"\bubiquitin",)},
+}
+
+# Common English words that, in a maize paper, are almost always the plant
+# structure: frequency alone would put them in T2 (context required), and the
+# runtime gate then dropped 14,771 'leaf', 7,066 'root' and 6,914 'seed'
+# mentions over MaizeOpenAccess (2026-10-21). They match freely, but only in
+# the PO channel -- 'root' as NCBITaxon:1 stays T2. Genuine homonyms (style,
+# coma, keel, bulb, bark) are deliberately NOT listed.
+CHANNEL_FREE_FORMS = {
+    "PO": frozenset({"leaf", "root", "seed", "stem", "silk", "bud", "ear", "kernel",
+                     "husk", "cob", "tassel"}),
+}
+
+# PO, TO and PECO write the synonym scope -- and for PO the language -- into
+# the quoted string itself: synonym: "ear (related)" RELATED [],
+# "oreja de la inflorescencia (Spanish, exact)" EXACT Spanish [...]. Read
+# literally, such a string can never occur in text: 1,653 of 1,655 TO synonyms
+# and 2,668 of 5,605 PO synonyms (2026-10 releases), including PO's 'ear',
+# 'kernel', 'husk' and 'leaf blade'. The suffix is stripped; a string tagged
+# with a language other than English is dropped, since the corpus is English.
+_SCOPE_IN_TEXT = re.compile(
+    r"\s*\((?:([A-Za-z][A-Za-z ]*?),\s*)?(exact|related|narrow|broad)\)\s*$", re.I)
+
+
+def clean_synonym_text(text):
+    """-> (text without an embedded '(scope)' suffix, language or None)."""
+    m = _SCOPE_IN_TEXT.search(text)
+    if not m:
+        return text, None
+    lang = (m.group(1) or "").strip()
+    return text[:m.start()].rstrip(), (lang if lang and lang.lower() != "english" else None)
+
+
+# Opt-in (--derive-trait-stems): TO names carry a " trait" suffix authors
+# never write ("flowering time trait"). Deriving the multi-word stem as a
+# RELATED-scope string raised curator-trait lexicon coverage from 16.8% to
+# 21.3% of occurrences in MaizeOpenAccess. It adds strings no ontology
+# contains, so it is a policy choice, not a parsing fix.
+_TRAIT_SUFFIX = re.compile(r"\s+trait$")
 
 
 def abbreviation_shaped(s):
@@ -132,6 +203,24 @@ def make_tier_fn(zipf):
 # ------------------------------------------------------------------ parsing
 
 _SYN = re.compile(r'^synonym: "((?:[^"\\]|\\.)*)" (EXACT|RELATED|BROAD|NARROW)', re.M)
+_OBO_ESCAPE = re.compile(r"\\(.)")
+_OBO_ESCAPES = {"n": "\n", "t": "\t", "W": " "}
+
+
+def obo_unescape(s):
+    """OBO 1.2 escapes -> text: ChEBI writes "\\{(Z)-pent-2-en-1-yl\\}", which
+    must reach match_dictionary.csv (and the matcher) as "{...}"."""
+    return _OBO_ESCAPE.sub(lambda m: _OBO_ESCAPES.get(m.group(1), m.group(1)), s)
+
+
+def obo_quoted(s):
+    """Text -> the inside of an OBO quoted value."""
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def obo_unquoted(s):
+    """Text -> an OBO name: value ({ starts trailing modifiers, ! a comment)."""
+    return re.sub(r'([\\{}!])', r"\\\1", s)
 
 
 def parse_obo(path, want_roles=False):
@@ -151,8 +240,8 @@ def parse_obo(path, want_roles=False):
         name = re.search(r"^name: (.+)$", block, re.M)
         rec = {
             "id": m.group(1),
-            "name": name.group(1).strip() if name else None,
-            "synonyms": [(s.replace('\\"', '"'), sc) for s, sc in _SYN.findall(block)],
+            "name": obo_unescape(name.group(1).strip()) if name else None,
+            "synonyms": [(obo_unescape(s), sc) for s, sc in _SYN.findall(block)],
             "subsets": re.findall(r"^subset: (\S+)", block, re.M),
             "is_a": re.findall(r"^is_a: (\S+)", block, re.M),
             "obsolete": "is_obsolete: true" in block,
@@ -173,6 +262,18 @@ def obo_header_version(path):
             if line.startswith("[Term]"):
                 break
     return "unknown"
+
+
+def obo_subsetdefs(path):
+    """-> ["goslim_plant \"Plant GO slim\"", ...], the header's subsetdef values."""
+    out = []
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("[Term]"):
+                break
+            if line.startswith("subsetdef:"):
+                out.append(line.split(":", 1)[1].strip())
+    return out
 
 
 # -------------------------------------------------------------- ChEBI scope
@@ -256,16 +357,32 @@ def species_scope(text):
     return m.group(1).strip().lower() if m else None
 
 
-def strings_for(term):
-    """Yield (string, kind): primary label, then EXACT, then RELATED synonyms."""
+def strings_for(term, derive_trait_stems=False):
+    """Yield (string, kind): primary label, then EXACT, then RELATED synonyms,
+    then (opt-in) derived trait stems. Synonyms are cleaned of an embedded
+    scope suffix; a non-English one is yielded with kind 'non_english', and an
+    abbreviation that only became matchable by the cleaning with kind 'code',
+    so the caller can count the drop."""
     if term["name"]:
         yield term["name"], "label"
-    for syn, scope in term["synonyms"]:
-        if scope == "EXACT":
-            yield syn, "exact"
-    for syn, scope in term["synonyms"]:
-        if scope == "RELATED":
-            yield syn, "related"
+    for want, kind in (("EXACT", "exact"), ("RELATED", "related")):
+        for syn, scope in term["synonyms"]:
+            if scope == want:
+                text, lang = clean_synonym_text(syn)
+                if lang:
+                    kind_out = "non_english"
+                elif text != syn and abbreviation_shaped(text):
+                    # only live because the suffix was stripped: a database
+                    # trait code (PNWT, LFLG, CANTMP), not something authors
+                    # write -- and some collide with real text (KUP, LAD)
+                    kind_out = "code"
+                else:
+                    kind_out = kind
+                yield text, kind_out
+    if derive_trait_stems and term["name"] and _TRAIT_SUFFIX.search(term["name"]):
+        stem = _TRAIT_SUFFIX.sub("", term["name"])
+        if len(stem.split()) >= 2:
+            yield stem, "derived"
 
 
 def build(args):
@@ -285,6 +402,7 @@ def build(args):
     }
     rows = []
     annot_terms = defaultdict(list)
+    sources = {}     # channel -> ({id: parsed term}, header subsetdefs), for write_outputs
 
     channels = list(CHANNELS)
     if not args.chebi_skip:
@@ -296,6 +414,7 @@ def build(args):
             sys.exit("missing input for channel %s: %s" % (channel, path))
         terms = parse_obo(path, want_roles=(channel == "ChEBI"))
         report["versions"][channel] = obo_header_version(path)
+        sources[channel] = ({t["id"]: t for t in terms}, obo_subsetdefs(path))
 
         keep_ids, scope_reason = None, {}
         if channel == "ChEBI":
@@ -313,26 +432,40 @@ def build(args):
                 stats["obsolete_retained"] += 1          # decision 6
                 annot_terms[channel].append((term, []))
                 continue
-            if channel == "GO" and set(term["subsets"]) & GO_EXCLUDED_SUBSETS:
-                stats["skipped_gocheck"] += 1
-                report["drops"]["gocheck_do_not_annotate"] += 1
-                continue
-            if keep_ids is not None and term["id"] not in keep_ids:
+            curated = DEFINED_ABBREVIATIONS.get((channel, term["id"]), {})
+            if keep_ids is not None and term["id"] not in keep_ids and not curated:
                 stats["skipped_out_of_scope"] += 1
                 report["drops"]["chebi_out_of_scope"] += 1
                 continue
 
             kept_strings = []
-            for text, kind in strings_for(term):
+            derive = getattr(args, "derive_trait_stems", False) and channel == "TO"
+            candidates = list(strings_for(term, derive))
+            have = {t.strip() for t, _ in candidates}
+            candidates += [(abbr, "curated") for abbr in curated if abbr not in have]
+            for text, kind in candidates:
                 text = text.strip()
                 if not text:
                     continue
-                scope = species_scope(text) if kind == "related" else None
+                if kind == "non_english":
+                    stats["dropped_non_english"] += 1
+                    report["drops"]["non_english_synonym"] += 1
+                    continue
+                if kind == "code":
+                    stats["dropped_trait_code"] += 1
+                    report["drops"]["suffixed_abbreviation_code"] += 1
+                    continue
+                scope = species_scope(text) if kind in ("related", "derived") else None
                 if scope and not any(sp in scope for sp in MAIZE_SPECIES):
                     stats["dropped_species_scoped"] += 1
                     report["drops"]["non_maize_species_scoped"] += 1
                     continue
-                tier = tier_of(text)
+                if text in curated:
+                    tier = TIER_DEFINED
+                elif text.lower() in CHANNEL_FREE_FORMS.get(channel, ()):
+                    tier = TIER_SAFE
+                else:
+                    tier = tier_of(text)
                 if tier == TIER_BLOCK:
                     stats["dropped_tier3"] += 1
                     report["drops"]["tier_T3_blocked"] += 1
@@ -349,12 +482,15 @@ def build(args):
                     "term_id": term["id"],
                     "term_label": term["name"] or "",
                     "string_kind": kind,
-                    "inclusion_reason": scope_reason.get(term["id"], "native_term"),
+                    "inclusion_reason": ("curated_abbreviation" if kind == "curated"
+                                         else scope_reason.get(term["id"], "native_term")),
                     "species_scope": scope or "",
                     "n_chars": len(text),
                     "n_tokens": len(tokens),
                     "zipf_freq": ("%.2f" % zipf_frequency(text.lower(), "en"))
                                  if len(tokens) == 1 else "",
+                    "long_forms": json.dumps(list(curated[text])) if tier == TIER_DEFINED
+                                  else "",
                 })
                 kept_strings.append((text, kind, tier))
                 stats["strings_" + tier] += 1
@@ -362,14 +498,35 @@ def build(args):
             annot_terms[channel].append((term, kept_strings))
         report["channels"][channel] = dict(stats)
 
-    write_outputs(args, rows, annot_terms, report)
+    emitted = {(r["channel"], r["term_id"], r["match_string"])
+               for r in rows if r["tier"] == TIER_DEFINED}
+    missing = sorted("%s %s %s" % (ch, tid, abbr)
+                     for (ch, tid), forms in DEFINED_ABBREVIATIONS.items()
+                     for abbr in forms if (ch, tid, abbr) not in emitted
+                     and (ch != "ChEBI" or not args.chebi_skip))
+    if missing:
+        # a renamed, obsoleted or merged term would otherwise lose its
+        # abbreviation without a trace
+        print("WARNING: curated abbreviations not emitted: " + "; ".join(missing),
+              file=sys.stderr)
+    report["curated_abbreviations_missing"] = missing
+
+    write_outputs(args, rows, annot_terms, report, sources)
     return report
 
 
-def write_outputs(args, rows, annot_terms, report):
+def write_outputs(args, rows, annot_terms, report, sources=None):
+    """sources: channel -> ({id: parsed term}, subsetdefs) from the input OBO.
+    Source subsets (goslim_plant, ...) are carried onto every stanza and stub,
+    because tpso's ontology.conf can restrict a channel's categories to them;
+    without them a restricted channel collapses to its root. Stubs carry the
+    source label as property_value stub_label, which tpso uses for the
+    category name (a stub has no name: line, so it adds no match string)."""
+    sources = sources or {}
     os.makedirs(args.outdir, exist_ok=True)
     cols = ["match_string", "tier", "channel", "term_id", "term_label", "string_kind",
-            "inclusion_reason", "species_scope", "n_chars", "n_tokens", "zipf_freq"]
+            "inclusion_reason", "species_scope", "n_chars", "n_tokens", "zipf_freq",
+            "long_forms"]
     rows.sort(key=lambda r: (r["channel"], r["term_id"], r["string_kind"], r["match_string"]))
     with open(os.path.join(args.outdir, "match_dictionary.csv"), "w",
               newline="", encoding="utf-8") as fh:
@@ -384,11 +541,25 @@ def write_outputs(args, rows, annot_terms, report):
         # out-of-scope ChEBI, imported stanzas) are re-emitted as nameless
         # stubs: ancestor expansion keeps working, and a stub contributes no
         # match strings -- the same shape TO and PECO already ship upstream.
-        dangling = sorted({p for term, _kept in items for p in term["is_a"]} - written)
+        by_id, subsetdefs = sources.get(channel, ({}, []))
+        # Stubs keep their own source is_a (closed transitively), so the graph
+        # above a pruned class still reaches the root and depths stay right.
+        dangling, todo = set(), {p for term, _kept in items for p in term["is_a"]} - written
+        while todo:
+            stub = todo.pop()
+            dangling.add(stub)
+            todo |= set(by_id.get(stub, {}).get("is_a", ())) - written - dangling
+        dangling = sorted(dangling)
+        tier_names = sorted({"tier_%s" % t for _term, kept in items for _, _, t in kept})
         with open(out, "w", encoding="utf-8") as fh:
             fh.write("format-version: 1.2\n")
             fh.write("data-version: %s/annotation-build\n"
                      % report["versions"].get(channel, "unknown"))
+            for sd in subsetdefs:
+                fh.write("subsetdef: %s\n" % sd)
+            for tn in tier_names:
+                fh.write('subsetdef: %s "match-string tier %s (annotation build)"\n'
+                         % (tn, tn[len("tier_"):]))
             fh.write("ontology: %s\n" % channel.lower())
             fh.write("remark: matchable strings only; per-term tiers in subset tier_T0..T2\n")
             fh.write("remark: obsolete stanzas retained for id resolution with their label\n")
@@ -400,7 +571,7 @@ def write_outputs(args, rows, annot_terms, report):
                     fh.write("is_obsolete: true\n")
                     if term["name"]:
                         fh.write('property_value: retired_label "%s" xsd:string\n'
-                                 % term["name"].replace('"', '\\"'))
+                                 % obo_quoted(term["name"]))
                     for rb in term["replaced_by"]:
                         fh.write("replaced_by: %s\n" % rb)
                     for c in term["consider"]:
@@ -409,23 +580,38 @@ def write_outputs(args, rows, annot_terms, report):
                     continue
                 label = next((t for t, k, _ in kept if k == "label"), None)
                 if label:
-                    fh.write("name: %s\n" % label)
+                    fh.write("name: %s\n" % obo_unquoted(label))
                 elif term["name"]:
                     fh.write('property_value: unmatchable_label "%s" xsd:string\n'
-                             % term["name"].replace('"', '\\"'))
+                             % obo_quoted(term["name"]))
                 for text, kind, _tier in kept:
                     if kind != "label":
+                        # a derived trait stem or curated abbreviation is not
+                        # an ontology synonym; it rides the RELATED channel so
+                        # it is gated like one
+                        scope = "RELATED" if kind in ("derived", "curated") else kind.upper()
                         fh.write('synonym: "%s" %s []\n'
-                                 % (text.replace('"', '\\"'), kind.upper()))
+                                 % (obo_quoted(text), scope))
                 for tier in sorted({t for _, _, t in kept}):
                     fh.write("subset: tier_%s\n" % tier)
+                for subset in term["subsets"]:
+                    fh.write("subset: %s\n" % subset)
                 for parent in term["is_a"]:
                     fh.write("is_a: %s\n" % parent)
                 fh.write("\n")
             for stub in dangling:
+                src = by_id.get(stub)
                 fh.write("[Term]\n")
                 fh.write("id: %s\n" % stub)
-                fh.write("property_value: graph_stub \"true\" xsd:string\n\n")
+                fh.write("property_value: graph_stub \"true\" xsd:string\n")
+                if src and src["name"]:
+                    fh.write('property_value: stub_label "%s" xsd:string\n'
+                             % obo_quoted(src["name"]))
+                for subset in (src["subsets"] if src else []):
+                    fh.write("subset: %s\n" % subset)
+                for parent in (src["is_a"] if src else []):
+                    fh.write("is_a: %s\n" % parent)
+                fh.write("\n")
             report["channels"].setdefault(channel, {})["graph_stubs"] = len(dangling)
 
     report["drops"] = dict(report["drops"])
@@ -449,6 +635,9 @@ def main():
                     help="full chebi.obo (the lite file has no synonyms)")
     ap.add_argument("--chebi-skip", action="store_true",
                     help="build without the ChEBI channel")
+    ap.add_argument("--derive-trait-stems", action="store_true",
+                    help="also match multi-word TO names without their ' trait' "
+                         "suffix ('flowering time trait' -> 'flowering time')")
     ap.add_argument("--outdir", default="build")
     args = ap.parse_args()
     report = build(args)

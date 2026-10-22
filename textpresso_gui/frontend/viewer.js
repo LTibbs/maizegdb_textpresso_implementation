@@ -231,7 +231,7 @@
   // paper's own annotation string needn't be identical. RELATED gene synonyms
   // only count for a "RELATED:" category, or when the search included them.
   function categoryKey(category) {
-    const m = category.match(/\(([A-Za-z]+:\d+)\)\s*$/);
+    const m = category.match(/\(([A-Za-z][A-Za-z0-9_]*:\d+)\)\s*$/);
     return m ? m[1] : category;
   }
 
@@ -440,7 +440,12 @@
   let catSuggestions = [];  // the ones currently listed
   let catActive = -1;       // keyboard-highlighted suggestion
 
-  const ID_PREFIX_ONTOLOGY = { GO: "GO", PO: "PO", TO: "TO", tpzm: "MAIZE_GENES", tpzma: "MAIZE_GENES" };
+  const ID_PREFIX_ONTOLOGY = {
+    GO: "GO", PO: "PO", TO: "TO", tpzm: "MAIZE_GENES", tpzma: "MAIZE_GENES",
+    // the eleven-channel annotation build; labels as casannot._ontology_of gives them
+    CHEBI: "CHEBI", PATO: "PATO", PECO: "PECO", PSO: "PSO", SO: "SO", ECO: "ECO",
+    CO_322: "CO_322", NCBITaxon: "NCBITaxon",
+  };
 
   // One option per ontology ID (RELATED gene synonyms separately): the CAS
   // can spell the same term's category string more than one way, and

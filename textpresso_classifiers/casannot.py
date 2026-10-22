@@ -28,6 +28,7 @@ When annotations fall in uncovered regions, parse_cas_file synthesises sentence
 contexts by extracting a window of text from the sofaString directly.
 """
 
+import bisect
 import gzip
 import html
 import re
@@ -52,6 +53,13 @@ SECTION_TYPES = [
     "design",
     "acknowledgments",
     "references",
+    # TdTokenizer writes it since 2026-10-22; split_supplementary() adds it
+    # at read time for CAS2s tokenized before then
+    "supplementary",
+    # jats layout only (jats_text.py): PDF supplement text appended after the
+    # JATS article, so it can be told apart from -- or excluded like -- the
+    # rest of the paper.
+    "supplementary material",
 ]
 
 # Each entry maps a short label to the regex that identifies its ontology IDs
@@ -60,6 +68,16 @@ _ONTOLOGY_PREFIXES = [
     ("GO",                  re.compile(r"\bGO:\d+")),
     ("PO",                  re.compile(r"\bPO:\d+")),
     ("TO",                  re.compile(r"\bTO:\d+")),
+    # the eleven-channel annotation build (build_match_dictionary.py). \b keeps
+    # PSO:/PATO: from reading as SO:/TO:
+    ("CHEBI",               re.compile(r"\bCHEBI:\d+")),
+    ("PATO",                re.compile(r"\bPATO:\d+")),
+    ("PECO",                re.compile(r"\bPECO:\d+")),
+    ("PSO",                 re.compile(r"\bPSO:\d+")),
+    ("SO",                  re.compile(r"\bSO:\d+")),
+    ("ECO",                 re.compile(r"\bECO:\d+")),
+    ("CO_322",              re.compile(r"\bCO_322:\d+")),
+    ("NCBITaxon",           re.compile(r"\bNCBITaxon:\d+")),
     # tpzma: = classical_maize_genes.obo (legacy, small curated gene list)
     # tpzm:  = zmays_genes_20260708.obo and later (full genome-scale gene set)
     ("MAIZE_GENES_RELATED", re.compile(r"^RELATED:.*\btpzma?:\d+")),
@@ -213,7 +231,58 @@ def continues_citation(text):
 
 
 def looks_like_reference_list(text):
-    return len(_REF_ENTRY_RE.findall(text[:3000])) >= _MIN_REF_ENTRIES
+    return len(_REF_ENTRY_RE.findall(text[:_FOLLOWING_CHARS])) >= _MIN_REF_ENTRIES
+
+
+# What a heading is judged on: the text after its line, up to 3000
+# characters or the next references-heading line -- the whole window for the
+# reference-list test, its first non-blank line for the citation test, its
+# first non-blank character for the mid-sentence test. TdTokenizer's
+# validateSectionHeadings uses the same window (FollowingText, 2026-10-22).
+# Before, both sides used the text up to the next heading of any kind, which
+# a false heading inside a reference list cut short; and the CAS2 content
+# attribute, which this used to read, runs to the next *real* heading since
+# the same change, so read-time and tokenize-time judgments could differ.
+# Judged from the text, they can't, whichever CAS2.
+# The window stops at a references heading because a reference list belongs
+# to the nearest one above it: otherwise a "Reference" table column header
+# just before "LITERATURE CITED" (10.1534_g3.112.005207) took the list as its
+# own and the table caption became references.
+_FOLLOWING_CHARS = 3000
+_REF_HEADING_KEYS = frozenset(w for w, t in _HEADING_WORDS.items() if t == ("references",))
+_LETTERS_LINE_RE = re.compile(r"[A-Za-z \t]+")
+
+
+def _is_references_heading_line(line):
+    """A line that is only a references heading: letters and spaces, PDF tags
+    aside, whose letters are one of the references heading words (spacing and
+    case ignored, as for letter-spaced headings)."""
+    line = _PDF_ANY_TAG_RE.sub("", line).strip()
+    return (bool(_LETTERS_LINE_RE.fullmatch(line))
+            and re.sub(r"[^A-Za-z]", "", line).lower() in _REF_HEADING_KEYS)
+
+
+def following_text(text, section):
+    """The text the heading that starts section is judged on (see above).
+
+    Falls back to section's content without text, and for TdTokenizer's
+    implicit reference block, whose begin is a list entry, not a heading.
+    A heading's own line always ends in "\\n" (the heading strings do), and
+    its CAS2 content starts right after it: checked on 2,227 sections.
+    """
+    content = section.get("content")
+    if text is None or (content or "").startswith("(implicit"):
+        return content
+    start = text.find("\n", section["begin"]) + 1
+    if not start:
+        return ""
+    window = text[start:start + _FOLLOWING_CHARS]
+    pos = 0
+    for line in window.split("\n"):
+        if _is_references_heading_line(line):
+            return window[:pos]
+        pos += len(line) + 1
+    return window
 
 
 def repair_sections(sections, text=None, pages=None):
@@ -222,8 +291,11 @@ def repair_sections(sections, text=None, pages=None):
     sections -- dicts with begin, end, type and optionally content (the CAS
     section element's content attribute: the text after the heading).
     text -- the string the offsets index into (the sofaString, PDF tags and
-    all). Without it the line-position checks are skipped; without content
-    the reference-list checks are.
+    all; for a paper with an appended supplement, only the text before the
+    banner -- see fix_sections()). Headings are judged on the text after
+    them (following_text()); without text they're judged on content, and
+    the line-position checks are skipped; with neither, the reference-list
+    checks are too.
     pages -- sorted offsets where pages begin (see page_starts()); used
     to end an abstract that ran on (below). Optional.
 
@@ -244,8 +316,11 @@ def repair_sections(sections, text=None, pages=None):
         else:
             groups.append([s])
 
+    def following(group):
+        return following_text(text, group[0])
+
     def misplaced(group):
-        return text is not None and _heading_misplaced(text, group[0]["begin"], group[0].get("content"))
+        return text is not None and _heading_misplaced(text, group[0]["begin"], following(group))
 
     last_body = max((g[0]["begin"] for g in groups if not misplaced(g)
                      and any(s["type"] in _BODY_SECTIONS for s in g)), default=-1)
@@ -254,15 +329,15 @@ def repair_sections(sections, text=None, pages=None):
         if misplaced(group):
             return True
         if all(s["type"] == "references" for s in group):
-            content = group[0].get("content")
-            if content is None or content.startswith("(implicit") or looks_like_reference_list(content):
+            after = following(group)
+            if after is None or after.startswith("(implicit") or looks_like_reference_list(after):
                 return False
             # Not followed by a reference list (a table column header
             # "Reference", say): false if it comes before body text, or if a
             # later "references" heading is followed by the real list.
             return group[0]["begin"] < last_body or any(
                 g[0]["begin"] > group[0]["begin"] and all(s["type"] == "references" for s in g)
-                and looks_like_reference_list(g[0].get("content") or "") for g in groups)
+                and looks_like_reference_list(following(g) or "") for g in groups)
         return False
 
     # A heading inside a reference list whose text is still reference entries
@@ -274,10 +349,10 @@ def repair_sections(sections, text=None, pages=None):
     # a real heading after the references (Acknowledgments, say) can be
     # followed a few lines later by more of the reference list.
     def inside_reference_list(group, previous):
-        content = group[0].get("content")
+        after = following(group)
         return (previous is not None and any(s["type"] == "references" for s in previous)
                 and not any(s["type"] == "references" for s in group)
-                and content is not None and continues_citation(content))
+                and after is not None and continues_citation(after))
 
     kept = []
     for group in groups:
@@ -309,6 +384,56 @@ def repair_sections(sections, text=None, pages=None):
 
     out = [{"begin": s["begin"], "end": s["end"], "type": s["type"]} for s in frames]
     out += [s for group in kept for s in group]
+    return sorted(out, key=lambda s: (s["begin"], s["end"]))
+
+
+# The MaizeGDB literature pipeline appends supplementary files to the article
+# PDF behind a banner page:
+#   SUPPLEMENTARY MATERIAL\n<file name>\n<description>\n\ninserted by the
+#   MaizeGDB literature pipeline
+# No heading follows the reference list, so TdTokenizer labels every appended
+# supplement "references" -- and the default references exclusion then drops
+# it. Measured 2026-10-21 over MaizeOpenAccess: 1,052 papers, 224k
+# annotations behind the banner, 85% of them dropped as references; 1,378 of
+# the 1,670 curator-recorded paper-gene pairs that hygiene removed outright
+# were in supplementary tables.
+# TdTokenizer applies the same rule (FindSupplementBanner, same pattern) from
+# 2026-10-22, and also ignores headings inside the supplement when judging the
+# article's own; parse_cas_file() does likewise, so CAS2s from before and
+# after that change get the same sections.
+_SUPPLEMENT_BANNER_RE = re.compile(
+    r"SUPPLEMENTARY MATERIAL\s*\n(?:[^\n]*\n){0,6}?\s*inserted by the MaizeGDB literature pipeline")
+
+
+def supplement_start(text):
+    """Offset of the first pipeline supplement banner in text, or None."""
+    m = _SUPPLEMENT_BANNER_RE.search(text or "")
+    return m.start() if m else None
+
+
+def split_supplementary(sections, text):
+    """Label everything from the first pipeline supplement banner onward
+    "supplementary", so appended supplements stop inheriting "references".
+
+    sections -- as returned by repair_sections(); text -- the sofaString.
+    Sections are truncated at the banner and those starting after it are
+    replaced by one "supplementary" section running to the end of the text
+    ("beginning/end of article" frames are left alone). A supplement's own
+    headings ("References" inside an appended PDF) are folded in too: one type
+    for all appended material keeps the policy decision in one place.
+    Returns a new list; unchanged when there is no banner.
+    """
+    cut = supplement_start(text)
+    if cut is None:
+        return sections
+    end = max([len(text)] + [s["end"] for s in sections])
+    out = []
+    for s in sections:
+        if s["type"] in _FRAME_SECTIONS:
+            out.append(dict(s))
+        elif s["begin"] < cut:
+            out.append(dict(s, end=min(s["end"], cut)))
+    out.append({"begin": cut, "end": end, "type": "supplementary"})
     return sorted(out, key=lambda s: (s["begin"], s["end"]))
 
 
@@ -370,6 +495,9 @@ def _ontology_of(category):
     return "OTHER"
 
 
+_JATS_RAWSOURCE_RE = re.compile(r'<textpresso:rawsource\s[^>]*\bvalue="jats"')
+
+
 def parse_cas_file(cas_path):
     """Parse a CAS2 file and return (sentences, annotations, sections).
 
@@ -415,7 +543,7 @@ def parse_cas_file(cas_path):
         term     = html.unescape(tm.group(1)) if tm else ""
         category = html.unescape(cm.group(1)) if cm else ""
         # Extract the ontology accession from the parenthetical, e.g. "GO:0048316"
-        id_m    = re.search(r"\(([A-Za-z]+:\d+)\)", category)
+        id_m    = re.search(r"\(([A-Za-z][A-Za-z0-9_]*:\d+)\)", category)
         onto_id = id_m.group(1) if id_m else ""
         annotations.append({
             "begin": begin, "end": end,
@@ -455,11 +583,60 @@ def parse_cas_file(cas_path):
         section_type = html.unescape(tm.group(1)) if tm else ""
         sections.append({"begin": begin, "end": end, "type": section_type,
                          "content": html.unescape(cm.group(1)) if cm else None})
-    sofa = _get_sofa(content)
-    sections = add_letter_spaced_headings(sections, sofa)
-    sections = repair_sections(sections, sofa, page_starts(content, sofa))
+    # jats layout: sections come from the JATS structure (jats_text.py), not
+    # from heading lines, so the PDF heading repairs don't apply.
+    if not _JATS_RAWSOURCE_RE.search(content):
+        sofa = _get_sofa(content)
+        sections = fix_sections(sections, sofa, page_starts(content, sofa))
 
     return sentences, annotations, sections
+
+
+def fix_sections(sections, sofa, pages=None):
+    """All read-time section fixes, in order: letter-spaced headings, false
+    headings, appended supplements. sections as read from the CAS2 (with
+    content); sofa -- the sofaString; pages -- see page_starts().
+
+    Headings inside an appended supplement aren't the article's, so the
+    article's headings are judged on its own text, as TdTokenizer does --
+    otherwise a supplement's "Methods" could make the article's References
+    look like they come before body text. That also makes a CAS2 tokenized
+    after 2026-10-22 (which already has a "supplementary" section) come out
+    the same as one tokenized before.
+    """
+    cut = supplement_start(sofa)
+    article = sofa if cut is None else sofa[:cut]
+    sections = [s for s in sections if s["type"] in _FRAME_SECTIONS or s["begin"] < len(article)]
+    sections = add_letter_spaced_headings(sections, article)
+    sections = repair_sections(sections, article, pages)
+    return split_supplementary(sections, sofa)
+
+
+def sentence_lookup(sentences):
+    """-> callable(begin, end) giving the text of the sentence containing begin.
+
+    For annotation_hygiene.clean_annotations(sentence_at=...): the T2 tier
+    test needs the sentence a mention sits in. sentences as returned by
+    parse_cas_file() (sorted by begin); "" when no sentence covers the offset.
+    """
+    starts = [s["begin"] for s in sentences]
+
+    def at(begin, end=None):
+        i = bisect.bisect_right(starts, begin) - 1
+        if i >= 0 and sentences[i]["begin"] <= begin < sentences[i]["end"]:
+            return sentences[i]["text"]
+        return ""
+    return at
+
+
+def body_text(sentences, sections, excluded_types=("references", "acknowledgments")):
+    """-> the paper's text outside the excluded sections, one sentence per line.
+
+    For annotation_hygiene.clean_annotations(body_text=...): the TD tier keeps a
+    curated abbreviation only when its long form is written in the body, and a
+    cited title or an acknowledged grant must not count as that.
+    """
+    return "\n".join(s["text"] for s in exclude_sections(sentences, sections, excluded_types))
 
 
 def section_types_at(begin, end, sections):
