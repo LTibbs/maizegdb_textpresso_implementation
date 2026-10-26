@@ -393,14 +393,21 @@ MAX_CANDIDATES = int(os.environ.get("TEXTPRESSO_GUI_MAX_CANDIDATES", "2000"))
 
 # --- Open-access gating -----------------------------------------------------
 # Per-paper access level, from what the PDF pipeline records for every paper
-# it fetched (maize_pipeline/pipeline/download_manifest.csv; covers all 1438
-# MaizeOA papers): Unpaywall's oa_status, plus the reuse licence Europe PMC
-# reports (epmc_license, written by the pipeline's refresh_licenses.py and
-# re-checked each run, so delayed licences are picked up). Unpaywall alone
-# isn't enough: it calls journals that relicense on a delay (Genome Research,
-# J Cell Biol) "bronze" even once the article is CC BY-NC, and has no status
-# at all for some fully CC BY papers (PLoS ONE, microPublication Biology).
-# TEXTPRESSO_OA_MANIFEST overrides the path. Three levels:
+# it fetched: Unpaywall's oa_status, plus the reuse licence Europe PMC reports
+# (epmc_license, written by the pipeline's refresh_licenses.py and re-checked
+# each run, so delayed licences are picked up). Unpaywall alone isn't enough:
+# it calls journals that relicense on a delay (Genome Research, J Cell Biol)
+# "bronze" even once the article is CC BY-NC, and has no status at all for
+# some fully CC BY papers (PLoS ONE, microPublication Biology).
+#
+# The default is metadata/MaizeOpenAccess_access.csv in this repo: those two
+# columns cut from the pipeline's download_manifest.csv for the 3,299
+# MaizeOpenAccess papers (10 not in the manifest take oa_status from
+# MaizeOpenAccess_papers.csv). Regenerate it when the corpus changes. Any CSV
+# with doi, oa_status and epmc_license columns works, e.g. the full
+# download_manifest.csv, via TEXTPRESSO_GUI_OA_MANIFEST. Deliberately not
+# TEXTPRESSO_OA_MANIFEST: the API sidecars read that name as a different file
+# (a whitespace-separated TSV, textpressoapi/access.py). Three levels:
 #
 #   "open"        Unpaywall gold / green / hybrid, OR any Creative Commons
 #                 licence in Europe PMC: the full set of top matched
@@ -417,8 +424,8 @@ MAX_CANDIDATES = int(os.environ.get("TEXTPRESSO_GUI_MAX_CANDIDATES", "2000"))
 # manifest can't be read, every paper is treated as restricted rather than
 # guessing that it's open.
 OA_MANIFEST = Path(os.environ.get(
-    "TEXTPRESSO_OA_MANIFEST",
-    "/Users/laura/Downloads/pipeline/download_manifest.csv"))
+    "TEXTPRESSO_GUI_OA_MANIFEST",
+    REPO_ROOT / "sorghumbase_textpresso_implementation" / "metadata" / "MaizeOpenAccess_access.csv"))
 _OPEN_STATUSES = {"gold", "green", "hybrid"}
 _PUBLISHER_STATUSES = {"bronze"}
 _OA_STATUSES = None  # accession-form DOI -> (Unpaywall oa_status, Europe PMC licence)
@@ -440,8 +447,8 @@ def _load_oa_statuses() -> dict:
                                 (row.get("oa_status") or "").strip().lower(),
                                 (row.get("epmc_license") or "").strip().lower())
             except OSError as e:
-                print(f"  [OA manifest not readable ({e}); treating every paper as restricted]",
-                      file=sys.stderr)
+                print(f"  [WARNING: OA manifest not readable ({e}); treating every paper as "
+                      f"restricted -- set TEXTPRESSO_GUI_OA_MANIFEST]", file=sys.stderr)
             _OA_STATUSES = table
         return _OA_STATUSES
 

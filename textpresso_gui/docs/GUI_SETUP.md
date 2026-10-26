@@ -168,10 +168,17 @@ Both endpoints, and the `viewer_allowed` flag on each search result, go
 through `_can_view_full_text()` in `backend/main.py`. Today that allows
 open-access papers only, and restricted papers get 403 and no link.
 
-`_is_open_access()` is still the test-only stand-in that marks about 1 in 4
-papers as restricted. It now uses a hash of the identifier rather than the
-result position, so the search page and the viewer agree on which papers
-are restricted.
+Access comes from `_access_level()`: Unpaywall `oa_status` gold/green/hybrid
+or any Creative Commons Europe PMC licence is `open`, bronze without one is
+`publisher` (no viewer, full set of matched sentences), and everything else is
+`restricted` (no viewer, 3 matched sentences). The statuses are read from
+`sorghumbase_textpresso_implementation/metadata/MaizeOpenAccess_access.csv`
+(columns `doi`, `oa_status`, `epmc_license`; all 3,299 MaizeOpenAccess papers),
+which works with no setup. `TEXTPRESSO_GUI_OA_MANIFEST` points it at another
+CSV with those columns, such as the pipeline's full `download_manifest.csv`.
+Do not confuse it with `TEXTPRESSO_OA_MANIFEST`, which the API sidecars read
+as a different, TSV-format file. If the file cannot be read, the backend logs
+a warning and treats every paper as restricted.
 
 When GUI login exists, add the logged-in user check to
 `_can_view_full_text()`. Nothing else needs to change.
