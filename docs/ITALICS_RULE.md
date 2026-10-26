@@ -96,9 +96,8 @@ plain English words. It runs after the other filters and applies to both gene
 channels and every provenance class:
 
     drop  <=>  gene ontology
-          and  the surface form is in the English-forms list
-          and  the matched text is the word itself (letters only, not written
-               in capitals -- `late`, `Late`; `CO`, `MET` are abbreviations)
+          and  the surface form is in the English-forms list (any spelling:
+               `late`, `Late`, `CO`, `ABA` -- no capitals exemption)
           and  the form is never italicised in the paper
           and  no OTHER, non-English surface form of the same gene survives
                the other filters in the paper body
@@ -121,15 +120,38 @@ python3 bin/build_class_map.py --obo .data/obofiles4production/zmays_genes_20260
 export TEXTPRESSO_ENGLISH_GENE_FORMS=.data/italics/english_gene_forms.json
 ```
 
-Measured over 300 random MaizeOpenAccess papers (seed 7): 3,832 gene mentions
-dropped (about 1% of the 401,432 annotations kept) in 256 papers, 502 of them in
-papers with no italic data; 518 English-word mentions kept (401 on italic
-evidence, 117 on another synonym). What it removes is dominated by OBO-generation
-fragments and ordinary words: `promoter` (1,025, on `ubi1`), `binding` (737),
-`mrna` (569), `red` (517, on `r1`), `expression` (384), `late` (151). No form on
-the list is a registered symbol. **Not validated against curator confirmation**
-(unlike the rule above); the mentions it drops are curator-confirmed at an
-unknown rate, which is the next thing to measure.
+**Checked against curator gene lists (2026-10-23)** -- `maizegdb_references_AI_ready.json`
+joined by PubMed id, 2,004 MaizeOpenAccess papers with curated genes/gene models
+(20,762 symbols, 55,300 gene models). A gene annotation is *confirmed* when its
+gene's name, or an exact locus/assembly id, is in that paper's curated list
+(`locus_synonym` aliases do not count, or `late` would confirm itself). Of the
+384,206 gene mentions that reach this rule (123,971 confirmed, 32.3%), a gene-in-paper
+*pair* is confirmed the same way (13,244 pairs):
+
+    variant                                  removed (confirmed)   confirmed pairs lost   survivors confirmed
+    no rule                                          0                    0                    1.8%
+    capitals exempt (first build)               30,307 (242)             24                    3.1%
+    ADOPTED: no capitals exemption              43,512 (252)             28                    6.9%
+    ... and italic share >= 25%                 47,778 (463)             34                    8.2%
+    ... italic >= 1 only, no synonym leg        44,878 (432)             28                    5.9%
+
+The first build exempted all-caps spellings as "abbreviations" (`CO`, `ABA`). That
+kept 19,175 mentions at 3.1% confirmed -- `ABA` (abscisic acid) alone was 6,041
+at 0%, `CA`, `EH`, `CO`, `CS` also 0% -- and protected only 4 confirmed pairs, so
+it was removed. Why the existing rules did not already catch them: 75% of those
+survivors are EXACT-channel (exempt from the italics rule), 17% are italicised
+once somewhere in the paper, and the tier gate does not judge genes.
+
+Cost of the adopted rule: 28 of 13,244 confirmed pairs (0.2%). 19 of the first
+build's 24 were `r1` matched only as "red"; the rest are `ubi1` as "promoter",
+`clt1` as "ct", `vp1` as "pm". What it removes is dominated by OBO-generation
+fragments and ordinary words: `promoter`, `binding`, `mrna`, `red`, `expression`,
+`late` (0 of 970 confirmed). The other-synonym leg spares about 180 confirmed
+mentions and no further pairs, so it is kept on principle rather than on this
+data. Confirmation is still not precision (rule 5 in CLAUDE.md): it is a
+between-group comparison -- 0.6% confirmed for what the adopted rule removes
+(252 of 43,512), against 36.3% for the gene mentions that remain. Gene-in-paper
+level, not sentence-checked.
 
 ## Caveat on the numbers
 

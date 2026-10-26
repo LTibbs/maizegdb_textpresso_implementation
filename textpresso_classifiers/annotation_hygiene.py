@@ -92,13 +92,6 @@ DEFAULT_STOP_FORMS = {
 GENE_ONTOLOGIES = frozenset({"MAIZE_GENES", "MAIZE_GENES_RELATED"})
 
 
-def english_use(term):
-    """The matched text reads as the plain English word: letters only and not
-    written in capitals ('late', 'Late', 'binding'). 'CO', 'MET' and 'RED' are
-    abbreviations in that spelling and are left to the other rules."""
-    return bool(term) and term.isalpha() and not (len(term) > 1 and term.isupper())
-
-
 def english_word_gate(items, english_forms, italics):
     """-> (kept, dropped): the English-word rule for gene annotations.
 
@@ -111,10 +104,15 @@ def english_word_gate(items, english_forms, italics):
       * another synonym of the same gene -- a different, non-English surface form
         -- survives the other filters somewhere in the body.
 
-    Applies to the EXACT and the RELATED gene channel alike, and to every
-    provenance class: the italics rule exempts the EXACT channel and registered
-    symbols, which is how `late` (an EXACT locus_synonym of Zm00001eb059970)
-    got through. A paper with no italic data can only satisfy the second test.
+    Applies to the EXACT and the RELATED gene channel alike, to every
+    provenance class, and to every spelling: the italics rule exempts the EXACT
+    channel and registered symbols, which is how `late` (an EXACT
+    locus_synonym of Zm00001eb059970) got through, and the tier gate does not
+    judge genes at all. Capitals are not an exemption either. An earlier build
+    spared all-caps spellings (`CO`, `ABA`) as "abbreviations"; checked against
+    curator gene lists that kept 19,175 mentions at 3.1% confirmed (`ABA` alone
+    6,041 at 0%) to protect 4 confirmed gene-in-paper pairs. A paper with no
+    italic data can only satisfy the second test.
     """
     genes = {}
     for a in items:
@@ -126,8 +124,7 @@ def english_word_gate(items, english_forms, italics):
     for a in items:
         term = a.get("term") or ""
         low = term.lower()
-        if (a.get("ontology") in GENE_ONTOLOGIES and low in english_forms
-                and english_use(term)):
+        if a.get("ontology") in GENE_ONTOLOGIES and low in english_forms:
             n_italic = ((italics or {}).get(low) or (0,))[0]
             if n_italic < 1 and not genes.get(_concept_id(a.get("category"))):
                 dropped.append(dict(a, reason="english_word_gene:no_italic_no_synonym"))

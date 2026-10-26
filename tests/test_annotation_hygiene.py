@@ -165,10 +165,24 @@ class TestEnglishWordGenes(unittest.TestCase):
         self.assertEqual(sorted(d["reason"].split(":")[0] for d in dropped),
                          ["english_word_gene", "section"])
 
-    def test_capitalised_abbreviation_is_not_the_english_word(self):
-        for term in ("CO", "RED"):
-            kept, _ = self._clean([_ann(term, "MAIZE_GENES", "co (tpzm:0000005)")], {})
-            self.assertEqual(len(kept), 1, term)
+    def test_capitals_are_no_exemption(self):
+        # 'CO' and 'ABA' match the English-form list case-insensitively. An
+        # all-caps abbreviation needs the same support as 'co' (measured against
+        # curator gene lists: the exemption kept 19,175 mentions at 3.1% confirmed)
+        for term in ("CO", "RED", "Co", "co"):
+            kept, dropped = self._clean([_ann(term, "MAIZE_GENES", "co (tpzm:0000005)")], {})
+            self.assertEqual(kept, [], term)
+            self.assertEqual(dropped[0]["reason"], "english_word_gene:no_italic_no_synonym")
+
+    def test_all_caps_form_kept_with_support(self):
+        # italic evidence is keyed by the lowercase form, so 'CO' is rescued by italic 'co'
+        kept, _ = self._clean([_ann("CO", "MAIZE_GENES", "co (tpzm:0000005)")], {"co": [2, 30]})
+        self.assertEqual(len(kept), 1)
+        annotations = [_ann("CO", "MAIZE_GENES", "co (tpzm:0000005)", begin=0),
+                       _ann("CONSTANS", "MAIZE_GENES", "co (tpzm:0000005)", begin=40)]
+        kept, dropped = self._clean(annotations, {})
+        self.assertEqual({a["term"] for a in kept}, {"CO", "CONSTANS"})
+        self.assertEqual(dropped, [])
 
     def test_sentence_case_is_the_english_word(self):
         kept, _ = self._clean([_ann("Late", "MAIZE_GENES", self.LATE)], {})
