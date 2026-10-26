@@ -89,9 +89,28 @@ from concurrent.futures import ThreadPoolExecutor
 _BIN  = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.join(_BIN, "..")
 
-DEFAULT_URL = "https://textpresso.maizegdb.org/v1/textpresso/api"
+# TPC_API_URL points the CLI and the GUI backend (which uses this default for
+# every call) at another server, e.g. a local container:
+#   TPC_API_URL=http://localhost:8080/v1/textpresso/api
+DEFAULT_URL = os.environ.get("TPC_API_URL") or "https://textpresso.maizegdb.org/v1/textpresso/api"
 #DEFAULT_URL = "http://abd-textpresso.phoenixbioinformatics.org/v1/textpresso/api"
 # DEFAULT_URL = "http://localhost:18080/v1/textpresso/api"
+
+# Optional: send search_documents / get_documents_count / available_corpora
+# straight to the C++ API port instead of through the web server's proxy. The
+# proxy hop in front of the API adds ~5 s to EVERY call (measured against the
+# local container: 0.18 s direct vs 5.4 s through lighttpd, even for a query
+# with no hits). /annotate and /category_search are unaffected, so they keep
+# using DEFAULT_URL. Example for a local container:
+#   TPC_API_URL=http://localhost:8080/v1/textpresso/api
+#   TPC_API_DIRECT_URL=http://localhost:18080/v1/textpresso/api
+DIRECT_API_URL = os.environ.get("TPC_API_DIRECT_URL") or None
+
+
+def _api_url(url):
+    """The base for the three API endpoints: DIRECT_API_URL when set and the
+    caller is using the default server, otherwise url unchanged."""
+    return DIRECT_API_URL if DIRECT_API_URL and url == DEFAULT_URL else url
 
 # API key for full-text access to non-open-access papers. Read from the
 # environment as the default for --api-key; sent as the X-API-Key header on
@@ -156,7 +175,10 @@ _it = _load_module("annotation_italics", "textpresso_classifiers/annotation_ital
 # when built with --obo; the class map is ~98 KB.
 _ITALICS = _it.load_index(os.environ.get("TEXTPRESSO_ITALICS_INDEX", ""))
 _OBO_CLASS = _it.load_class_map(os.environ.get("TEXTPRESSO_OBO_CLASS_MAP", ""))
-_ti = _load_module("annotation_tiers", "textpresso_classifiers/annotation_tiers.py")
+# Gene forms that are English words (build_class_map.py --english-out). Empty,
+# i.e. the english-word rule is off, unless this names the file.
+_ENGLISH_FORMS = _it.load_english_forms(os.environ.get("TEXTPRESSO_ENGLISH_GENE_FORMS", ""))
+_ti =_load_module("annotation_tiers", "textpresso_classifiers/annotation_tiers.py")
 # Opt-in, as on the server: the tier gate runs only when this names a
 # match_dictionary.csv(.gz). Loaded lazily -- it is ~180k rows, and only the
 # --cas-root path uses it (over HTTP the sidecar owns hygiene).
@@ -172,6 +194,74 @@ def _local_tiers():
     if _TIERS is None and path not in ("", "0") and os.path.exists(path):
         _TIERS = _ti.TierIndex.from_csv(path)
     return _TIERS
+
+
+_VIEW = None
+_VIEW_TRIED = False
+
+
+def _ontology_view():
+    """The ancestor/case-check view the API sidecar builds at start-up, or None.
+
+    Built here the same way (agr_textpresso's category_index.build_index over
+    the production OBO directory) when both are named:
+        TEXTPRESSO_CATEGORY_INDEX  path to agr_textpresso/textpressoapi/category_index.py
+        TEXTPRESSO_OBO_DIR         the obofiles4production directory
+    ~2 s and ~330 MB, once per process. Without them the broader-term collapse
+    and the abbreviation case check are skipped, so this path is then NOT the
+    same filter the API applies.
+    """
+    global _VIEW, _VIEW_TRIED
+    if _VIEW_TRIED:
+        return _VIEW
+    _VIEW_TRIED = True
+    module = os.environ.get("TEXTPRESSO_CATEGORY_INDEX", "")
+    obo_dir = os.environ.get("TEXTPRESSO_OBO_DIR", "")
+    if module and obo_dir and os.path.exists(module) and os.path.isdir(obo_dir):
+        ci = _load_module_at("category_index", module)
+        _VIEW = _hy.OntologyView.from_category_index(
+            ci.build_index(_ca._ontology_of, obo_dir=obo_dir))
+    return _VIEW
+
+
+def _load_module_at(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def clean_local_annotations(identifier, annotations, sentences, sections, args, include=None):
+    """The one place a locally parsed CAS2 is hygiene-filtered -> (kept, dropped).
+
+    Used by _load_annotations (search results, CLI) and by the GUI's
+    full-text viewer, so every view applies the same filter. `include`: see
+    annotation_hygiene.clean_annotations.
+    """
+    view = getattr(args, "ontology_view", None) or _ontology_view()
+    global _VIEW_WARNED
+    if view is None and not _VIEW_WARNED:
+        # Without the view this path cannot run the ancestor collapse or the
+        # abbreviation case check, so it is NOT the same filter the API
+        # applies. Say so once.
+        print("  [--cas-root: no ontology view (set TEXTPRESSO_CATEGORY_INDEX and "
+              "TEXTPRESSO_OBO_DIR), so broader-term collapse and the abbreviation "
+              "case check are skipped]", file=sys.stderr)
+        _VIEW_WARNED = True
+    return _hy.clean_annotations(
+        annotations, sections,
+        ontology_view=view,
+        section_types_at=_ca.section_types_at,
+        italics=(_it.for_paper(_ITALICS, identifier)
+                 if getattr(args, "italics", True) else None),
+        italic_rule=_it.never_italicised,
+        obo_class_of=_OBO_CLASS,
+        english_forms=_ENGLISH_FORMS,
+        include=include,
+        tiers=_local_tiers(),
+        tier_rule=_ti.tier_rule,
+        sentence_at=_ca.sentence_lookup(sentences),
+        body_text=_ca.body_text(sentences, sections, _hy.DEFAULT_DROP_SECTIONS))
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +411,7 @@ def search(payload, url=DEFAULT_URL, api_key=None):
 def documents_count(query, url=DEFAULT_URL):
     """Total number of documents matching a search_documents "query" dict."""
     req = urllib.request.Request(
-        f"{url}/get_documents_count",
+        f"{_api_url(url)}/get_documents_count",
         data=json.dumps({"query": query}).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -337,7 +427,7 @@ def _search_page(payload, url, api_key):
     if api_key:
         headers["X-API-Key"] = api_key
     req = urllib.request.Request(
-        f"{url}/search_documents",
+        f"{_api_url(url)}/search_documents",
         data=data,
         headers=headers,
         method="POST",
@@ -353,7 +443,7 @@ def _search_page(payload, url, api_key):
 
 def list_corpora(url=DEFAULT_URL):
     """Return the list of corpus names available on the server."""
-    with urllib.request.urlopen(f"{url}/available_corpora") as resp:
+    with urllib.request.urlopen(f"{_api_url(url)}/available_corpora") as resp:
         return json.loads(resp.read())
 
 
@@ -656,35 +746,22 @@ def _load_annotations(doc, args, ontology_filter=None, include_related=False,
             return None, None, None, False
         sentences, annotations, sections = _ca.parse_cas_file(path)
         if ontology_filter:
-            annotations = [a for a in annotations if a["ontology"] in ontology_filter]
+            def visible(a):
+                return a["ontology"] in ontology_filter
         elif not include_related:
-            annotations = [a for a in annotations
-                           if not a["ontology"].endswith("_RELATED")]
+            def visible(a):
+                return not a["ontology"].endswith("_RELATED")
+        else:
+            visible = None
         if clean:
-            view = getattr(args, "ontology_view", None)
-            global _VIEW_WARNED
-            if view is None and not _VIEW_WARNED:
-                # The view needs category_index.py, which lives beside the
-                # sidecar in agr_textpresso; without it this path cannot run
-                # the ancestor collapse or the abbreviation case check, so it
-                # is NOT the same filter the API applies. Say so once.
-                print("  [--cas-root: no ontology view, so broader-term collapse and "
-                      "the abbreviation case check are skipped]", file=sys.stderr)
-                _VIEW_WARNED = True
-            annotations, dropped = _hy.clean_annotations(
-                annotations, sections,
-                ontology_view=view,
-                section_types_at=_ca.section_types_at,
-                italics=(_it.for_paper(_ITALICS, identifier)
-                         if getattr(args, "italics", True) else None),
-                italic_rule=_it.never_italicised,
-                obo_class_of=_OBO_CLASS,
-                tiers=_local_tiers(),
-                tier_rule=_ti.tier_rule,
-                sentence_at=_ca.sentence_lookup(sentences),
-                body_text=_ca.body_text(sentences, sections, _hy.DEFAULT_DROP_SECTIONS))
+            # filter everything, then hide: a RELATED gene synonym that is not
+            # shown still counts as evidence for the english-word rule
+            annotations, dropped = clean_local_annotations(
+                identifier, annotations, sentences, sections, args, include=visible)
             if hygiene_report is not None:
                 hygiene_report.update(_hy.hygiene_report(annotations, dropped))
+        elif visible is not None:
+            annotations = [a for a in annotations if visible(a)]
         return sentences, annotations, sections, False
 
     params = [("identifier", identifier)]

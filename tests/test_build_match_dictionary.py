@@ -259,5 +259,36 @@ class BuildTest(unittest.TestCase):
         self.assertNotIn("ChEBI CHEBI:24250 GA", missing)
 
 
+class TestDemoteCapitalisedSynonym(unittest.TestCase):
+    """Decision 4b: 'Pathway' (a picloram brand) matched 'pathways' (2026-10-23)."""
+
+    PGR = "role:plant growth regulator"
+
+    def test_brand_name_synonym_needs_context(self):
+        self.assertEqual(bmd.demote_capitalised_synonym("T0", "Pathway", "related", 3.77, self.PGR), "T2")
+        self.assertEqual(bmd.demote_capitalised_synonym("T0", "Beyond", "exact", 4.98, "role:agrochemical"), "T2")
+
+    def test_element_and_compound_names_stay_free(self):
+        # same band, but real chemical mentions: not in the build for an agrochemical role
+        for text in ("Copper", "Nitrogen", "Glucose"):
+            self.assertEqual(bmd.demote_capitalised_synonym(
+                "T0", text, "related", 4.3, "referenced_by_collection"), "T0", text)
+        self.assertEqual(bmd.demote_capitalised_synonym("T0", "Nicotine", "related", 3.9,
+                                                        "role:plant metabolite"), "T0")
+
+    def test_a_terms_own_name_is_not_demoted(self):
+        self.assertEqual(bmd.demote_capitalised_synonym("T0", "Alcohol", "label", 4.61, self.PGR), "T0")
+
+    def test_only_the_untiered_band_is_touched(self):
+        self.assertEqual(bmd.demote_capitalised_synonym("T0", "Tordon", "related", 1.9, self.PGR), "T0")   # rare: a name
+        self.assertEqual(bmd.demote_capitalised_synonym("T0", "Pathway", "related", 5.2, self.PGR), "T0")  # T2 already by zipf
+        self.assertEqual(bmd.demote_capitalised_synonym("T1", "Pathway", "related", 3.0, self.PGR), "T1")
+        self.assertEqual(bmd.demote_capitalised_synonym("T0", "Pathway", "related", None, self.PGR), "T0")
+
+    def test_only_a_single_capitalised_word(self):
+        for text in ("pathway", "PATHWAY", "Pathway inhibitor", "Pathway-2", "pH"):
+            self.assertEqual(bmd.demote_capitalised_synonym("T0", text, "related", 4.0, self.PGR), "T0", text)
+
+
 if __name__ == "__main__":
     unittest.main()

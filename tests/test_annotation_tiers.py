@@ -81,6 +81,68 @@ class TestInflection(unittest.TestCase):
         self.assertEqual(IDX.verdict("root", "PO", "Root length was measured."), (False, "tier_T0"))
 
 
+LEAD = index(
+    ("lead", "T2", "ChEBI", "CHEBI:25016"),
+    ("lead atom", "T0", "ChEBI", "CHEBI:25016"),
+    ("Lead", "T2", "ChEBI", "CHEBI:27889"),
+    ("irrigate", "T0", "GO", "GO:0000001"),
+)
+
+
+class TestVariation(unittest.TestCase):
+    """'leading', 'led' and 'leads' are produced by the lexicon for 'lead'; they
+    are not plurals of it, so they used to bypass the gate as unknown forms."""
+
+    def test_verb_forms_inherit_the_t2_context_test(self):
+        for text in ("leading", "led", "Leading", "Led"):
+            self.assertEqual(
+                LEAD.verdict(text, "ChEBI", "Three studies were leading the field.", "CHEBI:25016"),
+                (True, "tier_T2_no_context"), text)
+
+    def test_context_still_rescues_a_variation(self):
+        # an unambiguous string of the channel in the sentence is real support
+        self.assertEqual(LEAD.verdict("leading", "ChEBI", "A lead atom was leading the field.",
+                                      "CHEBI:25016"), (False, "tier_T2_context:companion_term"))
+
+    def test_qualifier_does_not_rescue_a_verb_form(self):
+        # "leading to MLN resistance": 'resistance' is a qualifier, but not of lead
+        s = "Interactions, leading to MLN resistance, were studied."
+        self.assertEqual(LEAD.verdict("leading", "ChEBI", s, "CHEBI:25016"), (True, "tier_T2_no_context"))
+        # the same sentence still rescues a plain form, as before
+        self.assertEqual(LEAD.verdict("lead", "ChEBI", "Lead resistance was measured.",
+                                      "CHEBI:25016")[1], "tier_T2_context:qualifier:resistance")
+
+    def test_judged_as_the_reported_term_only(self):
+        # another term's id, or none: nothing says whose variation it is
+        self.assertEqual(LEAD.verdict("leading", "ChEBI", "x", "CHEBI:1"), (False, "tier_unknown_form"))
+        self.assertEqual(LEAD.verdict("leading", "ChEBI", "x"), (False, "tier_unknown_form"))
+
+    def test_unrelated_word_is_not_a_variation(self):
+        self.assertEqual(LEAD.verdict("leaf", "ChEBI", "x", "CHEBI:25016"), (False, "tier_unknown_form"))
+        self.assertEqual(LEAD.verdict("lemon", "ChEBI", "x", "CHEBI:25016"), (False, "tier_unknown_form"))
+
+    def test_variation_of_a_free_form_stays_free(self):
+        self.assertEqual(LEAD.verdict("irrigating", "GO", "", "GO:0000001"), (False, "tier_T0"))
+
+    def test_strictest_stored_string_decides(self):
+        # 'lead atom' is multi-word and T0; only the single word 'lead' is a candidate
+        self.assertEqual(LEAD.verdict("leading", "ChEBI", "", "CHEBI:25016"),
+                         (False, "tier_T2_context_unavailable"))
+
+    def test_inflection_endings(self):
+        yes = [("leading", "lead"), ("led", "lead"), ("irrigating", "irrigate"), ("irrigated", "irrigate"),
+               ("running", "run"), ("studied", "study"), ("grown", "grow")]
+        no = [("leaf", "lead"), ("lemon", "lead"), ("leadership", "lead"), ("lea", "lead"), ("lead", "lead")]
+        for w, b in yes:
+            self.assertTrue(ti._inflection_of(w, b), (w, b))
+        for w, b in no:
+            self.assertFalse(ti._inflection_of(w, b), (w, b))
+
+    def test_plural_path_is_unchanged(self):
+        self.assertEqual(LEAD.verdict("leads", "ChEBI", "Roots leads.", "CHEBI:25016"),
+                         (True, "tier_T2_no_context"))
+
+
 class TestTierRule(unittest.TestCase):
 
     def test_gene_ontologies_are_never_judged(self):

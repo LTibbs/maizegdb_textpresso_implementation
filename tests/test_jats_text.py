@@ -253,6 +253,23 @@ class TestPdfSupplement(unittest.TestCase):
         self.assertTrue(all(b["kind"] == "pdf-text" for b in doc.blocks
                             if sup["begin"] <= b["begin"] < sup["end"]))
 
+    def test_xml_illegal_control_characters_become_spaces(self):
+        # PDF text extraction emits U+0001 for a degree sign, U+0008 for a minus.
+        # The CAS-1 sofaString cannot carry them: runAECpp rejects the whole file.
+        pages = ["SUPPLEMENTARY MATERIAL\nx.pdf\n\nTemp 35\x01 31\x08N at\x0cplot￾\n\nTab\there\n"]
+        doc = jats_text.convert(ARTICLE, pages)
+        illegal = [c for c in doc.text
+                   if ord(c) < 0x20 and c not in "\t\n\r" or c in "￾￿"]
+        self.assertEqual(illegal, [])
+        self.assertIn("Temp 35  31 N", doc.text)       # one space per control character
+        self.assertIn("atplot", doc.text)              # form feed is still dropped, as before
+        self.assertIn("Tab here", doc.text)            # tab -> space, unchanged
+
+    def test_map_char_leaves_legal_characters_alone(self):
+        self.assertEqual(jats_text._map_char("\x01"), " ")
+        self.assertEqual(jats_text._map_char("\n"), "\n")
+        self.assertEqual(jats_text._map_char("e"), "e")
+
     def test_joined_staging_file_converts_identically(self):
         # fetch_jats stages the pages as one <acc>.suppl.txt, joined by blank lines
         pages = jats_text.read_pdf_supplement(self.tmp)

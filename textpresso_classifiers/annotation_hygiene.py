@@ -92,6 +92,50 @@ DEFAULT_STOP_FORMS = {
 GENE_ONTOLOGIES = frozenset({"MAIZE_GENES", "MAIZE_GENES_RELATED"})
 
 
+def english_use(term):
+    """The matched text reads as the plain English word: letters only and not
+    written in capitals ('late', 'Late', 'binding'). 'CO', 'MET' and 'RED' are
+    abbreviations in that spelling and are left to the other rules."""
+    return bool(term) and term.isalpha() and not (len(term) > 1 and term.isupper())
+
+
+def english_word_gate(items, english_forms, italics):
+    """-> (kept, dropped): the English-word rule for gene annotations.
+
+    A gene whose matched surface form is an English word (`english_forms`,
+    lowercase, from build_class_map.py --english-out) is annotated only when the
+    paper gives positive evidence that the gene is meant:
+
+      * the form is italicised at least once in the paper body (`italics`, the
+        per-paper index), or
+      * another synonym of the same gene -- a different, non-English surface form
+        -- survives the other filters somewhere in the body.
+
+    Applies to the EXACT and the RELATED gene channel alike, and to every
+    provenance class: the italics rule exempts the EXACT channel and registered
+    symbols, which is how `late` (an EXACT locus_synonym of Zm00001eb059970)
+    got through. A paper with no italic data can only satisfy the second test.
+    """
+    genes = {}
+    for a in items:
+        if a.get("ontology") in GENE_ONTOLOGIES:
+            cid, low = _concept_id(a.get("category")), (a.get("term") or "").lower()
+            if cid and low and low not in english_forms:
+                genes.setdefault(cid, set()).add(low)
+    kept, dropped = [], []
+    for a in items:
+        term = a.get("term") or ""
+        low = term.lower()
+        if (a.get("ontology") in GENE_ONTOLOGIES and low in english_forms
+                and english_use(term)):
+            n_italic = ((italics or {}).get(low) or (0,))[0]
+            if n_italic < 1 and not genes.get(_concept_id(a.get("category"))):
+                dropped.append(dict(a, reason="english_word_gene:no_italic_no_synonym"))
+                continue
+        kept.append(a)
+    return kept, dropped
+
+
 def stop_form_of(term, ontology, stop_forms):
     """-> the stop-form `term` realises in `ontology`, or None."""
     if not stop_forms or not term or ontology in GENE_ONTOLOGIES:
@@ -191,7 +235,8 @@ def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTI
                       stop_forms=DEFAULT_STOP_FORMS,
                       ontology_view=None, section_types_at=None,
                       italics=None, italic_rule=None, obo_class_of=None,
-                      tiers=None, tier_rule=None, sentence_at=None, body_text=None):
+                      tiers=None, tier_rule=None, sentence_at=None, body_text=None,
+                      english_forms=None, include=None):
     """Return (kept, dropped). Every dropped item carries a 'reason'.
 
     annotations/sections  -- as returned by casannot.parse_cas_file()
@@ -235,6 +280,18 @@ def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTI
                              is kept only when its long form occurs there.
                              Without it TD forms are kept and flagged
                              tier_TD_body_unavailable
+    english_forms         -- lowercase set of gene surface forms that are English
+                             words; turns on english_word_gate (see there). Only
+                             applied when `italics` is not None: italics=None
+                             means typography tests are off, and this rule's
+                             first leg is typography. An empty dict (paper not
+                             in the italics index) still applies it, on the
+                             second leg alone
+    include               -- optional predicate(annotation) -> bool. Everything
+                             is filtered, but only annotations it accepts are
+                             returned. Lets a caller hide a channel (the
+                             *_RELATED gene synonyms) without hiding the
+                             evidence it gives the english-word rule
 
     Order matters: section and form-level drops run first, so the collapse sees
     only surviving concepts and never promotes a boilerplate match.
@@ -289,8 +346,15 @@ def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTI
                 continue
         stage1.append(a)
 
+    if english_forms and italics is not None:
+        stage1, english_dropped = english_word_gate(stage1, english_forms, italics)
+        dropped.extend(english_dropped)
+
+    def shown(items):
+        return items if include is None else [a for a in items if include(a)]
+
     if not collapse or ontology_view is None:
-        return stage1, dropped
+        return shown(stage1), shown(dropped)
 
     by_span = {}
     for a in stage1:
@@ -306,7 +370,7 @@ def clean_annotations(annotations, sections, *, drop_sections=DEFAULT_DROP_SECTI
             else:
                 kept.append(i)
     kept.sort(key=lambda a: (a.get("begin") or 0, a.get("category") or ""))
-    return kept, dropped
+    return shown(kept), shown(dropped)
 
 
 def hygiene_report(kept, dropped):

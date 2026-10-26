@@ -86,6 +86,51 @@ What it removes, with curator-confirmation rates: `myb` (627 mentions, 0%),
   The class exemption rescues it here, but nothing in typography can detect the
   condition in general. This is the rule's systematic blind spot.
 
+## The English-word companion rule (2026-10-23)
+
+The first bullet above is where the strict-zero rule is blind: it exempts the
+EXACT channel, so `late` (an EXACT `locus_synonym` of Zm00001eb059970, class
+`alias`) was annotated in every paper that used the ordinary word. A second
+rule, `annotation_hygiene.english_word_gate`, closes that for forms that are
+plain English words. It runs after the other filters and applies to both gene
+channels and every provenance class:
+
+    drop  <=>  gene ontology
+          and  the surface form is in the English-forms list
+          and  the matched text is the word itself (letters only, not written
+               in capitals -- `late`, `Late`; `CO`, `MET` are abbreviations)
+          and  the form is never italicised in the paper
+          and  no OTHER, non-English surface form of the same gene survives
+               the other filters in the paper body
+
+So an English-word gene is annotated only with positive evidence: italic at
+least once, or another synonym of that gene actually appears. A paper with no
+italic data can only pass on the second test. Reason code
+`english_word_gene:no_italic_no_synonym`. `italics=0` skips it, because its
+first leg is typography; `hygiene=0` returns everything.
+
+The list is `.data/italics/english_gene_forms.json` (117 forms for
+`zmays_genes_20260708.obo`: single alphabetic OBO forms with wordfreq Zipf >= 3.0,
+the tier policy's "common word" line). Build it with the class map, and
+rebuild it with the OBO:
+
+```bash
+python3 bin/build_class_map.py --obo .data/obofiles4production/zmays_genes_20260708.obo \
+    --out .data/italics/obo_short_form_classes.json \
+    --english-out .data/italics/english_gene_forms.json     # needs: pip install wordfreq
+export TEXTPRESSO_ENGLISH_GENE_FORMS=.data/italics/english_gene_forms.json
+```
+
+Measured over 300 random MaizeOpenAccess papers (seed 7): 3,832 gene mentions
+dropped (about 1% of the 401,432 annotations kept) in 256 papers, 502 of them in
+papers with no italic data; 518 English-word mentions kept (401 on italic
+evidence, 117 on another synonym). What it removes is dominated by OBO-generation
+fragments and ordinary words: `promoter` (1,025, on `ubi1`), `binding` (737),
+`mrna` (569), `red` (517, on `r1`), `expression` (384), `late` (151). No form on
+the list is a registered symbol. **Not validated against curator confirmation**
+(unlike the rule above); the mentions it drops are curator-confirmed at an
+unknown rate, which is the next thing to measure.
+
 ## Caveat on the numbers
 
 "Curator-confirmed rate" is **not precision**. Curators record genes of

@@ -200,6 +200,38 @@ def make_tier_fn(zipf):
     return tier
 
 
+# Decision 4b -- a capitalised English word offered as a synonym (2026-10-23).
+# make_tier_fn leaves a single word with Zipf frequency 3.5-5.0 in T0: too
+# common for T1's case test (2.5-3.5), too rare for T2's (>= 5.0). Capitalised
+# non-name synonyms in that band are overwhelmingly herbicide and pesticide
+# brand names -- 'Pathway' (picloram), 'Beyond' (imazamox), 'Image', 'Finish',
+# 'Authority', 'Balance', 'Counter', 'Manage' -- which matched 'pathways' in
+# "Diverse Chromosomal Locations of QTL for Tolerance to Maize chlorotic mottle
+# virus". They go to T2 (sentence context required); a term's own name (kind
+# 'label') is never demoted.
+#
+# Only for a term that is in the build because of an agrochemical role
+# (inclusion_reason 'role:herbicide' ...): the same band holds capitalised
+# element and compound names ('Copper', 'Nitrogen', 'Glucose'), which are real
+# chemical mentions, not brands. Measured on the 2026-10-22 dictionary: 64 rows
+# in the band, 33 of them agrochemical.
+BRAND_ZIPF_LOW, BRAND_ZIPF_HIGH = 3.5, 5.0
+BRAND_ROLES = ("agrochemical", "herbicide", "insecticide", "fungicide", "pesticide",
+               "acaricide", "nematicide", "plant growth regulator")
+_CAPITALISED_WORD = re.compile(r"[A-Z][a-z]+")
+
+
+def demote_capitalised_synonym(tier, text, kind, zipf, inclusion_reason=""):
+    """-> tier after decision 4b. `zipf` is the string's Zipf frequency (float or None);
+    `inclusion_reason` is the row's, e.g. 'role:herbicide'."""
+    if (tier == TIER_SAFE and kind in ("related", "exact") and zipf is not None
+            and BRAND_ZIPF_LOW < zipf < BRAND_ZIPF_HIGH and _CAPITALISED_WORD.fullmatch(text)
+            and inclusion_reason.startswith("role:")
+            and inclusion_reason[len("role:"):] in BRAND_ROLES):
+        return TIER_CONTEXT
+    return tier
+
+
 # ------------------------------------------------------------------ parsing
 
 _SYN = re.compile(r'^synonym: "((?:[^"\\]|\\.)*)" (EXACT|RELATED|BROAD|NARROW)', re.M)
@@ -465,7 +497,10 @@ def build(args):
                 elif text.lower() in CHANNEL_FREE_FORMS.get(channel, ()):
                     tier = TIER_SAFE
                 else:
-                    tier = tier_of(text)
+                    tier = demote_capitalised_synonym(
+                        tier_of(text), text, kind,
+                        zipf_frequency(text.lower(), "en") if len(text.split()) == 1 else None,
+                        scope_reason.get(term["id"], "native_term"))
                 if tier == TIER_BLOCK:
                     stats["dropped_tier3"] += 1
                     report["drops"]["tier_T3_blocked"] += 1

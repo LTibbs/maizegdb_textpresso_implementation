@@ -45,6 +45,14 @@ def main():
     ap.add_argument("--obo", required=True)
     ap.add_argument("--max-len", type=int, default=4)
     ap.add_argument("--out", default="obo_short_form_classes.json")
+    ap.add_argument("--english-out",
+                    help="also write the gene surface forms that are English words "
+                         "(late, red, binding, ...) for the english-word rule; "
+                         "needs wordfreq (build-time only)")
+    ap.add_argument("--english-zipf-min", type=float, default=3.0,
+                    help="wordfreq Zipf frequency at or above which a single "
+                         "alphabetic form counts as an English word (default 3.0, "
+                         "the tier policy's 'common word' line)")
     a = ap.parse_args()
 
     terms = parse(a.obo)
@@ -78,6 +86,22 @@ def main():
     counts = collections.Counter(out.values())
     print("[ok] %d forms <= %d chars -> %s  %s"
           % (len(out), a.max_len, a.out, dict(counts)), file=sys.stderr)
+
+    if a.english_out:
+        try:
+            import wordfreq
+        except ImportError:
+            sys.exit("build-time dependency missing: pip install wordfreq")
+        # every gene name and synonym, either channel, any provenance: the rule
+        # looks at the surface form the paper used, not at how the OBO got it
+        words = sorted(f for f in owners
+                       if re.fullmatch(r"[a-z]{2,}", f)
+                       and wordfreq.zipf_frequency(f, "en") >= a.english_zipf_min)
+        with open(a.english_out, "w", encoding="utf-8") as fh:
+            json.dump({"zipf_min": a.english_zipf_min, "obo": a.obo.replace("\\", "/").split("/")[-1],
+                       "forms": words}, fh, indent=0)
+        print("[ok] %d English-word gene forms (Zipf >= %.1f) -> %s"
+              % (len(words), a.english_zipf_min, a.english_out), file=sys.stderr)
 
 
 if __name__ == "__main__":

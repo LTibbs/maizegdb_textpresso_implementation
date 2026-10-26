@@ -229,6 +229,33 @@ running, wrong machine), `CAS_ROOT` falls back to `None` and behavior
 reverts to the flaky HTTP path described above, same as before this was
 wired up — it doesn't crash, it just degrades.
 
+### The same annotation filter in every view
+
+The search results, the annotation panels, the full-text viewer and the API
+sidecar all call `annotation_hygiene.clean_annotations`; the GUI backend reaches
+it through `tpc.clean_local_annotations()`, so no view has filtering of its own.
+`/api/document` takes `hygiene=false` (the viewer's "Show unfiltered" link under
+the annotations panel) and reports what it removed.
+
+For the local filter to match the API exactly it needs the same environment the
+sidecar has (see `~/start_local_gui.sh` on the dev box):
+
+```bash
+export TPC_API_URL=http://localhost:8080/v1/textpresso/api   # a local container, not the public host
+export TEXTPRESSO_MATCH_DICTIONARY=$DATA/annotation_build/match_dictionary.csv.gz   # tier gate
+export TEXTPRESSO_ITALICS_INDEX=$DATA/italics/MaizeOpenAccess.json
+export TEXTPRESSO_OBO_CLASS_MAP=$DATA/italics/obo_short_form_classes.json
+export TEXTPRESSO_ENGLISH_GENE_FORMS=$DATA/italics/english_gene_forms.json           # english-word gene rule
+export TEXTPRESSO_CATEGORY_INDEX=<agr_textpresso>/textpressoapi/category_index.py     # broader-term collapse and
+export TEXTPRESSO_OBO_DIR=$DATA/obofiles4production                                  # the abbreviation case check
+```
+
+Each one that is missing switches its rule off silently, and the GUI then shows
+more than the API does. Check by comparing `/api/document` with the sidecar's
+`/annotate?related_synonyms=1` for the same paper: the annotation sets are
+identical when the environment is complete (17 of 17 viewable papers checked
+2026-10-23, 1,296 annotations on the first).
+
 ### Abstracts come from the corpus metadata CSVs
 
 `search_documents` returns no abstract, so `/api/search` attaches one to

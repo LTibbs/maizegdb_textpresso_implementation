@@ -64,6 +64,7 @@
     focusPos: $("focusPos"),
     focusClear: $("focusClear"),
     ontoGroups: $("ontoGroups"),
+    hygieneNote: $("hygieneNote"),
     tocList: $("tocList"),
     docText: $("docText"),
     main: $("viewerMain"),
@@ -81,6 +82,9 @@
   // Full category strings, e.g. "cct1 (tpzm:0010325)".
   let findCats = params.getAll("cat");
   const includeRelated = params.get("rel") === "1";  // search used "include related gene synonyms"
+  // The same annotation filter as the search page (hygiene on by default);
+  // ?hygiene=0 shows every annotation stored in the CAS2 file.
+  const unfiltered = params.get("hygiene") === "0";
   // Also match broader (ancestor) / narrower (descendant) terms of GO/PO/TO
   // categories -- starts from the search page's choice, then the checkboxes.
   const catExpand = { anc: params.get("anc") === "1", desc: params.get("desc") === "1" };
@@ -1155,6 +1159,23 @@
 
   // ---------------------------------------------------------------------
 
+  // The filter report under the annotations panel, as under the search page's
+  // panels: how many annotations were removed and why, and a way back to all of
+  // them -- the borderline mentions are the ones a curator needs to see.
+  function renderHygieneNote() {
+    const h = doc.hygiene;
+    if (!h || (h.enabled && !h.dropped)) { els.hygieneNote.hidden = true; return; }
+    els.hygieneNote.innerHTML = h.enabled
+      ? `${escapeHtml(h.summary)}. <button type="button" class="annotate-hygiene-toggle">Show unfiltered</button>`
+      : `Showing all annotations, unfiltered. <button type="button" class="annotate-hygiene-toggle">Apply filter</button>`;
+    els.hygieneNote.hidden = false;
+    els.hygieneNote.querySelector("button").addEventListener("click", () => {
+      const next = new URLSearchParams(location.search);
+      if (unfiltered) next.delete("hygiene"); else next.set("hygiene", "0");
+      location.search = next.toString();   // a reload: every count and highlight is rebuilt from the other set
+    });
+  }
+
   async function load() {
     const ctxItem = setupPaperNav();
     if (!identifier) {
@@ -1162,7 +1183,8 @@
       return;
     }
     try {
-      doc = await fetchJSON(`${API_BASE}/api/document?${new URLSearchParams({ identifier })}`);
+      doc = await fetchJSON(`${API_BASE}/api/document?${new URLSearchParams({
+        identifier, hygiene: unfiltered ? "false" : "true" })}`);
     } catch (e) {
       renderHeader(ctxItem);
       const msg = e.status === 403
@@ -1179,6 +1201,7 @@
     els.sidebar.hidden = false;
     buildCatOptions();
     renderOntologyPanel();
+    renderHygieneNote();
     renderToc();
     els.findInput.value = params.get("q") || "";
     computeKeywordHits();

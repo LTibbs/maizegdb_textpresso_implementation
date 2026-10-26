@@ -85,6 +85,21 @@ def load_class_map(path):
     return lambda term: m.get((term or "").lower().strip(), "unknown")
 
 
+def load_english_forms(path):
+    """Load the gene surface forms that are English words, as a frozenset.
+
+    Written by `build_class_map.py --english-out`: {"forms": [...]}, lowercase
+    alphabetic OBO gene names and synonyms whose wordfreq Zipf frequency is at
+    least the recorded `zipf_min` (~120 forms for zmays_genes_20260708.obo). Feeds
+    clean_annotations(english_forms=...). Missing file -> empty set, which turns
+    the english-word rule off; rebuild it with the OBO like the class map.
+    """
+    if not path or not os.path.exists(path):
+        return frozenset()
+    with open(path, encoding="utf-8") as fh:
+        return frozenset(f.lower() for f in json.load(fh).get("forms", ()))
+
+
 def load_index(path):
     """Load an index written by `jats_italics.py --obo ... --out italics.json`.
 

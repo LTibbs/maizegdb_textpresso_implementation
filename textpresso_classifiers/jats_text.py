@@ -156,12 +156,26 @@ _CHAR_MAP = {"\u2010": "-", "\u2011": "-", "\u00ad": "",   # U+00AD soft hyphen:
              "\u00b0": " degree ", "\u00b5": "\u03bc"}
 
 
+# Characters XML 1.0 cannot carry: C0 controls other than tab, newline and
+# carriage return, plus U+FFFE/U+FFFF. PDF text extraction emits them for
+# unmapped glyphs (a degree sign as U+0001, a minus as U+0008), mostly in the
+# merged supplements. The text ends up in the CAS-1 `sofaString` attribute, and
+# runAECpp rejects the whole file ("invalid character 0x1 in attribute value
+# 'sofaString'") -- 32 of the 3,299 MaizeOpenAccess papers failed to annotate
+# that way. Each becomes one space (never dropped), so offsets stay valid.
+_XML_ILLEGAL = frozenset(chr(c) for c in range(0x20) if c not in (0x09, 0x0A, 0x0D)) \
+    | {"￾", "￿"}
+
+
 def _map_char(ch):
-    """The text a source character becomes. Besides _CHAR_MAP, characters
+    """The text a source character becomes. Besides _CHAR_MAP, XML-illegal
+    control characters become a space (see _XML_ILLEGAL), and characters
     outside the BMP (mathematical italic letters such as U+1D452, emoji) are
     NFKC-normalised ("\U0001d452" -> "e"), or replaced by U+FFFD if that
     leaves them outside the BMP. jats text is then entirely BMP, so its code
     point offsets (Python, casannot, casdoc) and UTF-16 offsets (UIMA) agree."""
+    if ch in _XML_ILLEGAL:
+        return " "
     if ch in _CHAR_MAP:
         return _CHAR_MAP[ch]
     if ord(ch) <= 0xFFFF:

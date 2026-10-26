@@ -101,6 +101,116 @@ class TestItalicsRule(unittest.TestCase):
         self.assertEqual(dropped[0]["reason"], "not_italicised:0/5")
 
 
+class TestEnglishWordGenes(unittest.TestCase):
+    """Gene mentions that are English words need the paper's support."""
+    ENGLISH = frozenset({"late", "red", "co", "binding"})
+    LATE = "Zm00001eb059970 (tpzm:0007478)"      # 'late' is an EXACT locus_synonym of this gene
+
+    def _clean(self, annotations, italics, **kw):
+        return hy.clean_annotations(annotations, [], collapse=False, italics=italics,
+                                    italic_rule=it.never_italicised,
+                                    obo_class_of=lambda t: "alias",
+                                    english_forms=self.ENGLISH, **kw)
+
+    def test_dropped_with_no_italics_and_no_other_synonym(self):
+        # a paper missing from the italics index ({}): no typography to go on
+        kept, dropped = self._clean([_ann("late", "MAIZE_GENES", self.LATE)], {})
+        self.assertEqual(kept, [])
+        self.assertEqual(dropped[0]["reason"], "english_word_gene:no_italic_no_synonym")
+
+    def test_applies_to_the_exact_channel_the_italics_rule_exempts(self):
+        paper = {"late": [0, 4]}               # present, never italic
+        kept, dropped = self._clean([_ann("late", "MAIZE_GENES", self.LATE)], paper)
+        self.assertEqual(kept, [])
+        self.assertEqual(dropped[0]["reason"], "english_word_gene:no_italic_no_synonym")
+
+    def test_kept_when_italicised_at_least_once(self):
+        paper = {"late": [1, 40]}
+        kept, dropped = self._clean([_ann("late", "MAIZE_GENES", self.LATE)], paper)
+        self.assertEqual(len(kept), 1)
+        self.assertEqual(dropped, [])
+
+    def test_kept_when_another_synonym_of_the_gene_appears(self):
+        annotations = [_ann("late", "MAIZE_GENES", self.LATE, begin=0),
+                       _ann("Zm00001eb059970", "MAIZE_GENES", self.LATE, begin=50)]
+        kept, dropped = self._clean(annotations, {})
+        self.assertEqual({a["term"] for a in kept}, {"late", "Zm00001eb059970"})
+        self.assertEqual(dropped, [])
+
+    def test_synonym_of_a_different_gene_is_no_support(self):
+        annotations = [_ann("late", "MAIZE_GENES", self.LATE),
+                       _ann("zcn8", "MAIZE_GENES", "zcn8 (tpzm:0000099)", begin=50)]
+        kept, _ = self._clean(annotations, {})
+        self.assertEqual([a["term"] for a in kept], ["zcn8"])
+
+    def test_two_english_synonyms_do_not_support_each_other(self):
+        annotations = [_ann("late", "MAIZE_GENES", self.LATE),
+                       _ann("red", "MAIZE_GENES", self.LATE, begin=50)]
+        kept, dropped = self._clean(annotations, {})
+        self.assertEqual(kept, [])
+        self.assertEqual(len(dropped), 2)
+
+    def test_a_dropped_synonym_is_no_support(self):
+        # the other synonym sits in the references, so it never reaches the rule
+        sections = [{"begin": 50, "end": 100, "type": "references"}]
+
+        def types_at(begin, end, secs):
+            return [s["type"] for s in secs if s["begin"] <= begin < s["end"]]
+        annotations = [_ann("late", "MAIZE_GENES", self.LATE, begin=0),
+                       _ann("Zm00001eb059970", "MAIZE_GENES", self.LATE, begin=60)]
+        kept, dropped = hy.clean_annotations(
+            annotations, sections, collapse=False, italics={}, italic_rule=it.never_italicised,
+            obo_class_of=lambda t: "alias", english_forms=self.ENGLISH, section_types_at=types_at)
+        self.assertEqual(kept, [])
+        self.assertEqual(sorted(d["reason"].split(":")[0] for d in dropped),
+                         ["english_word_gene", "section"])
+
+    def test_capitalised_abbreviation_is_not_the_english_word(self):
+        for term in ("CO", "RED"):
+            kept, _ = self._clean([_ann(term, "MAIZE_GENES", "co (tpzm:0000005)")], {})
+            self.assertEqual(len(kept), 1, term)
+
+    def test_sentence_case_is_the_english_word(self):
+        kept, _ = self._clean([_ann("Late", "MAIZE_GENES", self.LATE)], {})
+        self.assertEqual(kept, [])
+
+    def test_related_channel_too(self):
+        kept, _ = self._clean([_ann("binding", "MAIZE_GENES_RELATED", "RELATED:abc1 (tpzm:0000007)")], {})
+        self.assertEqual(kept, [])
+
+    def test_only_gene_ontologies(self):
+        kept, _ = self._clean([_ann("late", "PATO", "RELATED:delayed (PATO:0000502)")], {})
+        self.assertEqual(len(kept), 1)
+
+    def test_off_without_a_forms_list_and_without_typography(self):
+        ann = [_ann("late", "MAIZE_GENES", self.LATE)]
+        kept, _ = hy.clean_annotations(ann, [], collapse=False, italics={},
+                                       italic_rule=it.never_italicised, obo_class_of=lambda t: "alias")
+        self.assertEqual(len(kept), 1)
+        # italics=None is "typography off" (italics=0): the rule's first leg is typography
+        kept, _ = self._clean(ann, None)
+        self.assertEqual(len(kept), 1)
+
+    def test_hidden_channel_still_supports(self):
+        # RELATED synonyms are not shown by default but still count as evidence
+        annotations = [_ann("late", "MAIZE_GENES", self.LATE, begin=0),
+                       _ann("early flowering 1", "MAIZE_GENES_RELATED", "RELATED:" + self.LATE, begin=50)]
+        kept, dropped = self._clean(annotations, {},
+                                    include=lambda a: not a["ontology"].endswith("_RELATED"))
+        self.assertEqual([a["term"] for a in kept], ["late"])
+        self.assertEqual(dropped, [])
+
+    def test_load_english_forms(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "e.json")
+            with open(p, "w") as fh:
+                json.dump({"zipf_min": 3.0, "forms": ["Late", "red"]}, fh)
+            self.assertEqual(it.load_english_forms(p), frozenset({"late", "red"}))
+            self.assertEqual(it.load_english_forms(os.path.join(d, "missing.json")), frozenset())
+            self.assertEqual(it.load_english_forms(""), frozenset())
+
+
 class TestSectionDrop(unittest.TestCase):
     def test_reference_section_dropped(self):
         sections = [{"begin": 100, "end": 200, "type": "references"}]

@@ -638,16 +638,22 @@ def get_annotate(
     return {
         "identifier": identifier,
         "ontology_summary": tpc._ca.summarize_by_ontology(annotations),
-        "hygiene": {
-            "kept": len(annotations),
-            "enabled": hygiene,
-            "italics": italics,
-            "excluded_sections": sorted(exclude_sections or ()),
-            "dropped": report.get("dropped", 0),
-            "dropped_by_reason": report.get("dropped_by_reason", {}),
-            "summary": (tpc.format_hygiene_report({**report, "kept": len(annotations)})
-                        if report.get("dropped") else ""),
-        },
+        "hygiene": _hygiene_block(hygiene, italics, len(annotations), report, exclude_sections),
+    }
+
+
+def _hygiene_block(enabled, italics, kept, report, exclude_sections=None):
+    """The filter report the frontend shows under an annotation panel; shared by
+    /api/annotate and /api/document so both describe the filter the same way."""
+    return {
+        "kept": kept,
+        "enabled": enabled,
+        "italics": italics,
+        "excluded_sections": sorted(exclude_sections or ()),
+        "dropped": report.get("dropped", 0),
+        "dropped_by_reason": report.get("dropped_by_reason", {}),
+        "summary": (tpc.format_hygiene_report({**report, "kept": kept})
+                    if report.get("dropped") else ""),
     }
 
 
@@ -1539,21 +1545,31 @@ def _require_viewer_access(identifier: str):
         raise HTTPException(status_code=403, detail="Full text is only available for open-access papers.")
 
 
+def _annotation_key(a):
+    return (a.get("begin"), a.get("end"), a.get("ontology"), a.get("category"))
+
+
 @app.get("/api/document")
-def get_document(identifier: str, request: Request, response: Response):
+def get_document(identifier: str, request: Request, response: Response,
+                 # Same filter as /api/annotate and the search results, from the
+                 # same code (tpc.clean_local_annotations). hygiene=false is the
+                 # viewer's "show unfiltered" toggle.
+                 hygiene: bool = True, italics: bool = True):
     corpus, acc = _split_identifier(identifier)
     _require_viewer_access(identifier)
     if not CAS_ROOT:
         raise HTTPException(status_code=503, detail="Full text is unavailable: no local CAS2 tree "
                             "(set TEXTPRESSO_CAS_ROOT, see GUI_SETUP.md).")
     etag = _local_etag(identifier, with_bib=True)
+    if etag:   # the same paper is a different answer with the filter off
+        etag = etag[:-1] + f"-h{int(hygiene)}i{int(italics)}" + '"'
     if _not_modified(request, etag):
         return Response(status_code=304, headers={"ETag": etag, **_BROWSER_CACHE_HEADERS})
     if etag:
         response.headers.update({"ETag": etag, **_BROWSER_CACHE_HEADERS})
 
     local_corpus = _CORPUS_REMAP.get(corpus, corpus)
-    key = f"{local_corpus}/{acc}"
+    key = f"{local_corpus}/{acc}|{int(hygiene)}{int(italics)}"
     with _DOC_CACHE_LOCK:
         if key in _DOC_CACHE:
             _DOC_CACHE.move_to_end(key)
@@ -1566,6 +1582,21 @@ def get_document(identifier: str, request: Request, response: Response):
         raise HTTPException(status_code=404, detail=f"No CAS2 file for {identifier}")
     except OSError as e:
         raise HTTPException(status_code=502, detail=f"Could not read CAS2 file for {identifier}: {e}")
+
+    report = {}
+    if hygiene:
+        # Run the shared hygiene layer on the parsed CAS2 and keep only the
+        # viewer annotations it keeps. Every channel is filtered (the viewer's
+        # own checkboxes decide which are shown); nothing here is viewer-specific.
+        sentences, annotations, sections = tpc._ca.parse_cas_file(str(path))
+        kept, dropped = tpc.clean_local_annotations(
+            identifier, annotations, sentences, sections,
+            argparse.Namespace(cas_root=CAS_ROOT, url=tpc.DEFAULT_URL,
+                               hygiene=True, italics=italics))
+        report = tpc._hy.hygiene_report(kept, dropped)
+        keep = {_annotation_key(a) for a in kept}
+        doc["annotations"] = [a for a in doc["annotations"] if _annotation_key(a) in keep]
+    doc["hygiene"] = _hygiene_block(hygiene, italics, len(doc["annotations"]), report)
 
     bib = _read_bib(f"{corpus}/{acc}/{acc}.tpcas")
     doc.update({

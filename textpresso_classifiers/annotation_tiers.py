@@ -101,6 +101,33 @@ ONTOLOGY_TO_CHANNEL = {
 INFLECTIONS = (("ies", "y"), ("ves", "f"), ("ves", "fe"), ("s", ""), ("es", ""))
 
 
+# Endings the lexicon generator adds to a word, for _inflection_of. 'leading',
+# 'leads', 'leaded'; and after a dropped or doubled final letter 'irrigating'
+# ('irrigate'), 'running' ('run'), 'studied' ('study').
+VARIATION_ENDINGS = ("s", "es", "d", "ed", "ing", "ings", "er", "ers", "ly")
+IRREGULAR_VERBS = {"led": "lead", "fed": "feed", "bred": "breed", "bound": "bind",
+                   "grew": "grow", "grown": "grow", "sown": "sow", "ran": "run"}
+
+
+def _inflection_of(word, base):
+    """True if `word` is an inflected form of `base` (both lowercase, alphabetic).
+    Deliberately narrow: 'leaf' is not a variation of 'lead'."""
+    if len(base) < 3 or word == base:
+        return False
+    if IRREGULAR_VERBS.get(word) == base:
+        return True
+    stems = {base}
+    if base.endswith("e"):
+        stems.add(base[:-1])                       # irrigate -> irrigating
+    if base.endswith("y"):
+        stems.add(base[:-1] + "i")                 # study -> studied
+    stems.add(base + base[-1])                     # run -> running
+    for stem in stems:
+        if word.startswith(stem) and word[len(stem):] in VARIATION_ENDINGS + ("ies", "ied"):
+            return True
+    return False
+
+
 def channel_for(ontology):
     """Map a Textpresso ontology label to a dictionary channel, or None."""
     if not ontology:
@@ -159,22 +186,52 @@ class TierIndex:
             recs = [r for r in recs if r[2] == channel]
         return list(recs)
 
-    def _resolve(self, text, channel):
+    def _resolve(self, text, channel, term_id=None):
         """-> (form, records). Textpresso's matcher inflects ('roots' matches
         'root'), the dictionary does not, so a plural that is not itself a
         dictionary form is looked up by its singular. Without this every
         plural bypassed the gate as an unknown form -- 182k of 349k
-        unknown-form rows over MaizeOpenAccess (2026-10-21)."""
+        unknown-form rows over MaizeOpenAccess (2026-10-21).
+
+        Other inflections ('leading', 'led', 'leads' for 'lead') cannot be
+        found by stripping a suffix, but the matcher only produces a surface
+        form from a string of the term it reports, so with a term_id the form
+        is judged as that term's own stored string it is a variation of
+        (2026-10-23)."""
         recs = self._records(text, channel)
         if recs or not text:
-            return text, recs
+            return text, recs, False
         for suffix, repl in INFLECTIONS:
             if text.lower().endswith(suffix) and len(text) > len(suffix) + 2:
                 base = text[:-len(suffix)] + repl
                 recs = self._records(base, channel)
                 if recs:
-                    return base, recs
-        return text, []
+                    return base, recs, False
+        if term_id:
+            form, recs = self._variation_of(text, channel, term_id)
+            return form, recs, bool(recs)
+        return text, [], False
+
+    def _variation_of(self, text, channel, term_id):
+        """-> (form, records) for the stored single-word string of this term
+        that `text` is an inflection of, else (text, []). With several, the
+        strictest tier decides, as it does for a form stored more than once."""
+        if not text.isalpha():
+            return text, []
+        low = text.lower()
+        found = [stored for stored in self._by_term.get((channel, term_id), ())
+                 if stored.isalpha() and stored.lower() != low
+                 and _inflection_of(low, stored.lower())]
+        if not found:
+            return text, []
+        recs = [r for s in found for r in self._records(s, channel) if r[3] == term_id]
+        if not recs:
+            return text, []
+        strictest = max(recs, key=lambda r: TIER_ORDER.get(r[1], 0))[0]
+        # carry the surface form's capitalisation ('Leading' -> 'Lead'), so the
+        # case test below judges the same spelling the text used
+        form = strictest[:1].upper() + strictest[1:] if text[:1].isupper() else strictest
+        return form, recs
 
     def verdict(self, text, channel=None, context="", term_id=None, body=None):
         """Return (drop, reason). `context` is the sentence the mention sits in;
@@ -183,7 +240,7 @@ class TierIndex:
         An unknown form is never dropped -- the dictionary governs what it
         contains, not what it omits.
         """
-        form, recs = self._resolve(text, channel)
+        form, recs, verbal = self._resolve(text, channel, term_id)
         if not recs:
             return False, "tier_unknown_form"
         if term_id:
@@ -223,14 +280,18 @@ class TierIndex:
                 # No sentence was supplied, so the test could not run. Absence
                 # of evidence is not evidence of absence: keep and say so.
                 return False, "tier_T2_context_unavailable"
-            support = self._context_support(text, pool, context)
+            # A verb form ('leading to MLN resistance') is not a phenotype
+            # word with a qualifier: the generic qualifiers prove nothing for
+            # it, so only the term's own longer form or a companion term count.
+            support = self._context_support(text, pool, context, qualifiers=not verbal)
             if not support:
                 return True, "tier_T2_no_context"
             return False, "tier_T2_context:" + support
         return False, "tier_" + tier
 
-    def _context_support(self, text, recs, context):
-        """Which kind of support the sentence provides for a T2 mention."""
+    def _context_support(self, text, recs, context, qualifiers=True):
+        """Which kind of support the sentence provides for a T2 mention.
+        `qualifiers=False` skips the qualifier test (see verdict)."""
         if not context:
             return None
         low = context.lower()
@@ -251,7 +312,9 @@ class TierIndex:
         # adjacent, or separated by at most two short words ("rice and sorghum
         # orthologues", "root and shoot biomass")
         gap = r"(?:[\s\-]+(?:\w{1,12}[\s\-]+){0,2})"
-        if channels & SENTENCE_SCOPE_CHANNELS:
+        if not qualifiers:
+            quals = []
+        if quals and channels & SENTENCE_SCOPE_CHANNELS:
             for q in quals:
                 if re.search(r"\b%s\b" % re.escape(q), low):
                     return "qualifier:" + q
