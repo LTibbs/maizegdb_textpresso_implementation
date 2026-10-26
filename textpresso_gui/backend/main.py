@@ -403,7 +403,8 @@ MAX_CANDIDATES = int(os.environ.get("TEXTPRESSO_GUI_MAX_CANDIDATES", "2000"))
 # The default is metadata/MaizeOpenAccess_access.csv in this repo: those two
 # columns cut from the pipeline's download_manifest.csv for the 3,299
 # MaizeOpenAccess papers (10 not in the manifest take oa_status from
-# MaizeOpenAccess_papers.csv). Regenerate it when the corpus changes. Any CSV
+# MaizeOpenAccess_papers.csv). Regenerate it with bin/build_access_csv.py
+# when the corpus changes. Any CSV
 # with doi, oa_status and epmc_license columns works, e.g. the full
 # download_manifest.csv, via TEXTPRESSO_GUI_OA_MANIFEST. Deliberately not
 # TEXTPRESSO_OA_MANIFEST: the API sidecars read that name as a different file
