@@ -13,7 +13,8 @@
   <div class="pagehead">
     <div class="breadcrumb">Data Hubs / Reference Data Hub / Textpresso</div>
     <h1>MaizeGDB Textpresso</h1>
-    <div class="subtitle">Maize literature search engine built on Textpresso. Search by free-text keywords and/or by annotated categories including ontologies (GO, TO, etc.) and maize genes.</div>
+    <div class="subtitle">Maize literature search engine built on Textpresso. Current beta version contains over 3,000 open access maize genetics papers published from 
+      1951 to 2026. Search papers by free-text keywords and/or by annotated categories including curated maize genes and 11 ontologies (GO, TO, etc.).</div>
   </div>
 
   <div class="tabs">
@@ -25,8 +26,11 @@
     <h2>About MaizeGDB Textpresso</h2>
     <p>MaizeGDB Textpresso is a literature search engine for maize research, built on the
       Textpresso text-mining platform. It lets you search the full text of maize
-      papers by free-text keywords, and by categories including maize genes and terms from ontologies including Gene
-      Ontology (GO), Plant Ontology (PO), Trait Ontology (TO) and related ontologies. Category
+      papers by free-text keywords, and by categories including maize genes and terms from 11 ontologies: Gene 
+      Ontology (GO), Plant Ontology (PO), Trait Ontology (TO), Chemical Entities of Biological Interest (ChEBI),
+      Sequence Ontology (SO), Evidence and Conclusion Ontology (ECO), 
+      Phenotype and Trait Ontology (PATO), Maize Ontology from the Crop Ontology (CO_322), 
+      Plant Stress Ontology (PSO), Plant Experimental Conditions Ontology (PECO), and NCBITaxon. Category
       searches find papers where a gene or term has been annotated in the text, even when the
       exact words you typed do not appear.</p>
 
@@ -100,7 +104,7 @@
           <div id="categoryBox" class="chip-input">
             <div id="categoryChips" class="chips"></div>
             <input id="categoryQuery" type="text" class="chip-text" autocomplete="off"
-                   placeholder="Type a gene or a GO/PO/TO term, e.g. cct1, seed development"
+                   placeholder="Type a gene or an ontology term, e.g. cct1, seed development"
                    role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="categoryResults">
           </div>
           <div id="categoryResults" class="category-dropdown" role="listbox" hidden></div>
