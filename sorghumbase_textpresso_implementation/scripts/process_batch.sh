@@ -37,8 +37,10 @@
 #                     the PDFs' page texts (<accession>.NNNNN.txt, written by
 #                     pdf2txtimg), then re-run it after a first pass if needed:
 #                     a re-run re-converts without fetching.
-#   -C CONTAINER      Container name (default: auto-detected, else
-#                     agr-textpresso-textpresso-1).
+#   -C CONTAINER      Container name. Default: the running container whose
+#                     name ends in "-textpresso-<n>" (normally
+#                     agr-textpresso-textpresso-1). Pass this only if
+#                     auto-detection fails.
 #   -P N              Parallel workers for tokenize/annotate (default: 1).
 #                     Keep low on a laptop — annotate is memory-hungry.
 #   -t MODE           Tokenizer mode: 4 (default, enables section-scoped
@@ -121,14 +123,12 @@ LOG_DIR="${BASE}/logs"
 # ----------------------------------------------------------------------------
 log()  { printf '\n\033[1;36m[%s] %s\033[0m\n' "$(date -u +%H:%M:%S)" "$*"; }
 warn() { printf '\033[1;33mWARN: %s\033[0m\n' "$*" >&2; }
-die()  { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
+die()  { printf '\033[1;31mERROR: %b\033[0m\n' "$*" >&2; exit 1; }
 
 # Run a bash snippet inside the container with the Textpresso runtime env set.
+# Under -n the script reports its plan and exits before any mutating step (see
+# the dry-run block after staging), so dexec always executes.
 dexec() {
-  if [[ "$DRY_RUN" == "1" ]]; then
-    printf '  (dry-run) docker exec %s bash -lc: %s\n' "$CONTAINER" "$1"
-    return 0
-  fi
   docker exec "$CONTAINER" bash -lc '
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:/usr/local/lib"
     export PATH="$PATH:/usr/local/bin"
@@ -143,13 +143,33 @@ log "Preflight"
 command -v docker >/dev/null || die "docker not found on PATH"
 
 if [[ -z "$CONTAINER" ]]; then
-  CONTAINER="$(docker ps --filter 'ancestor=agr-textpresso-textpresso' --format '{{.Names}}' | head -n1 || true)"
-  [[ -n "$CONTAINER" ]] || CONTAINER="agr-textpresso-textpresso-1"
+  # The compose service is "textpresso"; its container name is
+  # "<project>-textpresso-<n>" where <project> is the agr_textpresso clone dir.
+  mapfile -t _cands < <(docker ps --format '{{.Names}}' | grep -E '(^|[-_])textpresso-[0-9]+$' || true)
+  if [[ ${#_cands[@]} -eq 1 ]]; then
+    CONTAINER="${_cands[0]}"
+  elif [[ ${#_cands[@]} -gt 1 ]]; then
+    die "multiple candidate containers: ${_cands[*]}\nPick one with -C <name>."
+  else
+    die "could not find a running Textpresso container.\nStart it (cd ~/agr_textpresso && docker compose up -d), or pass -C <name> (see: docker ps)."
+  fi
 fi
-docker exec "$CONTAINER" true 2>/dev/null || die "container '$CONTAINER' is not running (start it: docker compose up -d)"
+docker exec "$CONTAINER" true 2>/dev/null || die "container '$CONTAINER' is not running (start it: cd ~/agr_textpresso && docker compose up -d)"
 echo "  container: $CONTAINER"
 echo "  corpus:    $CORPUS"
 echo "  tokenizer: -t $TOK_MODE   workers: -P $NPROC"
+
+# Host path of the /data/textpresso bind mount, if this script can see it.
+# When set, staging writes straight to the mount (fast) instead of per-file
+# `docker cp` (a round trip each — minutes of overhead for a big corpus).
+DATA_HOST="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data/textpresso"}}{{.Source}}{{end}}{{end}}' "$CONTAINER" 2>/dev/null || true)"
+if [[ -n "$DATA_HOST" && -d "$DATA_HOST/raw_files" ]]; then
+  RAW_PDF_HOST="${DATA_HOST}/raw_files/pdf/${CORPUS}"
+  echo "  data mount: $DATA_HOST (host-visible)"
+else
+  RAW_PDF_HOST=""
+  echo "  data mount: not host-visible — staging via docker cp"
+fi
 
 # No competing pipeline / stale locks
 # tpso/generatelexicalvariations: the lexica a container builds at start-up
@@ -180,18 +200,12 @@ else
   warn "no -O given: not verifying ontology parity against the server. Annotations may not match the server's category tree."
 fi
 
-# Count the per-ontology tpontology_* tables tpso writes: annotate builds the
-# combined tpontology table from them and drops it when it finishes, so it is
-# absent after any earlier annotate run.
-TPONT_ROWS="$(dexec "
-  n=0
-  for t in \$(psql -At -d www-data -c \"select tablename from pg_tables where tablename like 'tpontology\\_%'\"); do
-    n=\$((n + \$(psql -At -d www-data -c \"select count(*) from \${t}\")))
-  done
-  echo \$n
-" | tr -d '[:space:]')"
-echo "  tpontology rows: ${TPONT_ROWS:-0}"
-[[ "${TPONT_ROWS:-0}" -gt 0 ]] || die "tpontology is empty — lexica not built. See setup doc, step 5."
+# The merged `tpontology` table is built per-run by `annotate` and dropped
+# again, so at rest only the per-ontology `tpontology_<name>_<n>` lexica exist.
+# Their presence (plus the ontologymembers check above) means lexica are built.
+LEX_TABLES="$(dexec "psql -At -d www-data -c \"select count(*) from pg_tables where schemaname='public' and tablename like 'tpontology\\_%';\"" | tr -d '[:space:]')"
+echo "  per-ontology lexica tables: ${LEX_TABLES:-0}"
+[[ "${LEX_TABLES:-0}" -gt 0 ]] || die "no tpontology_* lexica tables — lexica not built. Run CreateLexica.bash (setup doc, step 5)."
 
 # PDFs present?
 if [[ -n "$SRC_PDF_DIR" ]]; then
@@ -212,23 +226,56 @@ if [[ -n "$SRC_PDF_DIR" ]]; then
   shopt -u nullglob
   [[ ${#pdfs[@]} -gt 0 ]] || die "no *.pdf files in $SRC_PDF_DIR"
   echo "  ${#pdfs[@]} PDF(s) to stage"
+
+  # Accession = source filename minus .pdf. Textpresso wants the DOI with '/'
+  # replaced by '_'; flag names that still look like a raw DOI or carry odd
+  # characters (parentheses are legal in DOIs and fine downstream).
+  bad_slash=(); odd=()
   for pdf in "${pdfs[@]}"; do
     acc="$(basename "$pdf")"; acc="${acc%.pdf}"; acc="${acc%.PDF}"
-    if [[ "$DRY_RUN" == "1" ]]; then
-      echo "  (dry-run) stage $acc"
-      continue
-    fi
-    docker exec "$CONTAINER" mkdir -p "${RAW_PDF}/${acc}"
-    docker cp "$pdf" "${CONTAINER}:${RAW_PDF}/${acc}/${acc}.pdf"
+    [[ "$acc" == *"/"* ]] && bad_slash+=("$acc")
+    [[ "$acc" =~ ^[A-Za-z0-9._()+-]+$ ]] || odd+=("$acc")
   done
+  [[ ${#bad_slash[@]} -eq 0 ]] || die "these source filenames contain '/': ${bad_slash[*]}\nRename them with '/' -> '_' before staging."
+  [[ ${#odd[@]} -eq 0 ]] || warn "accessions with unusual characters (proceeding): ${odd[*]}"
+
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "  (dry-run) would stage ${#pdfs[@]} PDF(s) into ${RAW_PDF}/<acc>/<acc>.pdf"
+  elif [[ -n "$RAW_PDF_HOST" ]]; then
+    # Fast path: write straight to the bind mount.
+    mkdir -p "$RAW_PDF_HOST"
+    for pdf in "${pdfs[@]}"; do
+      acc="$(basename "$pdf")"; acc="${acc%.pdf}"; acc="${acc%.PDF}"
+      mkdir -p "$RAW_PDF_HOST/$acc"
+      cp -f "$pdf" "$RAW_PDF_HOST/$acc/$acc.pdf"
+    done
+  else
+    # Portable path: build the nested tree once, then a single docker cp.
+    _stage_tmp="$(mktemp -d)"
+    for pdf in "${pdfs[@]}"; do
+      acc="$(basename "$pdf")"; acc="${acc%.pdf}"; acc="${acc%.PDF}"
+      mkdir -p "$_stage_tmp/$acc"
+      cp -f "$pdf" "$_stage_tmp/$acc/$acc.pdf"
+    done
+    dexec "mkdir -p '${RAW_PDF}'"
+    docker cp "$_stage_tmp/." "${CONTAINER}:${RAW_PDF}/"
+    rm -rf "$_stage_tmp"
+  fi
 else
   log "Stage PDFs — skipped (-s not given; assuming already staged)"
 fi
 
 STAGED_COUNT="$(dexec "find '${RAW_PDF}' -mindepth 2 -maxdepth 2 -iname '*.pdf' 2>/dev/null | wc -l" | tr -d '[:space:]')"
-[[ "${STAGED_COUNT:-0}" -gt 0 ]] || die "no staged PDFs found under ${RAW_PDF}"
-echo "  staged accessions: $STAGED_COUNT"
-dexec "ls '${RAW_PDF}' > '${ACC_LIST}'; wc -l < '${ACC_LIST}'" >/dev/null || true
+if [[ "${STAGED_COUNT:-0}" -eq 0 ]]; then
+  if [[ "$DRY_RUN" == "1" && -n "$SRC_PDF_DIR" ]]; then
+    echo "  (dry-run) ${#pdfs[@]} PDF(s) from $SRC_PDF_DIR would be staged under ${RAW_PDF}"
+  else
+    die "no staged PDFs found under ${RAW_PDF}"
+  fi
+else
+  echo "  staged accessions: $STAGED_COUNT"
+  dexec "ls '${RAW_PDF}' > '${ACC_LIST}'; wc -l < '${ACC_LIST}'" >/dev/null || true
+fi
 
 # ----------------------------------------------------------------------------
 # 1b. Stage JATS  raw_files/xml/<CORPUS>/<accession>/<accession>.jats.json
@@ -254,6 +301,53 @@ if [[ -n "$JATS_SRC_DIR" ]]; then
   [[ "$skipped" == 0 ]] || warn "${skipped} JATS paper(s) skipped: no staged PDF for them in ${RAW_PDF}"
 fi
 
+# Metadata coverage: which staged accessions have no row in any metadata CSV.
+# generate_pdf_bib.py matches on the DOI with '/' or '_' (normalize_accession),
+# so compare on the '_' form. A miss here == placeholder .bib == the paper is
+# dropped from the index later, so surface it now.
+CSV_COUNT="$(dexec "ls ${BASE}/imports/metadata/*.csv 2>/dev/null | wc -l" | tr -d '[:space:]')"
+if [[ "${CSV_COUNT:-0}" -eq 0 ]]; then
+  warn "no metadata CSV in ${BASE}/imports/metadata/ — every .bib will be a placeholder."
+elif [[ "$DRY_RUN" != "1" ]]; then
+  NO_META="$(dexec "python3 - <<'PY'
+import csv, glob
+acc = set(open('${ACC_LIST}').read().split())
+dois = set()
+for c in glob.glob('${BASE}/imports/metadata/*.csv'):
+    try:
+        with open(c, encoding='utf-8', errors='replace', newline='') as f:
+            for row in csv.DictReader(f):
+                d = (row.get('doi') or '').strip().replace('/', '_')
+                if d:
+                    dois.add(d)
+    except Exception as e:
+        print('CSV_ERROR', c, e)
+missing = sorted(acc - dois)
+print('MISSING', len(missing), 'of', len(acc))
+for a in missing[:50]:
+    print(' ', a)
+PY
+" || true)"
+  echo "  metadata check: ${NO_META%%$'\n'*}"
+  if [[ "$NO_META" != *"MISSING 0 "* ]]; then
+    warn "staged accessions with no metadata row (placeholder .bib -> dropped at index time):"
+    printf '%s\n' "$NO_META" | sed -n '2,$p' | sed 's/^/  /'
+  fi
+fi
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  log "Dry run — would now, in the container:"
+  cat <<EOF
+    1. tokenize : $( [[ "$TOK_MODE" == "4" ]] && echo 'pdf2txtimg (synchronous) then ' )articles2cas -t ${TOK_MODE} -o ${CORPUS} -p   -> ${CAS1}
+    2. verify    : every accession has a non-zero-sentence CAS-1 file
+    3. annotate : scoped symlink tree of ${CORPUS} only -> annotate -P ${NPROC}   -> ${CAS2}
+    4. verify    : every accession has a CAS-2 file
+    5. .bib      : generate_pdf_bib.py per accession, from ${BASE}/imports/metadata
+    6. package  : ${OUTDIR}/${CORPUS_TAG}-${RUN_ID}.tgz  (+ .manifest.txt)
+EOF
+  exit 0
+fi
+
 # Split the batch: staged JATS -> TjTokenizer, everything else -> PDF tokenizer.
 # (03pdf2cas4tai.sh applies the same rule in the server pipeline.)
 dexec "
@@ -267,10 +361,6 @@ dexec "
   done
   echo \"  CAS-1 source: \$(wc -l < '${JATS_LIST}') JATS, \$(wc -l < '${PDF_LIST}') PDF\"
 "
-
-# Warn about metadata coverage
-CSV_COUNT="$(dexec "ls ${BASE}/imports/metadata/*.csv 2>/dev/null | wc -l" | tr -d '[:space:]')"
-[[ "${CSV_COUNT:-0}" -gt 0 ]] || warn "no metadata CSV in ${BASE}/imports/metadata/ — .bib files will be placeholders."
 
 # ----------------------------------------------------------------------------
 # 2. Tokenize -> CAS-1
@@ -296,6 +386,7 @@ if [[ "$TOK_MODE" == "4" ]]; then
     done
     echo \"  per-page text extracted: \${c} / \${t}\"
     [[ \${c} -gt 0 ]] || { echo 'pdf2txtimg produced nothing' >&2; exit 1; }
+    [[ \${c} -eq \${t} ]] || echo \"  WARN: \$((t-c)) PDF(s) got no per-page text — they will produce zero-sentence CAS-1 (flagged in the verify step below)\" >&2
   "
 fi
 
@@ -391,16 +482,34 @@ dexec "
   done
 "
 
-PLACEHOLDER="$(dexec "
+# A .bib that is missing, or whose author/title is '<not uploaded>', means the
+# CSV DOI never matched — the indexer drops or blanks that paper. An empty
+# abstract alone (abstract|<not uploaded>) is harmless: the paper still indexes
+# with full bibliographic metadata, only abstract-scoped search misses it.
+BIB_BAD="$(dexec "
   for acc in \$(cat '${ACC_LIST}'); do
     b='${CAS2}/'\"\${acc}\"'/'\"\${acc}\"'.bib'
-    { [[ -f \"\$b\" ]] && ! grep -q '<not uploaded>' \"\$b\"; } || echo \"\${acc}\"
+    if [[ ! -f \"\$b\" ]]; then echo \"\${acc}\tno .bib file\"
+    elif grep -Eq '^(author|title)\|<not uploaded>' \"\$b\"; then echo \"\${acc}\tunmatched metadata\"
+    fi
   done
   true
 ")"
-if [[ -n "$PLACEHOLDER" ]]; then
-  warn "these accessions have missing or placeholder .bib metadata (check the CSV 'doi' column matches the accession):"
-  echo "$PLACEHOLDER" | sed 's/^/    /'
+BIB_NOABS="$(dexec "
+  for acc in \$(cat '${ACC_LIST}'); do
+    b='${CAS2}/'\"\${acc}\"'/'\"\${acc}\"'.bib'
+    [[ -f \"\$b\" ]] && grep -q '^abstract|<not uploaded>' \"\$b\" && ! grep -Eq '^(author|title)\|<not uploaded>' \"\$b\" && echo \"\${acc}\"
+    true
+  done
+  true
+")"
+if [[ -n "$BIB_BAD" ]]; then
+  warn "accessions with missing/unmatched .bib metadata (dropped or blank at index time — fix the CSV 'doi' column):"
+  printf '%s\n' "$BIB_BAD" | sed 's/^/    /'
+fi
+if [[ -n "$BIB_NOABS" ]]; then
+  n=$(printf '%s\n' "$BIB_NOABS" | grep -c .)
+  echo "  note: ${n} accession(s) have full biblio metadata but an empty abstract in the CSV (indexes fine; abstract search won't hit them)"
 fi
 
 # ----------------------------------------------------------------------------
@@ -448,7 +557,7 @@ dexec "
     echo \"generated     : ${RUN_ID} (UTC)\"
     echo \"tokenizer     : articles2cas -t ${TOK_MODE}; -t 5 (JATS) for \$(wc -l < '${JATS_LIST}') paper(s)\"
     echo \"ontologies    : ${ONTO_NOW}\"
-    echo \"tpontology    : ${TPONT_ROWS} rows\"
+    echo \"lexica tables : ${LEX_TABLES} tpontology_* tables\"
     echo \"accessions    : \"\$(cat '${ACC_LIST}' | wc -l)
     echo
     echo 'Server operator steps:'
