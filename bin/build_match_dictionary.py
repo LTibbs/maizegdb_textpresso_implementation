@@ -255,6 +255,31 @@ def obo_unquoted(s):
     return re.sub(r'([\\{}!])', r"\\\1", s)
 
 
+# Relationships written to the *_annot.obo files besides is_a, per channel.
+# part_of is what makes "nuclear envelope" narrower than "nucleus" and a leaf
+# blade part of a leaf; without it, category expansion and the hygiene ancestor
+# check see is_a only. tpso reads part_of as a parent edge too
+# (OboFileSegmentation.cpp). At depth 50 that leaves every category unchanged
+# but grows tpso's per-path tree: measured on the 2026-10-20 build, GO 231k ->
+# 439k nodes, PO 2.7k -> 11k, TO 4.6k -> 5.1k. The other channels were not
+# measured, so they stay is_a only.
+PART_OF_CHANNELS = {"GO", "PO", "TO"}
+
+
+def graph_parents(term, channel):
+    """-> [(relationship, parent_id)] written for term in channel's OBO."""
+    rels = [("is_a", p) for p in term.get("is_a", ())]
+    if channel in PART_OF_CHANNELS:
+        rels += [("part_of", p) for p in term.get("part_of", ())]
+    return rels
+
+
+def write_parents(fh, term, channel):
+    for rel, parent in graph_parents(term, channel):
+        fh.write("is_a: %s\n" % parent if rel == "is_a"
+                 else "relationship: %s %s\n" % (rel, parent))
+
+
 def parse_obo(path, want_roles=False):
     """Minimal OBO term reader. Returns a list of dicts in file order."""
     with open(path, encoding="utf-8") as fh:
@@ -276,6 +301,7 @@ def parse_obo(path, want_roles=False):
             "synonyms": [(obo_unescape(s), sc) for s, sc in _SYN.findall(block)],
             "subsets": re.findall(r"^subset: (\S+)", block, re.M),
             "is_a": re.findall(r"^is_a: (\S+)", block, re.M),
+            "part_of": re.findall(r"^relationship: part_of (\S+)", block, re.M),
             "obsolete": "is_obsolete: true" in block,
             "replaced_by": re.findall(r"^replaced_by: (\S+)", block, re.M),
             "consider": re.findall(r"^consider: (\S+)", block, re.M),
@@ -577,13 +603,14 @@ def write_outputs(args, rows, annot_terms, report, sources=None):
         # stubs: ancestor expansion keeps working, and a stub contributes no
         # match strings -- the same shape TO and PECO already ship upstream.
         by_id, subsetdefs = sources.get(channel, ({}, []))
-        # Stubs keep their own source is_a (closed transitively), so the graph
-        # above a pruned class still reaches the root and depths stay right.
-        dangling, todo = set(), {p for term, _kept in items for p in term["is_a"]} - written
+        # Stubs keep their own source parents (closed transitively), so the
+        # graph above a pruned class still reaches the root and depths stay right.
+        dangling = set()
+        todo = {p for term, _kept in items for _r, p in graph_parents(term, channel)} - written
         while todo:
             stub = todo.pop()
             dangling.add(stub)
-            todo |= set(by_id.get(stub, {}).get("is_a", ())) - written - dangling
+            todo |= {p for _r, p in graph_parents(by_id.get(stub, {}), channel)} - written - dangling
         dangling = sorted(dangling)
         tier_names = sorted({"tier_%s" % t for _term, kept in items for _, _, t in kept})
         with open(out, "w", encoding="utf-8") as fh:
@@ -635,8 +662,7 @@ def write_outputs(args, rows, annot_terms, report, sources=None):
                     fh.write("subset: tier_%s\n" % tier)
                 for subset in term["subsets"]:
                     fh.write("subset: %s\n" % subset)
-                for parent in term["is_a"]:
-                    fh.write("is_a: %s\n" % parent)
+                write_parents(fh, term, channel)
                 fh.write("\n")
             for stub in dangling:
                 src = by_id.get(stub)
@@ -648,8 +674,7 @@ def write_outputs(args, rows, annot_terms, report, sources=None):
                              % obo_quoted(src["name"]))
                 for subset in (src["subsets"] if src else []):
                     fh.write("subset: %s\n" % subset)
-                for parent in (src["is_a"] if src else []):
-                    fh.write("is_a: %s\n" % parent)
+                write_parents(fh, src or {}, channel)
                 fh.write("\n")
             report["channels"].setdefault(channel, {})["graph_stubs"] = len(dangling)
 

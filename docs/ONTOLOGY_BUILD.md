@@ -135,6 +135,30 @@ build, a handful elsewhere; GO's 219 were the do-not-annotate parents and are
 full stanzas since decision 2 changed. All eleven files parse clean through
 `pronto`.
 
+**`part_of` is kept in GO, PO and TO** (2026-10-29, `PART_OF_CHANNELS`). Until
+then only `is_a` was written, so "include narrower terms" could never reach a
+term's parts: `nucleus` expanded to 19 terms instead of 468 (`nuclear
+envelope`, `nucleolus`, ...), `leaf` to 24 instead of 149. The edges added
+were GO 7,058, PO 745 and TO 85, all to terms already in the files, so no new
+stubs were needed. Stubs keep their own `part_of` as well. `has_part`,
+`regulates` and the rest stay out, because they don't mean "narrower".
+What this touches:
+
+- **tpso** reads `relationship: part_of` as a parent edge
+  (`OboFileSegmentation.cpp`). At depth 50 every category is still its own ID
+  (see "Category depth" below), so no match string or category label changes
+  and no re-index is needed. Its per-path tree grows: GO 231k to 439k nodes,
+  PO 2.7k to 11k, TO 4.6k to 5.1k.
+- **Hygiene** ancestor collapse walks every relationship type, so `part_of`
+  adds 12 same-span pairs across GO/PO/TO, almost all animal terms. The one
+  plant case keeps `photosynthetic membrane` over `thylakoid`.
+- **Search size.** Expansions get larger: `organelle` goes to 1,876 terms.
+  Lucene's default limit of 1,024 clauses rejected larger searches with
+  HTTP 500, so `libtpc` now raises it (`MAX_QUERY_CLAUSES`). **Rebuild and
+  deploy the API with that change before** these OBOs reach the sidecar.
+  Otherwise the GUI, which expands along every relationship a term has,
+  fails on large terms.
+
 ## 4 · Species get their own channel
 
 The cross-species request — a user who works in sorghum pulling papers that

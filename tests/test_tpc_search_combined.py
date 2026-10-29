@@ -4,7 +4,7 @@ Covers:
   - category_search() forwards relationship_types / ancestor_relationship_types
     as repeated relationship_type / ancestor_relationship_type query params.
   - expand_categories_by_relationship() unions in descendant and/or ancestor
-    categories returned by category_search(), without duplicating or
+    categories returned by category_search_response(), without duplicating or
     reordering the original --category values, and is a no-op when neither
     direction is given.
 """
@@ -27,6 +27,15 @@ def _load_module(name, filename):
 
 
 _search_combined = _load_module("tpc_search_combined", "tpc_search_combined.py")
+
+
+def _patch_lookup(fake=None, return_value=None, truncated=False):
+    """Patch category_search_response with a category_search-style fake
+    (or fixed return_value), wrapping its match list in a response."""
+    def response(*args, **kwargs):
+        matches = fake(*args, **kwargs) if fake else return_value
+        return None if matches is None else {"matches": matches, "truncated": truncated}
+    return mock.patch.object(_search_combined, "category_search_response", response)
 
 
 class TestCategorySearchRelationshipParam(unittest.TestCase):
@@ -132,7 +141,7 @@ class TestExpandCategoriesByRelationship(unittest.TestCase):
                  "relationship_types": [], "parent_relationship_types": ["is_a"]},
             ]
 
-        with mock.patch.object(_search_combined, "category_search", fake_category_search):
+        with _patch_lookup(fake_category_search):
             result = _search_combined.expand_categories_by_relationship(
                 ["seed (PO:0009010)"], {"is_a"})
 
@@ -153,18 +162,77 @@ class TestExpandCategoriesByRelationship(unittest.TestCase):
                  "relationship_types": ["is_a"], "parent_relationship_types": []},
             ]
 
-        with mock.patch.object(_search_combined, "category_search", fake_category_search):
+        with _patch_lookup(fake_category_search):
             result = _search_combined.expand_categories_by_relationship(
                 ["hypocotyl (PO:0020123)"], None, ancestor_relationship_types={"is_a"})
 
         self.assertEqual(result, ["hypocotyl (PO:0020123)", "seed (PO:0009010)"])
 
     def test_preserves_original_categories_when_lookup_returns_none(self):
-        with mock.patch.object(_search_combined, "category_search", return_value=None):
+        with _patch_lookup(return_value=None):
             result = _search_combined.expand_categories_by_relationship(
                 ["seed (PO:0009010)"], {"is_a"})
 
         self.assertEqual(result, ["seed (PO:0009010)"])
+
+
+class TestExpansionLimit(unittest.TestCase):
+    """Expansions are search filters, so they ask for the whole closure and
+    say when the server cut it (organelle has 420 is_a descendants)."""
+
+    _SEED = {"id": "PO:0009010", "name": "seed", "category": "seed (PO:0009010)",
+             "ontology": "PO", "matched_on": "exact",
+             "relationship_types": ["is_a"], "parent_relationship_types": []}
+
+    def test_requests_expansion_limit_not_100(self):
+        seen = {}
+
+        def fake(term_id, url=None, limit=None, relationship_types=None,
+                 ancestor_relationship_types=None):
+            seen["limit"] = limit
+            return [self._SEED]
+
+        with _patch_lookup(fake):
+            _search_combined.expand_categories_by_relationship(["seed (PO:0009010)"], {"is_a"})
+        self.assertEqual(seen["limit"], _search_combined.EXPANSION_LIMIT)
+        self.assertGreater(_search_combined.EXPANSION_LIMIT, 420)
+
+    def test_warns_when_server_truncates(self):
+        with _patch_lookup(return_value=[self._SEED], truncated=True):
+            with mock.patch.object(_search_combined.sys, "stderr") as fake_stderr:
+                _search_combined.expand_categories_by_relationship(
+                    ["seed (PO:0009010)"], {"is_a"})
+        warnings = "".join(c.args[0] for c in fake_stderr.write.call_args_list)
+        self.assertIn("more related terms", warnings)
+
+    def _respond(self, body, limit):
+        class FakeResponse:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *exc):
+                return False
+
+            def read(self_inner):
+                return body
+
+        with mock.patch.object(_search_combined.urllib.request, "urlopen",
+                               lambda endpoint: FakeResponse()):
+            return _search_combined.category_search_response(
+                "PO:0009010", url="http://host/v1/textpresso/api", limit=limit,
+                relationship_types=["is_a"])
+
+    def test_truncated_flag_passed_through(self):
+        r = self._respond(b'{"matches": [], "truncated": true}', 5000)
+        self.assertTrue(r["truncated"])
+
+    def test_old_server_full_page_of_100_counts_as_truncated(self):
+        body = ('{"matches": [%s]}' % ",".join(['{"id": "x"}'] * 100)).encode()
+        self.assertTrue(self._respond(body, 5000)["truncated"])
+
+    def test_old_server_short_list_is_not_truncated(self):
+        body = ('{"matches": [%s]}' % ",".join(['{"id": "x"}'] * 7)).encode()
+        self.assertFalse(self._respond(body, 5000)["truncated"])
 
 
 class TestUnavailableRelationshipTypeWarning(unittest.TestCase):
@@ -180,7 +248,7 @@ class TestUnavailableRelationshipTypeWarning(unittest.TestCase):
                   "relationship_types": ["part_of"], "parent_relationship_types": []}
         fake = self._fake_category_search_factory(exact)
 
-        with mock.patch.object(_search_combined, "category_search", fake):
+        with _patch_lookup(fake):
             with mock.patch.object(_search_combined.sys, "stderr") as fake_stderr:
                 _search_combined.expand_categories_by_relationship(
                     ["seed (PO:0009010)"], {"is_a"})
@@ -196,7 +264,7 @@ class TestUnavailableRelationshipTypeWarning(unittest.TestCase):
                   "relationship_types": [], "parent_relationship_types": ["is_a"]}
         fake = self._fake_category_search_factory(exact)
 
-        with mock.patch.object(_search_combined, "category_search", fake):
+        with _patch_lookup(fake):
             with mock.patch.object(_search_combined.sys, "stderr") as fake_stderr:
                 _search_combined.expand_categories_by_relationship(
                     ["seed (PO:0009010)"], None, ancestor_relationship_types={"part_of"})
@@ -210,7 +278,7 @@ class TestUnavailableRelationshipTypeWarning(unittest.TestCase):
                   "relationship_types": ["is_a", "part_of"], "parent_relationship_types": []}
         fake = self._fake_category_search_factory(exact)
 
-        with mock.patch.object(_search_combined, "category_search", fake):
+        with _patch_lookup(fake):
             with mock.patch.object(_search_combined.sys, "stderr") as fake_stderr:
                 _search_combined.expand_categories_by_relationship(
                     ["seed (PO:0009010)"], {"is_a"})
@@ -219,7 +287,7 @@ class TestUnavailableRelationshipTypeWarning(unittest.TestCase):
 
     def test_no_warning_when_exact_match_missing_from_results(self):
         # lookup service down / exact term not echoed back -- fail-open, no warning
-        with mock.patch.object(_search_combined, "category_search", return_value=[]):
+        with _patch_lookup(return_value=[]):
             with mock.patch.object(_search_combined.sys, "stderr") as fake_stderr:
                 _search_combined.expand_categories_by_relationship(
                     ["seed (PO:0009010)"], {"is_a"})

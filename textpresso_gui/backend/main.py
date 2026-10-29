@@ -137,7 +137,7 @@ tpc = _load_module("tpc_search_combined", BIN_DIR / "tpc_search_combined.py")
 casdoc = _load_module("casdoc", REPO_ROOT / "textpresso_classifiers" / "casdoc.py")
 
 _orig_load_annotations = tpc._load_annotations
-_orig_category_search = tpc.category_search
+_orig_category_search = tpc.category_search_response
 
 # Circuit breaker for the /annotate + /category_search sidecar (see
 # GUI_SETUP.md "Known issue"). Without this, a search with the default
@@ -232,12 +232,16 @@ def _load_annotations_with_retry(doc, args, ontology_filter=None, include_relate
 # first; an entry is counted as 4x its JSON size, the ratio measured for a
 # 100-term expansion (~25 KB JSON, ~100 KB in memory). Failed lookups (None)
 # are never kept, so an outage isn't remembered.
-_CATEGORY_CACHE = OrderedDict()  # call arguments -> (time, estimated bytes, matches)
+_CATEGORY_CACHE = OrderedDict()  # call arguments -> (time, estimated bytes, response)
 _CATEGORY_CACHE_TTL_SECONDS = 86400
 _CATEGORY_CACHE_MAX_BYTES = int(float(os.environ.get("TEXTPRESSO_GUI_CATEGORY_CACHE_MB", "50")) * 1e6)
 _CATEGORY_CACHE_MEMORY_PER_JSON_BYTE = 4
 _CATEGORY_CACHE_STATE = {"bytes": 0}
 _CATEGORY_CACHE_LOCK = threading.Lock()
+
+
+def _copy_category_response(response):
+    return {**response, "matches": [dict(m) for m in response["matches"]]}
 
 
 def _category_search_with_breaker(*args, **kwargs):
@@ -246,7 +250,7 @@ def _category_search_with_breaker(*args, **kwargs):
         hit = _CATEGORY_CACHE.get(key)
         if hit and time.time() - hit[0] <= _CATEGORY_CACHE_TTL_SECONDS:
             _CATEGORY_CACHE.move_to_end(key)
-            return [dict(m) for m in hit[2]]
+            return _copy_category_response(hit[2])
     if _sidecar_is_down():
         return None
     result = _orig_category_search(*args, **kwargs)
@@ -258,7 +262,7 @@ def _category_search_with_breaker(*args, **kwargs):
             if old:
                 _CATEGORY_CACHE_STATE["bytes"] -= old[1]
             if size <= _CATEGORY_CACHE_MAX_BYTES:
-                _CATEGORY_CACHE[key] = (time.time(), size, [dict(m) for m in result])
+                _CATEGORY_CACHE[key] = (time.time(), size, _copy_category_response(result))
                 _CATEGORY_CACHE_STATE["bytes"] += size
             while _CATEGORY_CACHE_STATE["bytes"] > _CATEGORY_CACHE_MAX_BYTES:
                 _CATEGORY_CACHE_STATE["bytes"] -= _CATEGORY_CACHE.popitem(last=False)[1][1]
@@ -269,9 +273,10 @@ def _category_search_with_breaker(*args, **kwargs):
 # also calls _load_annotations() internally, and Python resolves that name
 # from the module's own globals at call time, so this covers both our own
 # call sites below and that imported function's. Same reasoning for
-# category_search.
+# category_search_response, which tpc.category_search() and
+# tpc.expand_categories_by_relationship() both go through.
 tpc._load_annotations = _load_annotations_with_retry
-tpc.category_search = _category_search_with_breaker
+tpc.category_search_response = _category_search_with_breaker
 
 # --- Parsed-paper cache -------------------------------------------------------
 # One search reads the same paper's CAS2 several times (gene check, section
@@ -600,14 +605,14 @@ def get_category_search(
     ancestor_relationship_type: Optional[List[str]] = Query(default=None),
     limit: int = 10,
 ):
-    matches = tpc.category_search(
+    response = tpc.category_search_response(
         q, tpc.DEFAULT_URL, ontology=ontology, limit=limit,
         relationship_types=relationship_type,
         ancestor_relationship_types=ancestor_relationship_type,
     )
-    if matches is None:
+    if response is None:
         raise HTTPException(status_code=502, detail="Category lookup service unreachable")
-    return {"query": q, "matches": matches}
+    return {"query": q, **response}
 
 
 @app.get("/api/annotate")

@@ -134,6 +134,74 @@ class WriteOutputsTest(unittest.TestCase):
             self.assertNotIn("\nname:", "\n" + stub)       # still no match string
 
 
+PO = """format-version: 1.2
+data-version: releases/test
+
+[Term]
+id: PO:0025131
+name: plant organ
+is_a: PO:0009011
+
+[Term]
+id: PO:0009011
+name: plant structure
+
+[Term]
+id: PO:0025034
+name: leaf
+is_a: PO:0025131
+
+[Term]
+id: PO:0020039
+name: leaf lamina
+is_a: PO:0025131
+relationship: part_of PO:0025034
+relationship: has_part PO:0009011
+"""
+
+
+class PartOfTest(unittest.TestCase):
+    """part_of is carried into GO/PO/TO so "narrower" covers parts (2026-10-29)."""
+
+    def _write(self, channel):
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "po.obo")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(PO)
+        terms = bmd.parse_obo(path)
+        lamina = next(t for t in terms if t["id"] == "PO:0020039")
+        report = {"versions": {channel: "releases/test"}, "channels": {}, "drops": Counter()}
+        args = types.SimpleNamespace(outdir=os.path.join(tmp, "out"))
+        sources = {channel: ({t["id"]: t for t in terms}, [])}
+        bmd.write_outputs(args, [], {channel: [(lamina, [("leaf lamina", "label", "T0")])]},
+                          report, sources)
+        with open(os.path.join(args.outdir, "%s_annot.obo" % channel.lower()),
+                  encoding="utf-8") as fh:
+            out = fh.read()
+        return {s.split("\n", 1)[0]: s for s in
+                (b.split("id: ", 1)[1] for b in out.split("[Term]\n")[1:])}
+
+    def test_parse_reads_part_of_only(self):
+        tmp = tempfile.mkdtemp()
+        path = os.path.join(tmp, "po.obo")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(PO)
+        lamina = next(t for t in bmd.parse_obo(path) if t["id"] == "PO:0020039")
+        self.assertEqual(lamina["part_of"], ["PO:0025034"])   # has_part is not a parent
+
+    def test_part_of_written_and_its_target_stubbed(self):
+        stanzas = self._write("PO")
+        self.assertIn("relationship: part_of PO:0025034\n", stanzas["PO:0020039"])
+        self.assertNotIn("has_part", stanzas["PO:0020039"])
+        self.assertIn("PO:0025034", stanzas)                  # pruned "leaf" kept as a stub
+        self.assertNotIn("\nname:", "\n" + stanzas["PO:0025034"])
+
+    def test_other_channels_stay_is_a_only(self):
+        stanzas = self._write("SO")
+        self.assertNotIn("relationship:", stanzas["PO:0020039"])
+        self.assertNotIn("PO:0025034", stanzas)               # no part_of, no stub for it
+
+
 class EscapeTest(unittest.TestCase):
     def test_round_trip(self):
         for text in ['8-{(Z)-pent-2-en-1-yl}octanoic acid', 'the "blue" form', 'a\\b!c']:

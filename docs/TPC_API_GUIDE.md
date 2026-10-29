@@ -341,9 +341,14 @@ Repeat `ontology=GO`/`ontology=PO`/etc. to restrict.
     {"id": "GO:0097548", "name": "seed abscission", "category": "seed abscission (GO:0097548)",
      "ontology": "GO", "matched_on": "name_prefix", "relationship_types": [], "parent_relationship_types": ["is_a"]},
     ...
-  ]
+  ],
+  "truncated": true
 }
 ```
+
+`truncated` is `true` when more matches existed than `limit` allowed. The
+MaizeGDB server returns it; older servers (including ABD at the time of
+writing) omit it.
 
 Use the `category` field verbatim as a `categories` entry in a
 `/search_documents` payload — it's the exact stored string the search
@@ -412,7 +417,14 @@ The returned `matches` list already includes the expanded terms (their
 `"exact+descendant"`, so you can tell a direct hit from an expanded one,
 and which direction) — pass every returned `category` string as a separate
 `categories` entry in `/search_documents` to actually search with the
-expansion:
+expansion.
+
+**Ask for the whole expansion.** `limit` (default 20) applies to the
+expanded list too, and the list is sorted by name, so a cut-off list drops
+terms alphabetically, not by relevance. On the MaizeGDB server, `limit` may
+go up to 5,000 when either relationship param is given (100 otherwise);
+pass `limit=5000` and check `truncated`. "organelle (GO:0043226)" has 420
+`is_a` descendants; at the old cap of 100, "nucleus" was not among them.
 
 ```bash
 curl -s -X POST -H "Content-Type: application/json" \

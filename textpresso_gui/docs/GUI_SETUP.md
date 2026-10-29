@@ -95,8 +95,9 @@ Each panel's open/closed state is remembered in the browser. The steppers
     the search page's setting (`anc=1` / `desc=1`).
   - A chip shows how many related terms contributed, as "+N terms". Its
     tooltip lists them.
-  - The lookup service returns at most 100 terms per direction, and the
-    panel notes when a list was cut off.
+  - The whole set of related terms is looked up (up to 5,000 per direction;
+    "organelle" alone has 420 narrower terms), and the panel notes if a list
+    was still cut off.
   - **Related gene synonyms** count only if the search had "include related
     gene synonyms" on (passed to the viewer as `rel=1`).
 - **Annotations.** Highlighting can be switched on or off for each term:

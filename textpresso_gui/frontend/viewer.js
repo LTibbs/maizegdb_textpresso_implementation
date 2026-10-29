@@ -251,10 +251,11 @@
   // --- Broader/narrower terms (GO/PO/TO only, like the search page) -------
   // Looked up through /api/category_search the same way the search page's
   // "Include broader/narrower terms" does: the term's own relationship
-  // types, in each direction. The lookup service caps a list at 100 terms.
+  // types, in each direction. The whole closure is asked for (organelle has
+  // 420 narrower terms); the service says when it still had to cut a list.
 
   const EXPANDABLE = new Set(["GO", "PO", "TO"]);
-  const EXPANSION_CAP = 100;
+  const EXPANSION_LIMIT = 5000;  // = tpc_search_combined.EXPANSION_LIMIT
   const expansions = new Map();  // category -> {status, ancestors: [category], descendants: [category], truncated, error}
 
   const isExpandable = (category) => EXPANDABLE.has(ontologyOfCategory(category));
@@ -264,8 +265,10 @@
     expansions.set(category, entry);
     const id = categoryKey(category);
     const lookup = async (extra) => {
-      const qs = new URLSearchParams([["q", id], ["limit", String(EXPANSION_CAP)], ...extra]);
-      return (await fetchJSON(`${API_BASE}/api/category_search?${qs}`)).matches || [];
+      const qs = new URLSearchParams([["q", id], ["limit", String(EXPANSION_LIMIT)], ...extra]);
+      const r = await fetchJSON(`${API_BASE}/api/category_search?${qs}`);
+      const matches = r.matches || [];
+      return Object.assign(matches, { truncated: !!r.truncated });
     };
     try {
       const exact = (await lookup([])).find((m) => m.id === id);
@@ -277,7 +280,7 @@
       ]);
       entry.ancestors = up.filter((m) => m.id !== id).map((m) => m.category);
       entry.descendants = down.filter((m) => m.id !== id).map((m) => m.category);
-      entry.truncated = down.length >= EXPANSION_CAP;
+      entry.truncated = !!(down.truncated || up.truncated);
       entry.status = "ok";
     } catch (e) {
       entry.status = "error";
@@ -519,8 +522,8 @@
         const e = expansions.get(c);
         if (!e) return;
         if (e.status === "error") msgs.push(`Couldn't look up related terms for ${categoryName(c)} (${e.error}).`);
-        else if (catExpand.desc && e.truncated) {
-          msgs.push(`${categoryName(c)}: only the first ${EXPANSION_CAP} narrower terms are included.`);
+        else if ((catExpand.anc || catExpand.desc) && e.truncated) {
+          msgs.push(`${categoryName(c)}: too many related terms to include them all; some are missing.`);
         }
       });
     }

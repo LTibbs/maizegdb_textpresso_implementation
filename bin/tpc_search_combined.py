@@ -457,9 +457,20 @@ def annotation_service_url(search_url):
     return search_url.rsplit("/", 1)[0]
 
 
+# Ask for this many terms when expanding a category: the whole closure, so
+# the expansion can be used as a search filter. The server caps expansion
+# lookups at the same number (cas_annotate_server.EXPANDED_LIMIT_MAX); a
+# server from before that change caps every lookup at 100.
+EXPANSION_LIMIT = 5000
+_OLD_SERVER_LIMIT = 100
+
+
 def category_search(query, url=DEFAULT_URL, ontology=None, limit=10, relationship_types=None,
                      ancestor_relationship_types=None):
     """Look up candidate --category strings for a free-text query.
+
+    Returns only the "matches" list; category_search_response() also says
+    whether the list was cut at limit.
 
     relationship_types -- optional iterable of OBO relationship types (e.g.
     ["is_a", "part_of"]). When given, each match's descendants along those
@@ -476,6 +487,19 @@ def category_search(query, url=DEFAULT_URL, ontology=None, limit=10, relationshi
     couldn't be reached (network/service failure -- distinct from a query
     that legitimately has zero matches, which returns an empty list).
     """
+    response = category_search_response(query, url, ontology, limit, relationship_types,
+                                        ancestor_relationship_types)
+    return None if response is None else response["matches"]
+
+
+def category_search_response(query, url=DEFAULT_URL, ontology=None, limit=10,
+                             relationship_types=None, ancestor_relationship_types=None):
+    """category_search(), returning {"matches": [...], "truncated": bool}.
+
+    truncated is True when the server had more matches than it returned. A
+    server too old to report it is assumed to have cut any list that reached
+    its fixed cap of 100 (or limit, if smaller).
+    """
     params = [("q", query)]
     params += [("ontology", o) for o in (ontology or ())]
     params += [("relationship_type", r) for r in (relationship_types or ())]
@@ -485,9 +509,14 @@ def category_search(query, url=DEFAULT_URL, ontology=None, limit=10, relationshi
     endpoint = f"{annotation_service_url(url)}/category_search?{urllib.parse.urlencode(params)}"
     try:
         with urllib.request.urlopen(endpoint) as resp:
-            return json.loads(resp.read())["matches"]
+            body = json.loads(resp.read())
     except (urllib.error.URLError, urllib.error.HTTPError):
         return None
+    matches = body["matches"]
+    truncated = body.get("truncated")
+    if truncated is None:
+        truncated = len(matches) >= min(limit or _OLD_SERVER_LIMIT, _OLD_SERVER_LIMIT)
+    return {"matches": matches, "truncated": bool(truncated)}
 
 
 def expand_categories_by_relationship(categories, relationship_types, url=DEFAULT_URL,
@@ -526,11 +555,15 @@ def expand_categories_by_relationship(categories, relationship_types, url=DEFAUL
     for cat in categories:
         m = _CATEGORY_ID_RE.search(cat)
         term_id = m.group(1) if m else cat
-        matches = category_search(term_id, url=url, limit=100,
-                                   relationship_types=relationship_types,
-                                   ancestor_relationship_types=ancestor_relationship_types) or ()
+        response = category_search_response(
+            term_id, url=url, limit=EXPANSION_LIMIT, relationship_types=relationship_types,
+            ancestor_relationship_types=ancestor_relationship_types)
+        matches = response["matches"] if response else ()
         _warn_unavailable_relationship_types(
             cat, term_id, matches, relationship_types, ancestor_relationship_types)
+        if response and response["truncated"]:
+            print(f'Warning: "{cat}" has more related terms than the lookup service returned '
+                  f'({len(matches)}), so some are missing from this search.', file=sys.stderr)
         for match in matches:
             if match["category"] not in seen:
                 seen.add(match["category"])
