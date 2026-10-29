@@ -6158,3 +6158,141 @@ C++ build (Docker only), and the re-index itself.
 **Handoff.** `docs/HANDOFF_REINDEX_20261022.md` covers the rebuild and re-index
 on a machine running the old image. JATS for MaizeOpenAccess was fetched here
 and is shipped in the bundle, so the target needs no NCBI access.
+
+---
+
+## Update log — 2026-10-22 to 2026-10-29: GUI speedups, English-word gene rule, tier-gate fixes, complete ontology expansions, frame markers, laptop batch merge
+
+Summary of work committed after the 2026-10-22 handoff (`881cd30`) that had no
+log entry: `a2327aa` → `0062adb` here, and `4dfd0d1` → `e19db08` on
+`agr_textpresso` (`maizegdb/maize-textpresso-fixes`). Detail lives in the
+commit messages, `textpresso_gui/docs/GUI_SETUP.md`, `docs/ITALICS_RULE.md` and
+`docs/ONTOLOGY_BUILD.md`.
+
+**GUI search speedup (2026-10-22, `a2327aa`; server copy `4dfd0d1`).**
+- `casannot.parse_cas_file()` checked every annotation against every sentence
+  to find uncovered ones (70% of parse time on a 20,800-annotation paper). Now
+  a binary search (`_coverage_test()`): ~2.3x faster, identical output on all
+  17 sample CAS files. Same fix in the server's copy, so the public
+  `/annotate` speeds up too.
+- GUI backend caches: search results for 10 min (`TEXTPRESSO_GUI_SEARCH_CACHE`,
+  32 searches; "Load more" within a 200-result document page makes no API
+  call), parsed CAS2s in packed form (~1 MB per paper instead of 10-14 MB,
+  checked against mtime, `TEXTPRESSO_GUI_PAPER_CACHE`, 300 papers), category
+  lookups for a day (`TEXTPRESSO_GUI_CATEGORY_CACHE_MB`, ~50 MB).
+- `/api/annotate` and `/api/document` send ETags; an unchanged paper gets an
+  empty 304.
+- Hygiene no longer runs where its output is discarded (section snippets, the
+  references filter on matched sentences). Everything that reaches the user or
+  decides which papers are kept still runs it.
+
+**Same annotation filter in the full-text viewer (2026-10-26, `dfdb588`).**
+- `tpc_search_combined.clean_local_annotations()` is now the one place a
+  locally parsed CAS2 is filtered; search results, CLI and the viewer all use
+  it. `/api/document` takes `hygiene`/`italics`; the viewer shows the drop
+  report and a "Show unfiltered" link (`?hygiene=0`).
+- For the local filter to match the API exactly, set
+  `TEXTPRESSO_CATEGORY_INDEX` + `TEXTPRESSO_OBO_DIR` (ontology view, ~2 s and
+  ~330 MB once per process). Without them, the CLI warns once that
+  broader-term collapse and the abbreviation case check are skipped.
+- New `TPC_API_URL` / `TPC_API_DIRECT_URL`: point the CLI and GUI at a local
+  container, and optionally skip the lighttpd proxy hop for the three search
+  endpoints (0.18 s direct vs 5.4 s through the proxy, measured locally).
+- `jats_text.py`: XML-illegal control characters (unmapped PDF glyphs, mostly
+  in merged supplements) become a space. Before, `runAECpp` rejected the whole
+  CAS-1: 32 of the 3,299 MaizeOpenAccess papers failed to annotate this way.
+
+**English-word gene rule (2026-10-23, `dfdb588` + `0b99866`).** The italics
+rule exempts the EXACT channel, so `late` (EXACT `locus_synonym` of
+Zm00001eb059970) was annotated wherever the ordinary word appeared.
+`annotation_hygiene.english_word_gate()` drops a gene mention when its form is
+on the English-forms list, it is never italicised in the paper, and no other
+non-English synonym of that gene survives in the body. It covers both gene
+channels and every provenance class. Reason code
+`english_word_gene:no_italic_no_synonym`.
+- List: `.data/italics/english_gene_forms.json`, 117 forms (wordfreq Zipf
+  ≥ 3.0), built by `build_class_map.py --english-out`; enable it with
+  `TEXTPRESSO_ENGLISH_GENE_FORMS`. Shipped in `agr_textpresso` with merge
+  `1186433`.
+- Checked against curator gene lists (2,004 papers, 13,244 confirmed
+  gene-in-paper pairs). The first build exempted all-caps spellings. That
+  kept 19,175 mentions at 3.1% confirmed (`ABA` alone 6,041 at 0%) to protect
+  4 pairs, so the exemption was **removed** (`0b99866`). The adopted rule
+  removes 43,512 mentions (0.6% confirmed vs 36.3% for what remains) and
+  costs 28 confirmed pairs (0.2%). Most of those are `r1` matched only as
+  "red". Full table in `docs/ITALICS_RULE.md`.
+
+**Tier-gate fixes (2026-10-23/26, `dfdb588`; server `4d19d20`).**
+- Inflected forms the matcher produces (`leading`, `led`, `leads` for `lead`)
+  are judged as the term's own stored string (`_variation_of()`), and a verb
+  form gets no credit from generic qualifiers at T2. This stops `leading`/`led`
+  matching as the element lead, and `based` as a nucleobase.
+- Decision 4b in `build_match_dictionary.py`: capitalised synonyms with Zipf
+  3.5-5.0 on agrochemical-role terms move T0 → T2. These are 33 brand names
+  such as `Pathway` (picloram), which matched "pathways". Element and compound
+  names (`Copper`, `Glucose`) are untouched. The new `match_dictionary.csv.gz`
+  ships in `agr_textpresso`. Read time only (sidecar restart).
+
+**Access statuses shipped in the repo (2026-10-26, `227d6db`, `e4670d4`).**
+The GUI's OA manifest default was a path on Laura's laptop, and an unreadable
+manifest made every paper restricted.
+- The default is now
+  `sorghumbase_textpresso_implementation/metadata/MaizeOpenAccess_access.csv`
+  (2,330 open, 818 publisher, 151 restricted). `bin/build_access_csv.py`
+  rebuilds it byte for byte after a corpus refresh.
+- The override was renamed `TEXTPRESSO_OA_MANIFEST` →
+  `TEXTPRESSO_GUI_OA_MANIFEST`, because the API sidecars read the old name as a
+  different, TSV-format file.
+- Front-page text now names all 11 ontologies and the corpus size (`0c81ae6`).
+
+**Complete ontology expansions (2026-10-29, `c10dd56`; server `2a9c0cb`).**
+"Include narrower/broader terms" was silently searching only part of the
+expansion, for three reasons:
+1. `category_search` capped results at 100, alphabetically, so `organelle`
+   never reached `nucleus`. Expansions now request up to 5000
+   (`EXPANSION_LIMIT` / `EXPANDED_LIMIT_MAX`), the response carries
+   `truncated`, and the CLI, GUI and viewer warn when the list is still cut.
+2. The `*_annot.obo` files carried `is_a` only. GO/PO/TO now carry
+   `relationship: part_of` (GO 7,058, PO 745, TO 85 edges), so `nucleus` has
+   468 descendants instead of 19. Match strings are unchanged at depth 50, so
+   no re-index is needed.
+3. Lucene's 1024-clause limit returned HTTP 500 above 1024 categories
+   (`organelle` with is_a + part_of is 1,876). libtpc raises it to 16384.
+
+Effect, `organelle` + narrower: 386 papers alone, 1,103 with the truncated
+list, 2,817 with all 420 is_a terms. **Deploy order matters:** rebuild the API
+image (C++) before or together with the sidecar restart that loads the new
+OBOs, or GUI searches on large terms fail with HTTP 500.
+
+**Frame markers (2026-10-29, `98d9074`; server `98bd2ff`, `e19db08`).** TO's
+RELATED synonym `End` (endosperm quality, TO:0000587) matched the tokenizer's
+"End of Article" marker, so a category search for it returned all 3,299
+papers.
+- `casannot.frame_marker_spans()` drops matches on the marker strings at read
+  time, in `parse_cas_file()` and `casdoc`.
+- New `BLOCKED_FORMS` in `build_match_dictionary.py` keeps a T3 row for
+  blocked strings and leaves them out of the `*_annot.obo` files. `End` was
+  removed from both copies of `to_annot.obo`.
+- The Lucene index still holds those matches until the next re-index.
+- Also fixed: `tpc_category_search.py` loaded the removed `tpc_search` module.
+
+**Laptop batch-processing merge (2026-10-29, `0062adb`).** Merged
+`fix/local-annotation-setup` (the 2026-09-09/10 laptop work: container
+auto-detection, bind-mount staging, read-only dry run, metadata coverage check,
+`.bib` diagnostics, rewritten `TEXTPRESSO_LOCAL_ANNOTATION_SETUP.md`) into
+master alongside master's JATS staging (`-j`), `-x` and the tpso busy check.
+In `process_batch.sh`, the JATS/PDF split now sits below the dry-run exit, so
+`-n` stays read-only.
+
+**Tests.** Added `tests/test_frame_markers.py`. Extended the hygiene, tier,
+`build_match_dictionary`, `jats_text` and `tpc_search_combined` tests.
+
+**Tutorial.** New `docs/MAIZEGDB_TPC_SEARCH_TUTORIAL.md`: a
+walkthrough of CLI and `curl` searching against the live server, with real
+output from 2026-10-29.
+
+**Not done / next.**
+- Re-index MaizeOpenAccess. This is needed so search results reflect the
+  frame-marker fix and the 2026-10-22 ontology build. Expansions and the tier
+  changes already work after a restart.
+- Rebuild the API image for the clause-limit change.
