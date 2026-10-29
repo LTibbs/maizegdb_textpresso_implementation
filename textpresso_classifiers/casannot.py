@@ -449,6 +449,37 @@ def _get_sofa(content):
     return html.unescape(m.group(1)) if m else ""
 
 
+# TdTokenizer (and jats_text.py) wrap every document in "\nBeginning of
+# Article\n" ... "\nEnd of Article\n". The markers aren't paper text, but the
+# lexical annotator matches them: TO's RELATED synonym "End" (endosperm
+# quality, TO:0000587) fired in every paper, so a category search for it
+# returned all 3,299 in MaizeOpenAccess (2026-10-29). No sentence covers a
+# marker, so the mention also got a synthetic sentence of the bibliography
+# around it -- which then passed the T2 context test. Only the marker strings
+# go: the "beginning of article" frame section can run on over the real title.
+_FRAME_MARKER_RES = (
+    re.compile(r"\A(?:\s|<_pdf[^<>]*/>)*(Beginning of Article)\s"),
+    re.compile(r"\s(End of Article)(?:\s|<_pdf[^<>]*/>)*\Z"),
+)
+
+
+def frame_marker_spans(sofa):
+    """[(begin, end)] of the tokenizer's "Beginning/End of Article" markers:
+    the first at the very start of sofa, the last at its very end (PDF tags
+    and whitespace aside). The same words inside the paper don't count."""
+    spans = []
+    for rx in _FRAME_MARKER_RES:
+        m = rx.search(sofa or "")
+        if m:
+            spans.append(m.span(1))
+    return spans
+
+
+def in_frame_marker(begin, end, spans):
+    """True if [begin, end) overlaps any span from frame_marker_spans()."""
+    return any(begin < e and end > b for b, e in spans)
+
+
 def _coverage_test(sentences):
     """-> callable(pos): whether any sentence has begin <= pos < end.
 
@@ -533,7 +564,9 @@ def parse_cas_file(cas_path):
     broader/parent-category links added by Textpresso (e.g. a match for
     "seed development" also generates PTCATs for "developmental process",
     "biological process", etc.).  They add noise at this level of analysis;
-    callers that want the full hierarchy can remove this filter.
+    callers that want the full hierarchy can remove this filter. Matches on
+    the tokenizer's "Beginning/End of Article" markers are skipped too (see
+    frame_marker_spans()).
     """
     with gzip.open(cas_path, "rt", encoding="utf-8", errors="replace") as fh:
         content = fh.read()
@@ -550,6 +583,8 @@ def parse_cas_file(cas_path):
 
     sentences.sort(key=lambda s: s["begin"])
 
+    sofa = _get_sofa(content)
+    markers = frame_marker_spans(sofa)
     annotations = []
     for m in re.finditer(r"<textpresso:lexicalannotation\s.*?/>", content, re.DOTALL):
         el = m.group(0)
@@ -557,6 +592,9 @@ def parse_cas_file(cas_path):
             continue
         begin = int(re.search(r'\bbegin="(\d+)"', el).group(1))
         end   = int(re.search(r'\bend="(\d+)"',   el).group(1))
+        if in_frame_marker(begin, end, markers):
+            continue  # tokenizer marker text, not the paper's
+
         tm    = re.search(r'\bterm="([^"]*)"',     el)
         cm    = re.search(r'\bcategory="([^"]*)"', el)
         term     = html.unescape(tm.group(1)) if tm else ""
@@ -578,17 +616,15 @@ def parse_cas_file(cas_path):
     # left the body text without sentence spans.
     covered = _coverage_test(sentences)
     uncovered = [a for a in annotations if not covered(a["begin"])]
-    if uncovered:
-        sofa = _get_sofa(content)
-        if sofa:
-            synthetic = []
-            for a in uncovered:
-                # Skip if a previously added synthetic sentence already covers this position.
-                if any(syn["begin"] <= a["begin"] < syn["end"] for syn in synthetic):
-                    continue
-                synthetic.append(_sofa_sentence(sofa, a["begin"], a["end"]))
-            sentences.extend(synthetic)
-            sentences.sort(key=lambda s: s["begin"])
+    if uncovered and sofa:
+        synthetic = []
+        for a in uncovered:
+            # Skip if a previously added synthetic sentence already covers this position.
+            if any(syn["begin"] <= a["begin"] < syn["end"] for syn in synthetic):
+                continue
+            synthetic.append(_sofa_sentence(sofa, a["begin"], a["end"]))
+        sentences.extend(synthetic)
+        sentences.sort(key=lambda s: s["begin"])
 
     sections = []
     for m in re.finditer(r"<textpresso:section\s.*?/>", content, re.DOTALL):
@@ -603,7 +639,6 @@ def parse_cas_file(cas_path):
     # jats layout: sections come from the JATS structure (jats_text.py), not
     # from heading lines, so the PDF heading repairs don't apply.
     if not _JATS_RAWSOURCE_RE.search(content):
-        sofa = _get_sofa(content)
         sections = fix_sections(sections, sofa, page_starts(content, sofa))
 
     return sentences, annotations, sections

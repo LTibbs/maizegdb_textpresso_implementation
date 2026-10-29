@@ -198,5 +198,24 @@ class TestDefinedAbbreviation(unittest.TestCase):
         self.assertTrue(idx.verdict("GA", "ChEBI", body="abscisic acid")[0])
 
 
+class TestBlockedForm(unittest.TestCase):
+    """A string blocked by name (build decision 4c) keeps a T3 row, so mentions
+    the live index still holds are dropped before the re-index removes them."""
+
+    BLOCKED = index(("End", "T3", "TO", "TO:0000587"),
+                    ("endosperm quality", "T0", "TO", "TO:0000587"))
+    # a companion TO term in the sentence rescued 'End' when it was T2
+    SENTENCE = "Effects on kernel weight and endosperm quality at the end of the season."
+
+    def test_marker_and_inflections_dropped(self):
+        for form in ("End", "end", "ends", "Ends", "ending", "ended"):
+            self.assertEqual(self.BLOCKED.verdict(form, "TO", self.SENTENCE, "TO:0000587"),
+                             (True, "tier_T3_blocked"), form)
+
+    def test_other_strings_of_the_term_unaffected(self):
+        self.assertEqual(self.BLOCKED.verdict("endosperm quality", "TO", self.SENTENCE,
+                                              "TO:0000587"), (False, "tier_T0"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -35,7 +35,7 @@ def _load_module(name, rel_path):
     return mod
 
 
-_search = _load_module("tpc_search", "tpc_search.py")
+_search = _load_module("tpc_search_combined", "tpc_search_combined.py")
 
 
 def _warn_unavailable_relationship_types(matches, relationship_types, ancestor_relationship_types):

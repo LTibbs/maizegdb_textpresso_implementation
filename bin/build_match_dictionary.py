@@ -131,6 +131,22 @@ DEFINED_ABBREVIATIONS = {
     ("GO", "GO:0061630"): {"E3": (r"\bubiquitin",)},
 }
 
+# Decision 4c -- strings blocked by name (2026-10-29). (channel, term id) ->
+# source strings, matched exactly. A blocked string never reaches the
+# *_annot.obo files, so the matcher stops producing it after a re-index, but
+# unlike a <= 2-character T3 it keeps a T3 row in match_dictionary.csv: the
+# live index still holds the old matches until that re-index, and a form
+# missing from the dictionary is kept by the tier gate as 'tier_unknown_form'.
+#
+# 'End' (RELATED on endosperm quality) is the ingest's own "End of Article"
+# frame marker. Over 300 random MaizeOpenAccess papers it produced every one
+# of TO:0000587's 522 mentions (280 papers), 290 on the marker and 232 as
+# ends/ending/ended, with no use meaning endosperm. As T2 the gate dropped 493;
+# 27 survived on a companion TO term, nearly all in reference lists.
+BLOCKED_FORMS = {
+    ("TO", "TO:0000587"): {"End"},
+}
+
 # Common English words that, in a maize paper, are almost always the plant
 # structure: frequency alone would put them in T2 (context required), and the
 # runtime gate then dropped 14,771 'leaf', 7,066 'root' and 6,914 'seed'
@@ -518,7 +534,10 @@ def build(args):
                     stats["dropped_species_scoped"] += 1
                     report["drops"]["non_maize_species_scoped"] += 1
                     continue
-                if text in curated:
+                blocked = text in BLOCKED_FORMS.get((channel, term["id"]), ())
+                if blocked:
+                    tier = TIER_BLOCK
+                elif text in curated:
                     tier = TIER_DEFINED
                 elif text.lower() in CHANNEL_FREE_FORMS.get(channel, ()):
                     tier = TIER_SAFE
@@ -527,7 +546,7 @@ def build(args):
                         tier_of(text), text, kind,
                         zipf_frequency(text.lower(), "en") if len(text.split()) == 1 else None,
                         scope_reason.get(term["id"], "native_term"))
-                if tier == TIER_BLOCK:
+                if tier == TIER_BLOCK and not blocked:
                     stats["dropped_tier3"] += 1
                     report["drops"]["tier_T3_blocked"] += 1
                     continue
@@ -543,7 +562,8 @@ def build(args):
                     "term_id": term["id"],
                     "term_label": term["name"] or "",
                     "string_kind": kind,
-                    "inclusion_reason": ("curated_abbreviation" if kind == "curated"
+                    "inclusion_reason": ("blocked_form" if blocked
+                                         else "curated_abbreviation" if kind == "curated"
                                          else scope_reason.get(term["id"], "native_term")),
                     "species_scope": scope or "",
                     "n_chars": len(text),
@@ -553,6 +573,11 @@ def build(args):
                     "long_forms": json.dumps(list(curated[text])) if tier == TIER_DEFINED
                                   else "",
                 })
+                if blocked:
+                    # in the dictionary for the gate, not in the OBO for the matcher
+                    stats["blocked_forms"] += 1
+                    report["drops"]["blocked_form"] += 1
+                    continue
                 kept_strings.append((text, kind, tier))
                 stats["strings_" + tier] += 1
             stats["terms_matchable" if kept_strings else "terms_unmatchable"] += 1
@@ -571,6 +596,18 @@ def build(args):
         print("WARNING: curated abbreviations not emitted: " + "; ".join(missing),
               file=sys.stderr)
     report["curated_abbreviations_missing"] = missing
+
+    blocked_rows = {(r["channel"], r["term_id"], r["match_string"])
+                    for r in rows if r["inclusion_reason"] == "blocked_form"}
+    unused = sorted("%s %s %s" % (ch, tid, s)
+                    for (ch, tid), forms in BLOCKED_FORMS.items()
+                    for s in forms if (ch, tid, s) not in blocked_rows
+                    and (ch != "ChEBI" or not args.chebi_skip))
+    if unused:
+        # the source dropped or renamed the string: the block is now dead
+        print("WARNING: blocked forms not found in their source: " + "; ".join(unused),
+              file=sys.stderr)
+    report["blocked_forms_unused"] = unused
 
     write_outputs(args, rows, annot_terms, report, sources)
     return report

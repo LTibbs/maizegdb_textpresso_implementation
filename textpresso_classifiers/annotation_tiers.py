@@ -21,6 +21,9 @@ The four tiers, as built:
     TD  curated abbreviation; kept only when the paper body
         spells out the term (GA, JA, SA, BR, CK, ET, ER, E3)      8
     T3  never string-matched; not present in the dictionary      (284 blocked)
+        -- except strings blocked by name (BLOCKED_FORMS in the build,
+        'End'), which keep a T3 row so the gate drops mentions an
+        index built before the block still holds
 
 A T2 string is not dropped blindly: `verdict()` looks for three kinds of
 support in the surrounding sentence, in this order, and records which one

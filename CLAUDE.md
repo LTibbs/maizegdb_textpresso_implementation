@@ -353,7 +353,9 @@ Place beside `casannot.py` in **both** `textpresso_classifiers/` (CLI) and
   plus `tier_rule()`, the injectable gate for the four-tier match-string policy
   (T1 must match the stored case, T2 needs sentence context, TD -- the curated
   abbreviations GA/JA/SA/BR/CK/ET/ER/E3 -- needs its long form somewhere in the
-  paper body, T3 never entered the dictionary). Tiers are frozen at build time, so this module has no
+  paper body, T3 never entered the dictionary, except build `BLOCKED_FORMS` such
+as `End` -- the "End of Article" marker -- which keep a T3 row so the gate drops
+them before a re-index). Tiers are frozen at build time, so this module has no
   third-party imports. See `docs/ONTOLOGY_BUILD.md`. A lowercase stored form
   accepts its sentence-case spelling, and a plural the matcher produced is
   judged as its singular. It never judges `MAIZE_GENES*`. **On by default**
@@ -468,6 +470,17 @@ to 3000 chars or the next references-heading line (`following_text()` /
 construction. Change the two together. Whole-corpus emulation of the switch
 (2026-10-22): 3 of 3,299 papers change, all by keeping a real References
 heading, 12-205 chars relabelled.
+
+**Frame markers.** TdTokenizer and `jats_text.py` wrap every document in
+`Beginning of Article` / `End of Article`, and the annotator matches them: TO's
+RELATED synonym `End` (endosperm quality, TO:0000587) fired in every paper, and
+a ±400-char synthetic sentence of bibliography let it pass T2.
+`casannot.frame_marker_spans()` drops matches on the marker strings themselves
+(not the frame sections, which can cover the real title) in `parse_cas_file()`
+and `casdoc`, from 2026-10-29. That's read time only: the Lucene index still has
+them, so a category search for `endosperm quality (TO:0000587)` returns all
+3,299 MaizeOpenAccess papers until the annotator skips the markers or `End` is
+taken out of the matched set, followed by a re-index.
 
 ### Rollout convention
 

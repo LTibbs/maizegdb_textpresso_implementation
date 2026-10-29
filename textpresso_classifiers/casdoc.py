@@ -112,7 +112,9 @@ def parse_cas_document(cas_path):
       sections    -- [{begin, end, type}] (see casannot.SECTION_TYPES)
       sentences   -- [{begin, end}]
       annotations -- [{begin, end, term, category, ontology, onto_id}],
-                     PTCAT parent-category links skipped (same as casannot)
+                     PTCAT parent-category links and matches on the
+                     "Beginning/End of Article" markers skipped (same as
+                     casannot)
 
     All positions are offsets into text.
     """
@@ -180,16 +182,20 @@ def parse_cas_document(cas_path):
         sentences.append({"begin": remap(int(_attr(el, "begin"))),
                           "end": remap(int(_attr(el, "end")))})
 
+    markers = _ca.frame_marker_spans(sofa)
     annotations = []
     for m in _elements(content, "lexicalannotation"):
         el = m.group(0)
         if "PTCAT" in el:
             continue
+        begin, end = int(_attr(el, "begin")), int(_attr(el, "end"))
+        if _ca.in_frame_marker(begin, end, markers):
+            continue  # same as casannot: tokenizer marker text, not the paper's
         category = _attr(el, "category") or ""
         id_m = re.search(r"\(([A-Za-z][A-Za-z0-9_]*:\d+)\)", category)
         annotations.append({
-            "begin": remap(int(_attr(el, "begin"))),
-            "end": remap(int(_attr(el, "end"))),
+            "begin": remap(begin),
+            "end": remap(end),
             "term": _attr(el, "term") or "",
             "category": category,
             "ontology": _ontology_of(category),

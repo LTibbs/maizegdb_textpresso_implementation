@@ -182,7 +182,7 @@ actually ask about, and rebuild.
 | T1 | 3,640 | abbreviation shape (`DNA`, `ABA`, `QTL`), or single token Zipf 2.5–3.5 | must match the stored case |
 | T2 | 326 | single common word (Zipf ≥ 5.0), or ≤ 4 chars and Zipf ≥ 3.0 | needs supporting context |
 | TD | 8 | curated abbreviation (`DEFINED_ABBREVIATIONS`) | stored case, and the paper body must spell the term out |
-| T3 | 284 blocked | ≤ 2 characters | never in the dictionary; id-only |
+| T3 | 284 blocked | ≤ 2 characters, or named in `BLOCKED_FORMS` | never in the `*_annot.obo` files; a `BLOCKED_FORMS` string keeps a T3 row in the dictionary |
 
 (Counts are the 2026-10-20 build; the 2026-10-22 build is 184,086 / 3,673 /
 347 / 8 / 294.)
@@ -240,6 +240,31 @@ Without `body_text=` a TD mention is kept and flagged
 
 The build warns, and records `curated_abbreviations_missing` in
 `build_report.json`, when a listed term is absent or obsolete in the source.
+
+**Strings blocked by name** (`BLOCKED_FORMS`, 2026-10-29). Some strings are
+always wrong on one term, whatever the sentence says, but are too long for the
+≤ 2-character rule. `BLOCKED_FORMS` maps (channel, term id) to source strings,
+compared after the scope suffix is stripped (`"End (related)"` → `End`). Its
+only entry is `End`, RELATED on TO:0000587 *endosperm quality*. Over 300 random
+MaizeOpenAccess papers, `End` produced every one of that term's 522 mentions,
+in 280 of the papers. 290 were the `End of Article` frame marker the ingest
+writes at the end of every document. The other 232 were `ends`, `ending` and
+`ended`, which the matcher derives from `End`. None of the 522 meant endosperm.
+As T2 the gate dropped 493. The other 27 survived because another TO term was
+in the same sentence (`companion_term`), almost all in reference lists.
+
+A blocked string is left out of `*_annot.obo`, so after a re-index it is never
+matched. Unlike a ≤ 2-character string it **keeps a row** in
+`match_dictionary.csv`, with tier `T3` and `inclusion_reason` `blocked_form`.
+Mentions from an index built before the block are still in the index until
+the re-index, and the gate keeps a form missing from the dictionary
+(`tier_unknown_form`). With the row there, it drops them as `tier_T3_blocked`,
+inflections included, after a sidecar restart. Blocking is final once the
+re-index has run: a string that is never matched can never be scored again. So
+an entry needs corpus evidence that the string has no valid use on that term.
+Use the stop-forms below for a string that is wrong in one sense but valid in
+another. The build warns, and records `blocked_forms_unused`, when a listed
+string is no longer in its source.
 
 **Case and inflection at runtime.** A lowercase stored form also accepts its
 sentence-case spelling (`Chromosome`, `Pollen` at the start of a sentence); a

@@ -263,6 +263,16 @@ id: CHEBI:1
 name: out of scope compound
 """
 
+TO_BUILD = """format-version: 1.2
+data-version: releases/test
+
+[Term]
+id: TO:0000587
+name: endosperm quality
+synonym: "End (related)" RELATED []
+synonym: "endosperm quality (sensu Poaceae) (related)" RELATED []
+"""
+
 try:
     import wordfreq  # noqa: F401
 except ImportError:
@@ -279,7 +289,8 @@ class BuildTest(unittest.TestCase):
             path = os.path.join(coll, rel)
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, "w", encoding="utf-8") as fh:
-                fh.write(GO_BUILD if rel.endswith("go-basic.obo") else "format-version: 1.2\n")
+                fh.write(GO_BUILD if rel.endswith("go-basic.obo")
+                         else TO_BUILD if rel.endswith("to.obo") else "format-version: 1.2\n")
         chebi = os.path.join(tmp, "chebi.obo")
         with open(chebi, "w", encoding="utf-8") as fh:
             fh.write(CHEBI_BUILD)
@@ -293,6 +304,8 @@ class BuildTest(unittest.TestCase):
             cls.go = fh.read()
         with open(os.path.join(args.outdir, "chebi_annot.obo"), encoding="utf-8") as fh:
             cls.chebi = fh.read()
+        with open(os.path.join(args.outdir, "to_annot.obo"), encoding="utf-8") as fh:
+            cls.to = fh.read()
 
     def strings(self, term_id):
         return {(r["match_string"], r["tier"]) for r in self.rows if r["term_id"] == term_id}
@@ -325,6 +338,16 @@ class BuildTest(unittest.TestCase):
         missing = self.report["curated_abbreviations_missing"]
         self.assertIn("ChEBI CHEBI:18292 JA", missing)
         self.assertNotIn("ChEBI CHEBI:24250 GA", missing)
+
+    def test_blocked_form_kept_for_gate_but_not_matched(self):
+        # 'End' is the "End of Article" frame marker (decision 4c)
+        (row,) = [r for r in self.rows if r["match_string"] == "End"]
+        self.assertEqual((row["tier"], row["inclusion_reason"]), ("T3", "blocked_form"))
+        self.assertNotIn('"End"', self.to)
+        self.assertIn('synonym: "endosperm quality (sensu Poaceae)" RELATED []', self.to)
+        self.assertNotIn("subset: tier_T3", self.to)
+        self.assertEqual(self.report["drops"]["blocked_form"], 1)
+        self.assertEqual(self.report["blocked_forms_unused"], [])
 
 
 class TestDemoteCapitalisedSynonym(unittest.TestCase):
