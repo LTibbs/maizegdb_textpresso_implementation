@@ -86,6 +86,48 @@ What it removes, with curator-confirmation rates: `myb` (627 mentions, 0%),
   The class exemption rescues it here, but nothing in typography can detect the
   condition in general. This is the rule's systematic blind spot.
 
+## Judged forms (2026-10-30)
+
+`ITALICS_JUDGED_FORMS` in `annotation_italics.py` lists EXACT-scope forms that
+lose both exemptions and the 4-character cap, so they are judged on italics
+evidence alone. An italicised occurrence still keeps them, and the rule still
+abstains when the form is absent from the body.
+
+    chr4 chr5 chr8 chr10                 maize chromosomes: chr4:150,010,129, chr10.S_10730283
+    log2                                 fold change (LOG2, LONELY GUY 2, kept where italic)
+    peroxidase transposase helicase      enzyme/protein class names stored as one gene's synonym
+    permease chloroplastic gat utp
+    glutaredoxin glycosyltransferases
+    wd40                                 the WD40 repeat domain
+    l3                                   leaf 3, the L3 meristem layer, line labels (EXACT synonym of ole1)
+
+Screen (MaizeOpenAccess, against curated `genes`/`gene_models` in
+`MaizeOpenAccess_papers.csv`): every listed form except `wd40` and `l3` is never
+italicised in at least 95% of the papers where it occurs (`wd40` 32 of 36, `l3`
+46 of 53, both added on context), and no curator records its gene in any paper
+where the rule would fire. `chr5` is curated in two papers (`10.1111_tpj.14193`,
+`10.1111_nph.18839`), and neither uses the form, so the rule abstains there. For
+`chr4`/`chr5`/`chr8`/`chr10` that is 250 paper-form pairs dropped, about 730 body
+occurrences. The italic exceptions were not gene mentions either: italic SNP
+coordinates (`10.1007_s11032-022-01349-x`), `ZmGW2-CHR4`, and an Arabidopsis-style
+`CHR5` on a different gene model. On 35 sampled papers, 117 of 156 listed-form
+mentions are dropped; the survivors are italicised or abstained.
+
+`chr10` needed the length bypass as well as the exemptions: at 5 characters it
+was outside `max_len`, so the rule never looked at it.
+
+Why a list and not a threshold: of the 39 EXACT forms in at least 20 papers
+that are never italic in at least 95% of them, 13 have a curator-confirmed cost
+(`sra`/trpp9 2 of 2, `tim`/tpi5 2 of 2, `bin`/mn1). Add a form only after that
+screen and a look at its contexts. `glutaredoxin` (21 papers, every annotation
+to `wakl54`, every use the protein family) and `glycosyltransferases` (20, the
+enzyme class) were added after that look. So was `l3`: of its 327 annotations
+(all to `ole1`, oleosin1), the one clear use of the old oleosin name ("L3, which
+encodes the major lipid body protein", `10.1093_genetics_129.3.863`) is italic
+and kept. The known possible loss is 5 mentions of "19 kDa light chain
+proteins, L1, L2 and L3" in `10.1046_j.1365-313x.1995.8040571.x`, which may be
+oleosin size classes.
+
 ## The English-word companion rule (2026-10-23)
 
 The first bullet above is where the strict-zero rule is blind: it exempts the
