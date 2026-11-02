@@ -6346,8 +6346,7 @@ JATS on 2026-10-22.
 - Tests: `tests/test_add_jats_figures.py` (placement, UTF-16 offsets, view
   members, idempotence, `--remove` round trip, `--jats-json`).
 
-**Long-term (next rebuild).** `agr_textpresso` branch `maizegdb/jats-figures`
-(`876b68e`): TjTokenizer emits the `images` array as image annotations.
+**Long-term (next rebuild).** `agr_textpresso` `main` (`d05c785`): TjTokenizer emits the `images` array as image annotations.
 Built and run in a throwaway container from the server image: 14/14 and
 1,306/1,306 annotations matching `jats.json`, sentence count unchanged.
 Not exercised: characters outside the BMP (none in the corpus; `jats_text`

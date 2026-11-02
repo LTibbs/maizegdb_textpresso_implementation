@@ -34,7 +34,7 @@ C=agr-textpresso-textpresso-1                 # container name (docker ps)
 ## 1. Update this repo
 
 ```bash
-cd $IMPL && git fetch && git switch pdf-figures && git pull
+cd $IMPL && git switch master && git pull
 ```
 
 You need `sorghumbase_textpresso_implementation/scripts/stage_cas1_images.sh`
@@ -118,9 +118,9 @@ annotations.
 
 ## Next full rebuild
 
-Nothing extra is needed. `process_batch.sh` on the `pdf-figures` branch copies
+Nothing extra is needed. `process_batch.sh` (this repo's `master`) copies
 the images and places figures for JATS papers itself. The JATS tokenizer change
-is on `agr_textpresso` branch `maizegdb/jats-figures` (commit `876b68e`). With
+is on `agr_textpresso` `main` (commit `d05c785`). With
 it, `TjTokenizer` writes the figure annotations at tokenize time, from an
 `images` list that `process_batch.sh` adds to each `jats.json`. It is picked up
 by the normal `docker compose build textpresso`; until then `process_batch.sh`
