@@ -297,6 +297,13 @@ a lexicon change plus re-index.
    catches the residue where a registered name arrives via the RELATED channel
    (the `pop1` case).
 
+   `ITALICS_JUDGED_FORMS` (2026-10-30) is the explicit list of EXACT forms that
+   lose both exemptions and the length cap: `chr4`/`chr5`/`chr8`/`chr10`
+   (chromosomes), `log2`, `l3`, `wd40` and class names such as `peroxidase`.
+   Extend it form by form after a curator-cost screen and a look at contexts,
+   never by threshold: 13 of 39 EXACT forms that are never italic in >= 95% of
+   their papers have a curator-confirmed cost.
+
    **Reference and acknowledgment sections must be excluded when counting
    italics.** Counting cited-paper titles adds non-italic occurrences to forms
    that are italicised wherever they are genuinely used, which makes the rule

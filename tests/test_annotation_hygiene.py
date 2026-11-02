@@ -92,6 +92,22 @@ class TestItalicsRule(unittest.TestCase):
     def test_not_applied_to_go(self):
         self.assertFalse(it.never_italicised(self.PAPER, "myb", "GO", "unknown")[0])
 
+    def test_judged_form_loses_exemptions_and_length_cap(self):
+        paper = {"chr10": [0, 4], "chr4": [0, 2]}
+        self.assertEqual(it.never_italicised(paper, "Chr10", "MAIZE_GENES", "unknown"),
+                         (True, 0, 4))
+        self.assertEqual(it.never_italicised(paper, "chr4", "MAIZE_GENES", "registered"),
+                         (True, 0, 2))
+
+    def test_judged_form_kept_when_italicised_or_absent(self):
+        self.assertFalse(it.never_italicised({"log2": [1, 6]}, "LOG2", "MAIZE_GENES", "alias")[0])
+        self.assertEqual(it.never_italicised({}, "chr8", "MAIZE_GENES", "registered"),
+                         (False, None, None))
+
+    def test_judged_forms_can_be_turned_off(self):
+        self.assertFalse(it.never_italicised({"chr10": [0, 4]}, "chr10", "MAIZE_GENES",
+                                             "unknown", judged_forms=())[0])
+
     def test_clean_annotations_reports_reason(self):
         kept, dropped = hy.clean_annotations(
             [_ann("myb", "MAIZE_GENES_RELATED", "myb1 (tpzm:0000002)")], [],

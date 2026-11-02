@@ -173,11 +173,37 @@ def non_italicised(paper_index, term, ontology, *,
 #: response with no OBO lookup required.
 EXACT_ONTOLOGY = "MAIZE_GENES"
 
+#: EXACT-scope forms judged on italics evidence alone: no EXACT-channel or
+#: registered/identifier exemption, no max_len cap. Each is an EXACT synonym of
+#: one gene that authors overwhelmingly use in another sense -- maize chromosome
+#: names (`chr4`, `chr5`, `chr8`, `chr10`: SNP coordinates such as
+#: chr10:12,345), `log2` (fold change), enzyme/protein class names and the
+#: `wd40` domain, and `l3` (leaf 3, the L3 meristem layer, line labels -- an
+#: EXACT synonym of ole1). Screened over MaizeOpenAccess (2026-10-30): never
+#: italicised in >= 95% of the papers where each occurs (`wd40` 32 of 36 and
+#: `l3` 46 of 53, added on context), and no MaizeGDB curator records the gene
+#: in any paper where the
+#: rule would fire (the two `chr5` papers do not use the form at all). An
+#: italicised occurrence still keeps the annotation, so `LOG2` (LONELY GUY 2)
+#: survives where it is written as a gene.
+#:
+#: Not a general rule on purpose: lifting the exemption for every EXACT form
+#: that is never italic in >= 95% of its papers costs curator-confirmed pairs
+#: for 13 of 39 such forms (`sra`/trpp9, `tim`/tpi5, ...). Add forms only after
+#: that screen and a look at their contexts.
+ITALICS_JUDGED_FORMS = frozenset({
+    "chr4", "chr5", "chr8", "chr10",
+    "peroxidase", "log2", "transposase", "chloroplastic", "helicase",
+    "gat", "utp", "permease", "glutaredoxin", "glycosyltransferases", "wd40",
+    "l3",
+})
+
 
 def never_italicised(paper_index, term, ontology, obo_class, *,
                      max_len=DEFAULT_MAX_LEN,
                      exempt_classes=("registered", "identifier"),
                      exempt_exact_channel=True,
+                     judged_forms=ITALICS_JUDGED_FORMS,
                      gene_ontologies=GENE_ONTOLOGIES):
     """The strict-zero rule: drop a gene annotation that is NEVER italicised.
 
@@ -213,16 +239,22 @@ def never_italicised(paper_index, term, ontology, obo_class, *,
     100%) and `pip2` (35, 89%). Set exempt_exact_channel=False for the more
     aggressive variant.
 
+    Forms in `judged_forms` (ITALICS_JUDGED_FORMS) skip the max_len cap and
+    both exemptions; the absent-from-body abstention still applies to them.
+
     -> (should_drop, n_italic, n_total). n_* are None when the test abstains.
     """
     if ontology not in gene_ontologies:
         return False, None, None
-    if not term or len(term) > max_len:
+    if not term:
         return False, None, None
-    if exempt_exact_channel and ontology == EXACT_ONTOLOGY:
-        return False, None, None
-    if obo_class in exempt_classes:
-        return False, None, None
+    if term.lower() not in (judged_forms or ()):
+        if len(term) > max_len:
+            return False, None, None
+        if exempt_exact_channel and ontology == EXACT_ONTOLOGY:
+            return False, None, None
+        if obo_class in exempt_classes:
+            return False, None, None
     entry = (paper_index or {}).get(term.lower())
     if not entry:
         return False, None, None          # form absent from the body: abstain
