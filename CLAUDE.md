@@ -495,9 +495,12 @@ The hygiene layer is **on by default** everywhere since the 2026-10 rollout:
 the server (`TEXTPRESSO_HYGIENE_DEFAULT`, default `1`; set `0` to revert), the
 CLI (`--no-hygiene` opts out; `--hygiene` is still accepted) and the GUI. It
 was flipped without the planned off-by-default release because the instance
-had not yet been shared publicly. Once it has, treat further changes to what
-the default drops the same way: they change what published API scripts
-receive, so announce them first.
+had not yet been shared publicly.
+
+As of 2026-11-02 the live server is open only to a handful of testers, so
+changes to what the default drops (e.g. `ITALICS_JUDGED_FORMS`) ship without
+an announcement. Once it is shared more widely, they change what published API
+scripts receive: announce them first.
 
 Always surface the drop counts to curators ("96 shown, 66 filtered: 42
 references/acknowledgments, 23 broader terms, 1 case mismatch") rather than
