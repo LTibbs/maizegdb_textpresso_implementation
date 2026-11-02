@@ -152,9 +152,14 @@ except MaizeOpenAccess).
 4. Otherwise it returns a 307 redirect to the live
    `https://textpresso.maizegdb.org/tpc/images/<corpus>/<acc>/images/<name>`.
 
-On the dev box, steps 1–2 fail: the tpcas-2 `images` symlink can't be
-followed over the WSL UNC mount, and the tpcas-1 `images/` directories are
-empty. Figures are therefore served from `raw_files`.
+Step 1 fails outside the container: the tpcas-2 `images` symlink points at a
+container path (`/data/textpresso/tpcas-1/...`). Step 2 serves them when the
+tpcas-1 `images/` directories are filled, which `process_batch.sh` does from
+2026-11-02 (`stage_cas1_images.sh`; run it once on corpora built before
+then). Until then they are empty and figures come from `raw_files`.
+
+Papers built from JATS have figures only once `bin/add_jats_figures.py` has
+placed their PDF's images in the text (see `docs/HANDOFF_FIGURES_20261102.md`).
 
 Images in `raw_files` are taken from the PDF before the pipeline's
 `invert_img` step (`agr_textpresso/tpctools/CMYKInverter`), so CMYK JPEGs

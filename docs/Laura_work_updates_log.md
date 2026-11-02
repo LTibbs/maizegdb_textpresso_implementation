@@ -6296,3 +6296,75 @@ output from 2026-10-29.
   frame-marker fix and the 2026-10-22 ontology build. Expansions and the tier
   changes already work after a restart.
 - Rebuild the API image for the clause-limit change.
+
+## Update log — 2026-10-30 to 2026-11-02: figures for MaizeOpenAccess (PDF- and JATS-built papers)
+
+**Symptom.** No MaizeOpenAccess paper showed figures in Textpresso Central,
+locally or live: every `/tpc/images/MaizeOpenAccess/...` link was lighttpd's
+404. Our GUI showed them only for PDF-built papers, through its `raw_files`
+fallback.
+
+**Cause 1: images never reached tpcas-1.** `process_batch.sh` ran
+`pdf2txtimg` (images land in `raw_files/pdf/<corpus>/<acc>/`) and
+`articles2cas -t 4` (CAS references `<acc>/images/<file>`), but neither of
+the upstream steps that copy the images into `tpcas-1/<acc>/images/`
+(`03pdf2cas4tai.sh`) and fix CMYK JPEGs (`cmykinverter`). All 3,299
+`images/` folders were empty, before and after the 2026-10-22 rebuild.
+- New `scripts/stage_cas1_images.sh` does both; `process_batch.sh` calls it
+  after the CAS-1 verify. Local run: 148,553 files, ~12 GB, ~25 min.
+- `cmykinverter` aborts on a `.jpg` that is not a JPEG (2 in the corpus, in
+  `10.1093_database_bap020`). An abort skips writing `cmyk.index`, so the
+  JPEGs it had already inverted are inverted again on the next run. The script
+  copies only files with the JPEG signature, uses `cp -n`, and warns on a
+  failed `cmykinverter`.
+- Checked (after both fixes, every CAS-2): 1,505/1,505 PDF-built and
+  1,606/1,607 JATS-built papers with figure references have every referenced
+  file (the 2 missing are the non-JPEGs above); 100/100 sampled
+  `/tpc/images/` URLs return 200 on :8080.
+
+**Cause 2: JATS-built papers have no figure annotations.** TjTokenizer wrote
+none (the JATS XML has captions, not images), so 1,624 papers could not show
+figures at all; e.g. `10.3390_plants14101438` lost its 14 when it moved to
+JATS on 2026-10-22.
+- New `bin/add_jats_figures.py` places each paper's PDF images in the JATS
+  text as `textpresso:image` annotations, the type TdTokenizer writes for PDFs
+  and both viewers draw. Rule per PDF page: at a JATS figure caption found on
+  that page; else where the page's text occurs; else (image-only supplement
+  pages) beside the nearest page found; else at "End of Article". Over the
+  corpus: 71,112 images in 1,607 papers, 32% caption / 54% page / 14% near /
+  0% end. 96% of JATS figure captions were found on a PDF page (150-paper
+  sample).
+- `--cas` edits built CAS files (both tpcas trees; no re-index, since the
+  index holds no images; 3,214 files, ~30 min locally, the 75 MB
+  `10.1093_gbe_evt109` alone several minutes); `--remove` undoes it byte for byte; `--jats-json`
+  writes an `images` array for TjTokenizer. `process_batch.sh` runs both, so
+  it works with either tokenizer build.
+- Checked: the real annotator (`annotate`) loads an edited CAS-1, carries all
+  35 images into CAS-2, and gives the same lexical count with and without
+  them (7,667). GUI and :8080 serve the figures; captions line up ("Figure 1
+  Overview of multi-environment trials..." in `10.1002_advs.202412423`).
+- Tests: `tests/test_add_jats_figures.py` (placement, UTF-16 offsets, view
+  members, idempotence, `--remove` round trip, `--jats-json`).
+
+**Long-term (next rebuild).** `agr_textpresso` branch `maizegdb/jats-figures`
+(`876b68e`): TjTokenizer emits the `images` array as image annotations.
+Built and run in a throwaway container from the server image: 14/14 and
+1,306/1,306 annotations matching `jats.json`, sentence count unchanged.
+Not exercised: characters outside the BMP (none in the corpus; `jats_text`
+NFKC-folds them), though the offset conversion is the one already used for
+sections and formats.
+
+**Local server notes.** After the WSL hang of 2026-10-30, Docker Desktop
+restarted the container with an empty `/data/textpresso` (bind mount not
+attached); `docker restart` fixed it. Start the GUI with
+`setsid nohup bash ~/start_local_gui.sh ... &` from `wsl -e`, or it dies with
+the session.
+
+**Handoff.** `docs/HANDOFF_FIGURES_20261102.md`: steps for the live server
+(stage images, add JATS figures, verify, undo).
+
+**Not done / next.**
+- Some papers carry hundreds of tiny image fragments (e.g. 1,306 in
+  `10.1073_pnas.2422647122`, mostly supplement panels pdf2txtimg split up).
+  PDF-built papers have the same; a size floor in staging would hide them.
+- Vector-only figures still have no raster image to show.

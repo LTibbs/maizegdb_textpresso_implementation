@@ -339,7 +339,9 @@ if [[ "$DRY_RUN" == "1" ]]; then
   log "Dry run — would now, in the container:"
   cat <<EOF
     1. tokenize : $( [[ "$TOK_MODE" == "4" ]] && echo 'pdf2txtimg (synchronous) then ' )articles2cas -t ${TOK_MODE} -o ${CORPUS} -p   -> ${CAS1}
-    2. verify    : every accession has a non-zero-sentence CAS-1 file
+    2. verify    : every accession has a non-zero-sentence CAS-1 file;
+                   copy PDF figure images into ${CAS1}/<acc>/images + cmykinverter;
+                   JATS papers: place the PDF's figures in the text (add_jats_figures.py)
     3. annotate : scoped symlink tree of ${CORPUS} only -> annotate -P ${NPROC}   -> ${CAS2}
     4. verify    : every accession has a CAS-2 file
     5. .bib      : generate_pdf_bib.py per accession, from ${BASE}/imports/metadata
@@ -390,6 +392,14 @@ if [[ "$TOK_MODE" == "4" ]]; then
   "
 fi
 
+# JATS papers: place their PDF's figures in the JATS text (an "images" array in
+# each jats.json, which TjTokenizer emits from the 2026-11 build on).
+ADD_FIGS="$(dirname "${BASH_SOURCE[0]}")/../../bin/add_jats_figures.py"
+if dexec "[[ -s '${JATS_LIST}' ]]"; then
+  log "  place PDF figures in JATS text"
+  docker exec -i "$CONTAINER" python3 - -c "$CORPUS" --base "$BASE" --accession-file "$JATS_LIST" --jats-json < "$ADD_FIGS"
+fi
+
 TOK_LOG="${LOG_DIR}/${CORPUS_TAG}-tokenize-${RUN_ID}.log"
 dexec "
   set -euo pipefail
@@ -424,6 +434,17 @@ if [[ -n "$ZERO_SENT" ]]; then
   warn "these accessions produced no CAS-1 sentences (bad/scanned PDF — see setup doc 'zero sentences'):"
   echo "$ZERO_SENT" | sed 's/^/    /'
   warn "they will index by metadata only. Fix or accept before shipping."
+fi
+
+# Figures: articles2cas leaves tpcas-1/<acc>/images/ empty; copy the images
+# pdf2txtimg extracted into it and fix CMYK JPEGs (see stage_cas1_images.sh).
+log "  stage figure images into CAS-1"
+docker exec -i "$CONTAINER" bash -s -- "$CORPUS" "$BASE" \
+  < "$(dirname "${BASH_SOURCE[0]}")/stage_cas1_images.sh"
+# A TjTokenizer older than the "images" support ignores the array above; add
+# the annotations to CAS-1 directly. A CAS that already has them is skipped.
+if dexec "[[ -s '${JATS_LIST}' ]]"; then
+  docker exec -i "$CONTAINER" python3 - -c "$CORPUS" --base "$BASE" --accession-file "$JATS_LIST" --cas "$CAS1" < "$ADD_FIGS"
 fi
 
 # ----------------------------------------------------------------------------
